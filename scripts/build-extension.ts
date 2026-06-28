@@ -1,10 +1,12 @@
 import { Glob } from 'bun'
-import stxPlugin from 'bun-plugin-stx'
+import { existsSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 import packageJson from '../package.json'
 import { buildManifest } from '../src/manifest'
 import { buildStaticRules } from '../src/rules/static-rules'
 
 const outdir = './dist'
+const localStxPluginPath = '/Users/chris/Code/Tools/stx/packages/bun-plugin/src/index.ts'
 
 async function clean(): Promise<void> {
   await Bun.$`rm -rf ${outdir}`
@@ -12,6 +14,7 @@ async function clean(): Promise<void> {
 }
 
 async function buildPages(): Promise<void> {
+  const stxPlugin = await loadStxPlugin()
   const entrypoints = ['pages/popup.stx', 'pages/options.stx']
   const result = await Bun.build({
     entrypoints,
@@ -31,6 +34,21 @@ async function buildPages(): Promise<void> {
   await sanitizeHtml('popup.html', 'popup.js')
   await sanitizeHtml('options.html', 'options.js')
   await removeStxChunks()
+}
+
+async function loadStxPlugin(): Promise<() => Bun.BunPlugin> {
+  if (existsSync(localStxPluginPath)) {
+    try {
+      const localModule = await import(pathToFileURL(localStxPluginPath).href)
+      return localModule.default ?? localModule.stxPlugin
+    }
+    catch (error) {
+      console.warn(`Local STX plugin unavailable, falling back to package: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  const module = await import('bun-plugin-stx')
+  return module.default ?? module.stxPlugin
 }
 
 async function sanitizeHtml(filename: string, scriptName: string): Promise<void> {
