@@ -7,8 +7,14 @@ import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, Runt
 const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
 const pending = new Map<string, BlockEvent>()
+const pendingRoots = new Set<Element>()
+const mutationSweepDelayMs = 150
+const eventFlushDelayMs = 1_000
+const maxPendingRoots = 80
 let observer: MutationObserver | undefined
-let flushTimer: number | undefined
+let sweepTimer: number | undefined
+let eventFlushTimer: number | undefined
+let scanDocumentOnNextSweep = false
 
 void boot()
 
@@ -16,11 +22,14 @@ async function boot(): Promise<void> {
   const settings = await loadSettings()
   if (!settings.enabled || siteMatches(hostname, settings.allowedSites)) return
 
-  sweep(settings)
-  observer = new MutationObserver(() => scheduleSweep(settings))
+  sweep(settings, [document])
+  observer = new MutationObserver(mutations => scheduleSweep(settings, mutations))
   observer.observe(document.documentElement, { childList: true, subtree: true })
 
-  window.addEventListener('pagehide', () => observer?.disconnect(), { once: true })
+  window.addEventListener('pagehide', () => {
+    observer?.disconnect()
+    flushEvents()
+  }, { once: true })
 }
 
 async function loadSettings(): Promise<ExtensionSettings> {
@@ -33,52 +42,73 @@ async function loadSettings(): Promise<ExtensionSettings> {
   }
 }
 
-function scheduleSweep(settings: ExtensionSettings): void {
-  if (flushTimer) return
-  flushTimer = window.setTimeout(() => {
-    flushTimer = undefined
-    sweep(settings)
-  }, 250)
+function scheduleSweep(settings: ExtensionSettings, mutations: MutationRecord[]): void {
+  if (!collectMutationRoots(mutations)) return
+  if (sweepTimer) return
+
+  sweepTimer = window.setTimeout(() => {
+    sweepTimer = undefined
+    sweep(settings, drainScanRoots())
+  }, mutationSweepDelayMs)
 }
 
-function sweep(settings: ExtensionSettings): void {
-  if (settings.cosmeticFiltering) hideSelectors(defaultCosmeticSelectors, 'cosmetic', 'other')
+function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): void {
+  if (!roots.length) return
+
+  if (settings.cosmeticFiltering) hideSelectors(defaultCosmeticSelectors, roots, 'cosmetic', 'other')
 
   if (settings.youtubeEnhancements && isYouTube()) {
-    clickYouTubeSkip()
-    hideSelectors(youtubeSelectors, 'youtube', 'media')
+    clickYouTubeSkip(roots)
+    hideSelectors(youtubeSelectors, roots, 'youtube', 'media')
   }
 
   if (settings.xEnhancements && isX()) {
-    hidePromotedArticles()
-    hideSelectors(xSelectors, 'x', 'xhr')
+    hidePromotedArticles(roots)
+    hideSelectors(xSelectors, roots, 'x', 'xhr')
   }
 
-  flushEvents()
+  scheduleEventFlush()
 }
 
-function hideSelectors(selectors: readonly string[], source: BlockSource, category: ResourceCategory): void {
+type SelectorRoot = Document | Element
+
+function hideSelectors(selectors: readonly string[], roots: readonly SelectorRoot[], source: BlockSource, category: ResourceCategory): void {
   for (const selector of selectors) {
-    for (const element of queryAllSafe(selector)) {
-      hideElement(element, source, category)
+    for (const root of roots) {
+      for (const element of queryAllSafe(root, selector)) {
+        hideElement(element, source, category)
+      }
     }
   }
 }
 
-function hidePromotedArticles(): void {
-  for (const article of document.querySelectorAll('article')) {
-    if (seen.has(article)) continue
-    const text = article.textContent?.toLowerCase() ?? ''
-    if (text.includes('promoted')) hideElement(article, 'x', 'xhr')
+function hidePromotedArticles(roots: readonly SelectorRoot[]): void {
+  for (const root of roots) {
+    for (const article of queryAllSafe(root, 'article')) {
+      hidePromotedArticle(article)
+    }
+
+    if (root instanceof Element) {
+      const article = root.closest('article')
+      if (article) hidePromotedArticle(article)
+    }
   }
 }
 
-function clickYouTubeSkip(): void {
-  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.ytp-ad-skip-button, .ytp-skip-ad-button, button[class*="ytp-ad-skip"]'))
-  for (const button of buttons) {
-    if (button.offsetParent === null) continue
-    button.click()
-    queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+function hidePromotedArticle(article: Element): void {
+  if (seen.has(article)) return
+  const text = article.textContent?.toLowerCase() ?? ''
+  if (text.includes('promoted')) hideElement(article, 'x', 'xhr')
+}
+
+function clickYouTubeSkip(roots: readonly SelectorRoot[]): void {
+  for (const root of roots) {
+    for (const button of queryAllSafe(root, '.ytp-ad-skip-button, .ytp-skip-ad-button, button[class*="ytp-ad-skip"]')) {
+      if (!(button instanceof HTMLButtonElement) || button.offsetParent === null || seen.has(button)) continue
+      seen.add(button)
+      button.click()
+      queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+    }
   }
 }
 
@@ -93,9 +123,12 @@ function hideElement(element: Element, source: BlockSource, category: ResourceCa
   queueEvent(source, category)
 }
 
-function queryAllSafe(selector: string): Element[] {
+function queryAllSafe(root: SelectorRoot, selector: string): Element[] {
   try {
-    return Array.from(document.querySelectorAll(selector))
+    const matches: Element[] = []
+    if (root instanceof Element && root.matches(selector)) matches.push(root)
+    matches.push(...root.querySelectorAll(selector))
+    return matches
   }
   catch {
     return []
@@ -124,7 +157,49 @@ function queueEvent(source: BlockSource, category: ResourceCategory, count = 1, 
   })
 }
 
+function collectMutationRoots(mutations: MutationRecord[]): boolean {
+  for (const mutation of mutations) {
+    for (const node of mutation.addedNodes) {
+      if (!(node instanceof Element) || seen.has(node)) continue
+
+      pendingRoots.add(node)
+      if (pendingRoots.size > maxPendingRoots) {
+        pendingRoots.clear()
+        scanDocumentOnNextSweep = true
+        return true
+      }
+    }
+  }
+
+  return scanDocumentOnNextSweep || pendingRoots.size > 0
+}
+
+function drainScanRoots(): SelectorRoot[] {
+  if (scanDocumentOnNextSweep) {
+    scanDocumentOnNextSweep = false
+    pendingRoots.clear()
+    return [document]
+  }
+
+  const roots = [...pendingRoots].filter(root => root.isConnected)
+  pendingRoots.clear()
+  return roots
+}
+
+function scheduleEventFlush(): void {
+  if (!pending.size || eventFlushTimer) return
+  eventFlushTimer = window.setTimeout(() => {
+    eventFlushTimer = undefined
+    flushEvents()
+  }, eventFlushDelayMs)
+}
+
 function flushEvents(): void {
+  if (eventFlushTimer) {
+    window.clearTimeout(eventFlushTimer)
+    eventFlushTimer = undefined
+  }
+
   if (!pending.size) return
   const events = [...pending.values()]
   pending.clear()

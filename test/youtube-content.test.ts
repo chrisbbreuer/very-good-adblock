@@ -55,6 +55,7 @@ describe('cached YouTube content script fixture', () => {
       await view.navigate(`https://www.youtube.com:${server.port}/watch?v=adblock-fixture`)
       await waitFor(view, `document.body.dataset.skipped === 'true'`, 'skip button click')
       await waitFor(view, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 6`, 'YouTube ad cleanup')
+      await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'batched event flush')
 
       const hiddenCount = await view.evaluate<number>(`document.querySelectorAll('[data-adblock-hidden="true"]').length`)
       const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)

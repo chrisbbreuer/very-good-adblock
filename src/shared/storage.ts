@@ -181,6 +181,7 @@ export async function getActiveTabState(settings?: ExtensionSettings): Promise<A
 
   const hostname = hostnameFromUrl(tab.url)
   return {
+    tabId: tab.id,
     hostname,
     url: tab.url,
     allowed: siteMatches(hostname, settings.allowedSites),

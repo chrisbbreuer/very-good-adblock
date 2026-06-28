@@ -99,6 +99,7 @@ export interface FilterMetadata {
 }
 
 export interface ActiveTabState {
+  tabId?: number
   hostname: string
   url: string
   allowed: boolean

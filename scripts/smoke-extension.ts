@@ -69,6 +69,14 @@ try {
   const generic = openView(900, 700)
   await generic.navigate(origin('example.test', '/fixture/generic'))
   await waitFor(generic, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 3`, 'generic cosmetic filtering')
+  await waitFor(generic, `window.__adblockContentEvents?.length > 0`, 'generic metrics flush')
+  await generic.evaluate(`(() => {
+    const lateAd = document.createElement('div');
+    lateAd.className = 'ad-container';
+    lateAd.textContent = 'late cosmetic ad';
+    document.body.append(lateAd);
+  })()`)
+  await waitFor(generic, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 4`, 'incremental mutation cleanup')
   const genericHidden = await countHidden(generic)
   const genericEvents = await contentEvents(generic)
   assert(genericHidden >= 3, `Expected generic cleanup to hide at least 3 elements, saw ${genericHidden}`)
@@ -79,6 +87,7 @@ try {
   await youtube.navigate(origin('www.youtube.com', '/watch?v=smoke'))
   await waitFor(youtube, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 3`, 'YouTube cleanup')
   await waitFor(youtube, `document.body.dataset.skipped === 'true'`, 'YouTube skip automation')
+  await waitFor(youtube, `window.__adblockContentEvents?.length > 0`, 'YouTube metrics flush')
   const youtubeHidden = await countHidden(youtube)
   const youtubeEvents = await contentEvents(youtube)
   assert(youtubeHidden >= 3, `Expected YouTube cleanup to hide at least 3 elements, saw ${youtubeHidden}`)

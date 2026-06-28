@@ -1,6 +1,6 @@
 import packageJson from '../../package.json'
 import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
-import { buildStaticRules } from '../rules/static-rules'
+import { curatedRuleSeeds } from '../rules/static-rules'
 import { syncDynamicRules } from '../rules/dynamic-rules'
 import { hostnameFromUrl } from '../shared/domain'
 import { formatBytes } from '../shared/metrics'
@@ -17,6 +17,14 @@ import {
   setSettings,
 } from '../shared/storage'
 import type { DashboardState, DnrTelemetry, ExtensionSettings, RuntimeMessage, RuntimeResponse } from '../shared/types'
+
+const staticRuleCount = curatedRuleSeeds.length + generatedNetworkHosts.hosts.length
+const filterSources = generatedNetworkHosts.sources.map(source => ({
+  name: source.name,
+  revision: source.revision,
+  hosts: source.hosts,
+  sha256: source.sha256,
+}))
 
 chrome.runtime.onInstalled.addListener(() => {
   void setup()
@@ -105,30 +113,24 @@ async function getDashboard(): Promise<DashboardState> {
       siteRollups: cloudStats?.sites.length ?? 0,
     },
     activeTab,
-    dnr: await getDnrTelemetry(activeTab?.url),
+    dnr: await getDnrTelemetry(activeTab?.tabId),
     filters: {
-      staticRuleCount: buildStaticRules().length,
+      staticRuleCount,
       generatedHostRules: generatedNetworkHosts.totalHosts,
-      sources: generatedNetworkHosts.sources.map(source => ({
-        name: source.name,
-        revision: source.revision,
-        hosts: source.hosts,
-        sha256: source.sha256,
-      })),
+      sources: filterSources,
     },
     manifestVersion: packageJson.version,
   }
 }
 
-async function getDnrTelemetry(activeTabUrl?: string): Promise<DnrTelemetry> {
+async function getDnrTelemetry(activeTabId?: number): Promise<DnrTelemetry> {
   const checkedAt = new Date().toISOString()
 
   try {
     const minTimeStamp = Date.now() - 5 * 60 * 1000
     const recent = await chrome.declarativeNetRequest.getMatchedRules({ minTimeStamp })
-    const activeTab = activeTabUrl ? await getActiveTabByUrl(activeTabUrl) : undefined
-    const active = activeTab?.id !== undefined
-      ? await chrome.declarativeNetRequest.getMatchedRules({ minTimeStamp, tabId: activeTab.id })
+    const active = activeTabId !== undefined
+      ? await chrome.declarativeNetRequest.getMatchedRules({ minTimeStamp, tabId: activeTabId })
       : { rulesMatchedInfo: [] }
 
     const rulesetHits: Record<string, number> = {}
@@ -154,11 +156,6 @@ async function getDnrTelemetry(activeTabUrl?: string): Promise<DnrTelemetry> {
       reason: error instanceof Error ? error.message : String(error),
     }
   }
-}
-
-async function getActiveTabByUrl(url: string): Promise<chrome.tabs.Tab | undefined> {
-  const tabs = await chrome.tabs.query({ currentWindow: true })
-  return tabs.find(tab => tab.url === url)
 }
 
 async function toggleSite(hostname: string, allowed: boolean): Promise<ExtensionSettings> {

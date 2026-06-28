@@ -168,7 +168,11 @@ function renderDiagnostics(next: DashboardState): void {
     ...rows.map(([label, value]) => {
       const row = document.createElement('div')
       row.className = 'diagnostic-row'
-      row.innerHTML = `<span>${label}</span><strong>${value}</strong>`
+      const labelElement = document.createElement('span')
+      const valueElement = document.createElement('strong')
+      labelElement.textContent = String(label)
+      valueElement.textContent = String(value)
+      row.replaceChildren(labelElement, valueElement)
       return row
     }),
   )

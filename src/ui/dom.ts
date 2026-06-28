@@ -14,15 +14,26 @@ export async function sendMessage<T>(message: RuntimeMessage): Promise<T> {
 
 export function renderBars(element: HTMLElement, values: number[], limit: number): void {
   const max = Math.max(1, ...values)
-  const padded = [...Array.from({ length: Math.max(0, limit - values.length) }, () => 0), ...values].slice(-limit)
-  element.replaceChildren(
-    ...padded.map((value) => {
-      const bar = document.createElement('span')
-      bar.style.height = `${Math.max(6, Math.round((value / max) * 100))}%`
-      bar.title = `${value} blocked`
-      return bar
-    }),
-  )
+  const fragment = document.createDocumentFragment()
+  const start = Math.max(0, values.length - limit)
+  const padding = Math.max(0, limit - (values.length - start))
+
+  for (let index = 0; index < padding; index++) {
+    fragment.append(barElement(0, max))
+  }
+
+  for (let index = start; index < values.length; index++) {
+    fragment.append(barElement(values[index], max))
+  }
+
+  element.replaceChildren(fragment)
+}
+
+function barElement(value: number, max: number): HTMLSpanElement {
+  const bar = document.createElement('span')
+  bar.style.height = `${Math.max(6, Math.round((value / max) * 100))}%`
+  bar.title = `${value} blocked`
+  return bar
 }
 
 export function downloadJson(filename: string, data: unknown): void {
