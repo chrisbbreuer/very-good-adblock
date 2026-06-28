@@ -30,6 +30,9 @@ Load `dist/` as an unpacked extension in Chrome.
 
 ```bash
 bun run build
+bun run docs:build
+bun run docs:dev
+bun run docs:preview
 bun run package
 bun run update:filters
 bun run validate:extension

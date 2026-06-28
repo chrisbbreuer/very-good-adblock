@@ -23,6 +23,9 @@
   "scripts": {
     "build": "bun --bun scripts/build-extension.ts",
     "cache:youtube-fixture": "bun --bun scripts/cache-youtube-fixture.ts",
+    "docs:build": "bunpress build",
+    "docs:dev": "bunpress dev",
+    "docs:preview": "bunpress preview",
     "package": "bun run build && bun --bun scripts/package-extension.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
     "update:filters": "bun --bun scripts/update-filter-sources.ts",
@@ -40,6 +43,7 @@
     "bun-plugin-stx": "^0.2.72"
   },
   "devDependencies": {
+    "@stacksjs/bunpress": "^0.1.9",
     "@types/chrome": "^0.1.4",
     "better-dx": "^0.2.15",
     "typescript": "^5.9.3"
