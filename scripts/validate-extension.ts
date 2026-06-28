@@ -59,7 +59,7 @@ for (const htmlFile of ['popup.html', 'options.html']) {
 }
 
 const staticRules = await Bun.file(join(dist, 'rules/static.json')).json() as chrome.declarativeNetRequest.Rule[]
-if (!Array.isArray(staticRules) || staticRules.length === 0) throw new Error('Static ruleset is empty')
+if (!Array.isArray(staticRules) || staticRules.length < 1000) throw new Error('Static ruleset is too small')
 
 const ruleIds = new Set<number>()
 for (const rule of staticRules) {

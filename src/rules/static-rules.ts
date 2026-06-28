@@ -1,4 +1,5 @@
 import type { ResourceCategory } from '../shared/types'
+import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
 
 export interface CuratedRuleSeed {
   id: number
@@ -36,15 +37,27 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
 ]
 
 export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
-  return curatedRuleSeeds.map(seed => ({
+  const curatedRules = curatedRuleSeeds.map(seed => ({
     id: seed.id,
     priority: 1,
-    action: { type: 'block' },
+    action: { type: 'block' as const },
     condition: {
       urlFilter: seed.urlFilter,
       resourceTypes: seed.resourceTypes,
     },
   }))
+
+  const generatedRules = generatedNetworkHosts.hosts.map((host, index) => ({
+    id: curatedRuleSeeds.length + index + 1,
+    priority: 1,
+    action: { type: 'block' as const },
+    condition: {
+      urlFilter: `||${host}^`,
+      resourceTypes: thirdPartyTypes,
+    },
+  }))
+
+  return [...curatedRules, ...generatedRules]
 }
 
 function resourceType(value: string): chrome.declarativeNetRequest.ResourceType {

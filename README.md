@@ -6,6 +6,7 @@ A polished Chrome Manifest V3 ad blocker built with Bun, TypeScript, and STX.
 
 - Chrome MV3 `declarativeNetRequest` blocking with static bundled rules.
 - Dynamic local rules for per-site allowlisting.
+- Pinned generated host rules from EasyList and AdGuard filter-list revisions.
 - Cosmetic filtering and cleanup for common ad containers.
 - Balanced YouTube and X/Twitter cleanup through content scripts.
 - Local-first stats for blocked ads, estimated data saved, and estimated video time saved.
@@ -25,6 +26,7 @@ Load `dist/` as an unpacked extension in Chrome.
 ```bash
 bun run build
 bun run package
+bun run update:filters
 bun run validate:extension
 bun run validate:rules
 bun run smoke:chrome

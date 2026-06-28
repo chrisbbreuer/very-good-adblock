@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "generatedAt": "",
+  "maxHostsPerSource": 1500,
+  "sources": [
+    {
+      "name": "EasyList general block",
+      "repository": "easylist/easylist",
+      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "path": "easylist/easylist_general_block.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/easylist/easylist"
+    },
+    {
+      "name": "EasyList ad servers",
+      "repository": "easylist/easylist",
+      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "path": "easylist/easylist_adservers.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/easylist/easylist"
+    },
+    {
+      "name": "EasyList third party",
+      "repository": "easylist/easylist",
+      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "path": "easylist/easylist_thirdparty.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/easylist/easylist"
+    },
+    {
+      "name": "AdGuard Base ad servers",
+      "repository": "AdguardTeam/AdguardFilters",
+      "revision": "86b3ee2d051d760f1e9f1d7e0c26a7a6e1d3f8d6",
+      "path": "BaseFilter/sections/adservers.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/AdguardTeam/AdguardFilters"
+    },
+    {
+      "name": "AdGuard Base general URL",
+      "repository": "AdguardTeam/AdguardFilters",
+      "revision": "86b3ee2d051d760f1e9f1d7e0c26a7a6e1d3f8d6",
+      "path": "BaseFilter/sections/general_url.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/AdguardTeam/AdguardFilters"
+    }
+  ]
+}

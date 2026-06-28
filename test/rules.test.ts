@@ -3,13 +3,15 @@ import { dynamicRuleEndId, dynamicRuleStartId } from '../src/shared/constants'
 import { buildDynamicRules } from '../src/rules/dynamic-rules'
 import { buildStaticRules, curatedRuleSeeds } from '../src/rules/static-rules'
 import { defaultSettings } from '../src/shared/storage'
+import generatedNetworkHosts from '../rules/generated/network-hosts.json'
 
 describe('rules', () => {
   it('builds unique static DNR rules from curated seeds', () => {
     const rules = buildStaticRules()
     const ids = new Set(rules.map(rule => rule.id))
 
-    expect(rules).toHaveLength(curatedRuleSeeds.length)
+    expect(generatedNetworkHosts.totalHosts).toBeGreaterThan(1000)
+    expect(rules).toHaveLength(curatedRuleSeeds.length + generatedNetworkHosts.totalHosts)
     expect(ids.size).toBe(rules.length)
     expect(rules.every(rule => rule.action.type === 'block')).toBe(true)
     expect(rules.every(rule => rule.condition.resourceTypes?.length)).toBe(true)
