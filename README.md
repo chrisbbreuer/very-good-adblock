@@ -11,6 +11,7 @@ A polished Chrome Manifest V3 ad blocker built with Bun, TypeScript, and STX.
 - Balanced YouTube and X/Twitter cleanup through content scripts.
 - Local-first stats for blocked ads, estimated data saved, and estimated video time saved.
 - Premium STX popup and dashboard UI with external scripts for MV3 CSP safety.
+- Bun WebView smoke coverage for UI rendering, screenshots, content cleanup, and overflow checks.
 
 ## Setup
 

@@ -137,8 +137,5 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Install Chromium
-        run: bunx playwright install --with-deps chromium
-
       - name: Smoke Test Extension
-        run: xvfb-run -a bun run smoke:chrome
+        run: bun run smoke:chrome

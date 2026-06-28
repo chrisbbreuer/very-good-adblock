@@ -36,13 +36,11 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/stx": "^0.2.72",
     "bun-plugin-stx": "^0.2.72"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.4",
     "better-dx": "^0.2.15",
-    "playwright": "^1.57.0",
     "typescript": "^5.9.3"
   },
   "git-hooks": {
