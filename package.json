@@ -44,7 +44,7 @@
     "bun-plugin-stx": "^0.2.72"
   },
   "devDependencies": {
-    "@stacksjs/bunpress": "^0.1.9",
+    "@stacksjs/bunpress": "^0.1.10",
     "@types/chrome": "^0.1.4",
     "better-dx": "^0.2.15",
     "typescript": "^5.9.3"

@@ -1,11 +1,11 @@
 ---
 title: Very Good AdBlock
-description: A polished Chrome MV3 ad blocker built with Bun, STX, and local-first stats.
+description: A polished Chrome MV3 ad blocker with local-first stats and immediate popup, placement, and video-ad cleanup.
 layout: home
 hero:
   name: Very Good AdBlock
   text: Block ads before they get in your way.
-  tagline: A Chrome Manifest V3 extension built because intrusive popups, obstructive placements, and video ads should be gone immediately, not after they interrupt you.
+  tagline: A Chrome Manifest V3 extension built because intrusive popups, obstructive placements, and video ads should be gone immediately, not after they interrupt you. It keeps lifetime stats, syncs compact totals for fresh installs, and stays transparent about estimates.
   actions:
     - theme: brand
       text: Install Locally
@@ -20,6 +20,8 @@ features:
     details: Content scripts remove ad containers, promoted placements, and click YouTube skip buttons when the page exposes them.
   - title: Stats That Follow You
     details: Lifetime totals and compact history sync through Chrome so fresh installs can restore your dashboard.
+  - title: Local by Default
+    details: Detailed history stays on the device. Cloud sync carries only compact counters and settings through Chrome storage.
 ---
 
 ## Why It Exists
@@ -32,6 +34,13 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 - Estimated data saved from blocked resource categories.
 - Estimated minutes saved from skipped or detected video ads.
 - Compact daily history and top-site rollups synced through Chrome.
+
+## What To Read First
+
+- [Install locally](/guide/install) if you want to load the unpacked extension in Chrome.
+- [Usage](/guide/usage) if you want to pause a site, inspect stats, or reset/export history.
+- [YouTube and X cleanup](/architecture/youtube-x) if you want the details behind video-ad skipping and promoted-post removal.
+- [Stats and cloud sync](/architecture/stats-sync) if you want to know what follows a user into a fresh install.
 
 ## Core Commands
 

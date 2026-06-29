@@ -308,9 +308,9 @@ h1 {
 .marketing-shell {
   min-height: 100vh;
   background:
-    linear-gradient(120deg, rgba(5, 18, 16, 0.7), rgba(6, 14, 18, 0.24) 48%, rgba(24, 14, 28, 0.58)),
-    url("icons/icon-128.png") right 9vw top 120px / 180px 180px no-repeat,
-    linear-gradient(145deg, #06120f 0%, #0d1717 48%, #271322 100%);
+    radial-gradient(circle at 78% 24%, rgba(86, 212, 255, 0.2), transparent 28%),
+    linear-gradient(120deg, rgba(3, 20, 16, 0.88), rgba(5, 13, 18, 0.64) 48%, rgba(20, 11, 28, 0.72)),
+    linear-gradient(145deg, #04110e 0%, #0a1617 48%, #201124 100%);
 }
 
 .marketing-shell a {
@@ -337,7 +337,7 @@ h1 {
   justify-content: space-between;
   min-height: 74px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(6, 18, 16, 0.82);
+  background: rgba(4, 16, 14, 0.9);
   backdrop-filter: blur(22px) saturate(145%);
 }
 
@@ -357,31 +357,47 @@ h1 {
 }
 
 .brand-mark {
+  position: relative;
   display: block;
   width: 32px;
   height: 32px;
-  border: 1px solid rgba(124, 255, 173, 0.28);
-  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(152, 255, 193, 0.42);
+  border-radius: 10px;
   background:
-    linear-gradient(135deg, rgba(124, 255, 173, 0.92), rgba(86, 212, 255, 0.82)),
+    linear-gradient(145deg, rgba(152, 255, 193, 0.96), rgba(86, 212, 255, 0.86)),
     #07120f;
-  box-shadow: inset 0 0 0 5px rgba(4, 18, 12, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 10px 28px rgba(35, 219, 129, 0.18);
+}
+
+.brand-mark::before,
+.brand-mark::after {
+  position: absolute;
+  content: "";
+}
+
+.brand-mark::before {
+  inset: 7px;
+  border: 3px solid #06120f;
+  border-radius: 999px;
 }
 
 .brand-mark::after {
   display: block;
-  width: 13px;
-  height: 13px;
-  margin: 9px auto 0;
-  border: 3px solid #06120f;
-  border-top-color: transparent;
+  top: 14px;
+  left: 7px;
+  width: 18px;
+  height: 4px;
   border-radius: 999px;
-  content: "";
+  background: #06120f;
+  transform: rotate(-24deg);
 }
 
 .marketing-nav nav {
   gap: 22px;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(243, 251, 248, 0.8);
   font-size: 14px;
 }
 
@@ -403,15 +419,17 @@ h1 {
 
 .nav-action,
 .secondary-link {
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(226, 255, 239, 0.24);
+  color: #f8fffb;
   background: rgba(255, 255, 255, 0.1);
 }
 
-.primary-link {
-  border: 1px solid rgba(154, 255, 195, 0.5);
-  color: #04120c;
-  background: #7cffad;
-  box-shadow: 0 18px 42px rgba(23, 201, 100, 0.24);
+.marketing-shell .primary-link {
+  border: 1px solid rgba(184, 255, 211, 0.74);
+  color: #03110b;
+  background: linear-gradient(180deg, #b9ffd1 0%, #78f1a7 100%);
+  box-shadow: 0 18px 42px rgba(23, 201, 100, 0.32);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .marketing-hero {
@@ -436,7 +454,7 @@ h1 {
 .hero-lede {
   max-width: 650px;
   margin: 22px 0 0;
-  color: rgba(243, 251, 248, 0.78);
+  color: rgba(243, 251, 248, 0.86);
   font-size: 20px;
   line-height: 1.55;
 }
@@ -457,8 +475,8 @@ h1 {
 .feature-grid article,
 .stat-wall article,
 .privacy-list {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(228, 255, 240, 0.16);
+  background: rgba(255, 255, 255, 0.11);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(24px) saturate(145%);
 }
@@ -501,7 +519,7 @@ h1 {
   min-width: 0;
   margin-left: 10px;
   overflow: hidden;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(243, 251, 248, 0.82);
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -623,7 +641,7 @@ h1 {
 .preview-topline {
   justify-content: space-between;
   gap: 14px;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(243, 251, 248, 0.84);
   font-size: 13px;
 }
 
@@ -657,7 +675,7 @@ h1 {
 
 .preview-stats span {
   margin-top: 4px;
-  color: rgba(243, 251, 248, 0.62);
+  color: rgba(243, 251, 248, 0.78);
   font-size: 11px;
 }
 
@@ -807,7 +825,7 @@ h1 {
 .stats-showcase p,
 .privacy-band p {
   margin: 0;
-  color: rgba(243, 251, 248, 0.68);
+  color: rgba(243, 251, 248, 0.78);
   line-height: 1.65;
 }
 
@@ -847,7 +865,7 @@ h1 {
 .stat-wall span {
   display: block;
   margin-top: 12px;
-  color: rgba(243, 251, 248, 0.68);
+  color: rgba(243, 251, 248, 0.8);
 }
 
 .privacy-list {
@@ -863,7 +881,7 @@ h1 {
   gap: 12px;
   min-height: 52px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(243, 251, 248, 0.78);
+  color: rgba(243, 251, 248, 0.86);
 }
 
 .privacy-list div:last-child {
@@ -926,8 +944,9 @@ h1 {
 
   .marketing-shell {
     background:
-      linear-gradient(120deg, rgba(5, 18, 16, 0.7), rgba(6, 14, 18, 0.24) 48%, rgba(24, 14, 28, 0.58)),
-      linear-gradient(145deg, #06120f 0%, #0d1717 48%, #271322 100%);
+      radial-gradient(circle at 80% 16%, rgba(86, 212, 255, 0.16), transparent 32%),
+      linear-gradient(120deg, rgba(3, 20, 16, 0.88), rgba(5, 13, 18, 0.64) 48%, rgba(20, 11, 28, 0.72)),
+      linear-gradient(145deg, #04110e 0%, #0a1617 48%, #201124 100%);
   }
 
   .marketing-nav nav {

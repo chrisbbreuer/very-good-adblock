@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a polished STX-powered Chrome MV3 extension built to remove intrusive ads, popups, promoted posts, and video ad interruptions immediately.">
+    <meta name="description" content="Very Good AdBlock is a polished Chrome MV3 extension built to remove intrusive ads, popups, promoted posts, and video ad interruptions immediately.">
     <title>Very Good AdBlock - Immediate, Local Ad Protection</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
@@ -24,7 +24,7 @@
     <main id="top">
       <section class="marketing-hero">
         <div class="hero-copy">
-          <p class="eyebrow">Chrome MV3 · STX · Local-first</p>
+          <p class="eyebrow">Chrome MV3 · local-first protection</p>
           <h1>Very Good AdBlock</h1>
           <p class="hero-lede">
             Built because waiting for the next popup fix is the wrong deal. Very Good AdBlock blocks intrusive ads,
@@ -156,7 +156,7 @@
           <div><span></span>Chrome MV3 declarativeNetRequest</div>
           <div><span></span>Local and sync storage split</div>
           <div><span></span>Exportable stats and reset controls</div>
-          <div><span></span>Static STX markup with extension-safe scripts</div>
+          <div><span></span>Extension-safe pages with external scripts</div>
         </div>
       </section>
     </main>
