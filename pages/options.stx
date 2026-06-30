@@ -69,6 +69,10 @@
             <input id="setting-youtube" type="checkbox">
           </label>
           <label class="toggle-row">
+            <span>Twitch cleanup</span>
+            <input id="setting-twitch" type="checkbox">
+          </label>
+          <label class="toggle-row">
             <span>X/Twitter cleanup</span>
             <input id="setting-x" type="checkbox">
           </label>

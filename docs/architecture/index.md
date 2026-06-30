@@ -9,7 +9,7 @@ Very Good AdBlock uses a balanced, performance-conscious Manifest V3 architectur
 
 - Static `declarativeNetRequest` rules for known network ad domains and URL patterns.
 - Dynamic `declarativeNetRequest` rules for user site overrides.
-- Content scripts for cosmetic cleanup, promoted-content removal, and video-ad skip automation.
+- Content scripts for cosmetic cleanup, promoted-content removal, YouTube skip automation, and Twitch video-ad overlay cleanup.
 - Chrome storage for settings, stats, and cross-install sync.
 
 ## Static Rules
@@ -30,6 +30,7 @@ Content scripts handle cases that network blocking cannot cover safely:
 
 - Cosmetic ad containers.
 - YouTube ad modules and display placements.
+- Twitch video-ad notices, overlays, and ad banners.
 - X/Twitter promoted articles and tracking placements.
 - Skip buttons that are visible and actionable.
 

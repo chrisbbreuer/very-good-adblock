@@ -14,6 +14,7 @@ const minimumStatsEvents = 15
 const hostResolverRules = [
   'MAP example.test 127.0.0.1',
   'MAP www.youtube.com 127.0.0.1',
+  'MAP www.twitch.tv 127.0.0.1',
   'MAP x.com 127.0.0.1',
 ].join(',')
 
@@ -54,6 +55,7 @@ const server = Bun.serve({
     if (url.pathname === '/fixture/generic') return html(contentFixture(genericFixture()))
     if (url.pathname === '/watch') return html(contentFixture(youtubeFixture()))
     if (url.pathname === '/shorts/smoke') return html(contentFixture(youtubeFixture()))
+    if (url.pathname === '/directory/category/smoke' || url.pathname === '/streamer') return html(contentFixture(twitchFixture()))
     if (url.pathname === '/home' || url.pathname === '/search' || url.pathname === '/profile/adblock') {
       return html(contentFixture(xFixture()))
     }
@@ -100,6 +102,18 @@ try {
   const shortsHidden = await countHidden(shorts)
   assert(shortsHidden >= 3, `Expected YouTube Shorts cleanup to hide at least 3 elements, saw ${shortsHidden}`)
   closeView(shorts)
+
+  const twitch = openView(900, 700)
+  await twitch.navigate(origin('www.twitch.tv', '/streamer'))
+  await waitFor(twitch, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 4`, 'Twitch cleanup')
+  await waitFor(twitch, `window.__adblockContentEvents?.length > 0`, 'Twitch metrics flush')
+  const twitchHidden = await countHidden(twitch)
+  const twitchEvents = await contentEvents(twitch)
+  const twitchVideoSeconds = await twitch.evaluate<number>(`window.__adblockContentEvents?.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0) ?? 0`)
+  assert(twitchHidden >= 4, `Expected Twitch cleanup to hide at least 4 elements, saw ${twitchHidden}`)
+  assert(twitchEvents >= 2, `Expected Twitch cleanup to report cleanup and video events, saw ${twitchEvents}`)
+  assert(twitchVideoSeconds >= 15, `Expected Twitch cleanup to estimate saved video time, saw ${twitchVideoSeconds}`)
+  closeView(twitch)
 
   const xHiddenCounts: number[] = []
   for (const path of ['/home', '/search?q=ads', '/profile/adblock']) {
@@ -167,6 +181,7 @@ try {
     `generic=${genericHidden}`,
     `youtube=${youtubeHidden}`,
     `shorts=${shortsHidden}`,
+    `twitch=${twitchHidden}`,
     `x=${xHidden}`,
     `popup=${todayBlocked}`,
     `dashboard=${dashboardBlocked}`,
@@ -342,6 +357,18 @@ function youtubeFixture(): string {
   `
 }
 
+function twitchFixture(): string {
+  return `
+    <h1>Twitch fixture</h1>
+    <div class="player-ad-notice">Commercial break in progress</div>
+    <div class="commercial-break-in-progress">Ad 1 of 2</div>
+    <div data-a-target="video-ad-label">Advertisement</div>
+    <div data-a-target="video-ad-countdown">0:24</div>
+    <div data-a-target="video-player-ad-overlay">video overlay ad</div>
+    <div class="stream-display-ad__container">display ad</div>
+  `
+}
+
 function xFixture(): string {
   return `
     <h1>X fixture</h1>
@@ -399,6 +426,7 @@ function makeDashboardState(): DashboardState {
     event('example.test', 'dnr', 'script', 18),
     event('youtube.com', 'youtube', 'media', 9, 25_200_000, 135),
     event('youtube.com', 'video', 'media', 3, 8_400_000, 45),
+    event('twitch.tv', 'twitch', 'media', 6, 16_800_000, 90),
     event('x.com', 'x', 'xhr', 7),
     event('news.example', 'cosmetic', 'other', 5),
   ]
@@ -409,6 +437,7 @@ function makeDashboardState(): DashboardState {
     sites: {
       'example.test': { hostname: 'example.test', adsBlocked: 41, bytesSaved: 2_100_000, videoSecondsSaved: 0, lastBlockedAt: now.toISOString() },
       'youtube.com': { hostname: 'youtube.com', adsBlocked: 12, bytesSaved: 33_600_000, videoSecondsSaved: 180, lastBlockedAt: now.toISOString() },
+      'twitch.tv': { hostname: 'twitch.tv', adsBlocked: 6, bytesSaved: 16_800_000, videoSecondsSaved: 90, lastBlockedAt: now.toISOString() },
       'x.com': { hostname: 'x.com', adsBlocked: 7, bytesSaved: 238_000, videoSecondsSaved: 0, lastBlockedAt: now.toISOString() },
     },
   }
@@ -460,6 +489,7 @@ function defaultSmokeSettings(): ExtensionSettings {
     badgeEnabled: true,
     cosmeticFiltering: true,
     youtubeEnhancements: true,
+    twitchEnhancements: true,
     xEnhancements: true,
     allowedSites: [],
     blockedSites: [],

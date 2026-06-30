@@ -9,7 +9,7 @@ const config: BunPressOptions = {
   markdown: {
     title: 'Very Good AdBlock Docs',
     meta: {
-      description: 'Docs for a polished, performant, minimal, modern Chrome MV3 ad blocker for immediate popup, ad, and video interruption cleanup.',
+      description: 'Docs for a polished, performant, minimal, modern Chrome MV3 ad blocker for pop-up, ad, YouTube, and Twitch cleanup.',
       author: 'Chris Breuer',
       viewport: 'width=device-width, initial-scale=1.0',
     },
@@ -124,7 +124,7 @@ const config: BunPressOptions = {
           text: 'Architecture',
           items: [
             { text: 'Blocking Model', link: '/architecture/' },
-            { text: 'YouTube and X', link: '/architecture/youtube-x' },
+            { text: 'YouTube, Twitch, and X', link: '/architecture/youtube-x' },
             { text: 'Stats and Cloud Sync', link: '/architecture/stats-sync' },
           ],
         },

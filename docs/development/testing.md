@@ -35,6 +35,7 @@ The smoke test uses Bun WebView. It checks:
 - Generic cosmetic cleanup.
 - YouTube watch pages and Shorts cleanup.
 - YouTube skip-button automation.
+- Twitch video-ad overlay cleanup and estimated saved-time events.
 - X/Twitter promoted-content cleanup.
 - Popup and options dashboard rendering.
 - Reset/export controls.

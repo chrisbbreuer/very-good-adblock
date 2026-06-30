@@ -34,6 +34,9 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   { id: 12, name: 'YouTube page ads', category: 'xhr', urlFilter: '|https://www.youtube.com/pagead/', resourceTypes: [resourceType('xmlhttprequest'), resourceType('script'), resourceType('image')] },
   { id: 13, name: 'Twitter ads API', category: 'xhr', urlFilter: '|https://twitter.com/i/api/1.1/promoted_content/', resourceTypes: [resourceType('xmlhttprequest')] },
   { id: 14, name: 'X ads API', category: 'xhr', urlFilter: '|https://x.com/i/api/1.1/promoted_content/', resourceTypes: [resourceType('xmlhttprequest')] },
+  { id: 15, name: 'Twitch ads GraphQL', category: 'xhr', urlFilter: '|https://gql.twitch.tv/gql?operationName=VideoAd', resourceTypes: [resourceType('xmlhttprequest')] },
+  { id: 16, name: 'Twitch ad events', category: 'xhr', urlFilter: '||twitch.tv/ads^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('ping')] },
+  { id: 17, name: 'Twitch ad telemetry', category: 'xhr', urlFilter: '||twitch.tv/widgets/advertising^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('script')] },
 ]
 
 export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {

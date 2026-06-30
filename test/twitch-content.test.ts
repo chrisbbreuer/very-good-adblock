@@ -4,14 +4,11 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
 
-const fixturePath = new URL('./fixtures/youtube-watch.cached.html', import.meta.url)
-
-describe('cached YouTube content script fixture', () => {
-  it('clicks nested video ad skip buttons before hiding ad containers', async () => {
+describe('cached Twitch content script fixture', () => {
+  it('cleans Twitch video ad overlays and records estimated saved time', async () => {
     const contentScript = await buildContentScript()
-    const fixture = await Bun.file(fixturePath).text()
-    const page = wrapFixture(fixture, contentScript)
-    const certDir = await mkdtemp(join(tmpdir(), 'adblock-youtube-test-'))
+    const page = wrapFixture(twitchFixture(), contentScript)
+    const certDir = await mkdtemp(join(tmpdir(), 'adblock-twitch-test-'))
     const keyPath = join(certDir, 'key.pem')
     const certPath = join(certDir, 'cert.pem')
 
@@ -38,7 +35,7 @@ describe('cached YouTube content script fixture', () => {
         type: 'chrome',
         url: false,
         argv: [
-          '--host-resolver-rules=MAP www.youtube.com 127.0.0.1',
+          '--host-resolver-rules=MAP www.twitch.tv 127.0.0.1',
           '--proxy-server=direct://',
           '--proxy-bypass-list=*',
           '--ignore-certificate-errors',
@@ -52,9 +49,8 @@ describe('cached YouTube content script fixture', () => {
     })
 
     try {
-      await view.navigate(`https://www.youtube.com:${server.port}/watch?v=adblock-fixture`)
-      await waitFor(view, `document.body.dataset.skipped === 'true'`, 'skip button click')
-      await waitFor(view, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 6`, 'YouTube ad cleanup')
+      await view.navigate(`https://www.twitch.tv:${server.port}/streamer`)
+      await waitFor(view, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 5`, 'Twitch ad cleanup')
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'batched event flush')
 
       const hiddenCount = await view.evaluate<number>(`document.querySelectorAll('[data-adblock-hidden="true"]').length`)
@@ -63,8 +59,8 @@ describe('cached YouTube content script fixture', () => {
       const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
 
       expect(errors).toEqual([])
-      expect(hiddenCount).toBeGreaterThanOrEqual(6)
-      expect(eventSources.has('youtube')).toBe(true)
+      expect(hiddenCount).toBeGreaterThanOrEqual(5)
+      expect(eventSources.has('twitch')).toBe(true)
       expect(eventSources.has('video')).toBe(true)
       expect(videoSecondsSaved).toBeGreaterThanOrEqual(15)
     }
@@ -91,6 +87,28 @@ async function buildContentScript(): Promise<string> {
 
   const output = result.outputs.find(file => file.path.endsWith('.js')) ?? result.outputs[0]
   return output.text()
+}
+
+function twitchFixture(): string {
+  return `<!doctype html>
+<html>
+  <head>
+    <title>Cached Twitch Fixture</title>
+  </head>
+  <body>
+    <main>
+      <div class="persistent-player">
+        <video></video>
+        <div class="player-ad-notice">Commercial break in progress</div>
+        <div class="commercial-break-in-progress">Ad 1 of 2</div>
+        <div data-a-target="video-ad-label">Advertisement</div>
+        <div data-a-target="video-ad-countdown">0:24</div>
+        <div data-a-target="video-player-ad-overlay">video overlay ad</div>
+        <div class="stream-display-ad__container">display ad</div>
+      </div>
+    </main>
+  </body>
+</html>`
 }
 
 function wrapFixture(fixture: string, contentScript: string): string {

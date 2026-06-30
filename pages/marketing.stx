@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a polished, performant, minimal, modern Chrome MV3 ad blocker for immediate popup, ad, and video interruption cleanup.">
+    <meta name="description" content="Very Good AdBlock is a polished, performant, minimal, modern Chrome MV3 ad blocker for pop-ups, YouTube, Twitch, and ad cleanup.">
     <title>Very Good AdBlock - Immediate, Modern Ad Protection</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
@@ -27,8 +27,8 @@
           <p class="eyebrow">Chrome MV3 · performant · minimal · modern</p>
           <h1>Very Good AdBlock</h1>
           <p class="hero-lede">
-            A polished, performant, minimal, modern Chrome MV3 ad blocker for immediate popup, ad, and video interruption cleanup.
-            Built to stay fast, minimal, and modern while removing intrusive ads before they take over the page.
+            A polished, performant, minimal, modern Chrome MV3 ad blocker for immediate pop-up, YouTube, Twitch,
+            and ad cleanup. Built to stay fast while removing intrusive interruptions before they take over the page.
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install">Install locally</a>
@@ -98,8 +98,8 @@
           </article>
           <article>
             <span class="feature-icon video" aria-hidden="true"></span>
-            <h3>YouTube cleanup</h3>
-            <p>Removes sponsored placements, detects video ad states, and clicks available skip controls with performance guardrails.</p>
+            <h3>YouTube and Twitch cleanup</h3>
+            <p>Removes sponsored placements, detects video ad states, clicks available YouTube skip controls, and cleans Twitch ad overlays.</p>
           </article>
           <article>
             <span class="feature-icon social" aria-hidden="true"></span>
@@ -109,7 +109,7 @@
           <article>
             <span class="feature-icon control" aria-hidden="true"></span>
             <h3>One-click control</h3>
-            <p>Pause protection per site, manage allowlists, and inspect diagnostics from a minimal popup and modern dashboard.</p>
+            <p>Pause protection per site, customize the ad experience with allowlists, and inspect diagnostics from a minimal modern dashboard.</p>
           </article>
         </div>
       </section>

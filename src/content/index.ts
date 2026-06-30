@@ -1,4 +1,4 @@
-import { defaultCosmeticSelectors, xSelectors, youtubeSelectors } from '../shared/constants'
+import { defaultCosmeticSelectors, twitchSelectors, twitchVideoAdMarkers, xSelectors, youtubeSelectors } from '../shared/constants'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { estimateBytesSaved, estimateVideoSecondsSaved } from '../shared/metrics'
 import { defaultSettings } from '../shared/storage'
@@ -6,6 +6,7 @@ import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, Runt
 
 const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
+const videoMarkersSeen = new WeakSet<Element>()
 const pending = new Map<string, BlockEvent>()
 const pendingRoots = new Set<Element>()
 const mutationSweepDelayMs = 150
@@ -62,6 +63,11 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
     hideSelectors(youtubeSelectors, roots, 'youtube', 'media')
   }
 
+  if (settings.twitchEnhancements && isTwitch()) {
+    recordTwitchVideoAds(roots)
+    hideSelectors(twitchSelectors, roots, 'twitch', 'media')
+  }
+
   if (settings.xEnhancements && isX()) {
     hidePromotedArticles(roots)
     hideSelectors(xSelectors, roots, 'x', 'xhr')
@@ -108,6 +114,18 @@ function clickYouTubeSkip(roots: readonly SelectorRoot[]): void {
       seen.add(button)
       button.click()
       queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+    }
+  }
+}
+
+function recordTwitchVideoAds(roots: readonly SelectorRoot[]): void {
+  for (const selector of twitchVideoAdMarkers) {
+    for (const root of roots) {
+      for (const marker of queryAllSafe(root, selector)) {
+        if (videoMarkersSeen.has(marker)) continue
+        videoMarkersSeen.add(marker)
+        queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+      }
     }
   }
 }
@@ -208,6 +226,10 @@ function flushEvents(): void {
 
 function isYouTube(): boolean {
   return hostname === 'youtube.com' || hostname.endsWith('.youtube.com')
+}
+
+function isTwitch(): boolean {
+  return hostname === 'twitch.tv' || hostname.endsWith('.twitch.tv')
 }
 
 function isX(): boolean {

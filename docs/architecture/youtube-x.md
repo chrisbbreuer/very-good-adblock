@@ -1,11 +1,11 @@
 ---
-title: YouTube and X
-description: How Very Good AdBlock handles YouTube video ads and X/Twitter promoted content with resilient, minimal cleanup.
+title: YouTube, Twitch, and X
+description: How Very Good AdBlock handles YouTube video ads, Twitch interruptions, and X/Twitter promoted content with resilient, minimal cleanup.
 ---
 
-# YouTube and X
+# YouTube, Twitch, and X
 
-YouTube and X/Twitter are handled with site-specific, minimal content cleanup on top of normal DNR blocking.
+YouTube, Twitch, and X/Twitter are handled with site-specific, minimal content cleanup on top of normal DNR blocking.
 
 ## YouTube
 
@@ -17,6 +17,17 @@ The content script:
 - Records estimated video seconds saved when a skip is clicked.
 
 The skip behavior is tested with a cached YouTube-like watch page served as `www.youtube.com` in Bun WebView.
+
+## Twitch
+
+The content script:
+
+- Detects `twitch.tv` hostnames.
+- Hides visible ad notices, video-ad countdowns, ad overlays, and ad banners.
+- Records estimated video seconds saved when Twitch video-ad markers appear.
+- Uses throttled mutation scans so stream chat and live page updates stay responsive.
+
+Twitch changes often, so the implementation focuses on resilient, visible cleanup instead of brittle player rewrites.
 
 ## X/Twitter
 

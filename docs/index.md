@@ -1,11 +1,11 @@
 ---
 title: Very Good AdBlock
-description: A polished, performant, minimal, modern Chrome MV3 ad blocker with local-first stats and immediate popup, placement, and video-ad cleanup.
+description: A polished, performant, minimal, modern Chrome MV3 ad blocker with local-first stats and immediate pop-up, placement, YouTube, and Twitch cleanup.
 layout: home
 hero:
   name: Very Good AdBlock
   text: Block ads before they get in your way.
-  tagline: A polished, performant, minimal, modern Chrome Manifest V3 extension built because intrusive popups, obstructive placements, and video ads should be gone immediately, not after they interrupt you. It keeps lifetime stats, syncs compact totals for fresh installs, and stays transparent about estimates.
+  tagline: A polished, performant, minimal, modern Chrome Manifest V3 extension built because intrusive popups, obstructive placements, YouTube ads, and Twitch interruptions should be gone immediately, not after they interrupt you. It keeps lifetime stats, syncs compact totals for fresh installs, and stays transparent about estimates.
   actions:
     - theme: brand
       text: Install Locally
@@ -16,8 +16,8 @@ hero:
 features:
   - title: MV3 Native Blocking
     details: Uses Chrome declarativeNetRequest static rules plus dynamic per-site rules for allowlists and manual blocks.
-  - title: YouTube and X Cleanup
-    details: Content scripts remove ad containers, promoted placements, and click YouTube skip buttons when the page exposes them.
+  - title: YouTube, Twitch, and X Cleanup
+    details: Content scripts remove ad containers, promoted placements, Twitch ad overlays, and click YouTube skip buttons when the page exposes them.
   - title: Stats That Follow You
     details: Lifetime totals and compact history sync through Chrome so fresh installs can restore your dashboard.
   - title: Local by Default
@@ -32,14 +32,14 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 
 - Ads and placements blocked today and over the lifetime of the extension.
 - Estimated data saved from blocked resource categories.
-- Estimated minutes saved from skipped or detected video ads.
+- Estimated minutes saved from skipped or detected YouTube and Twitch video ads.
 - Compact daily history and top-site rollups synced through Chrome.
 
 ## What To Read First
 
 - [Install locally](/guide/install) if you want to load the unpacked extension in Chrome.
 - [Usage](/guide/usage) if you want to pause a site, inspect stats, or reset/export history.
-- [YouTube and X cleanup](/architecture/youtube-x) if you want the details behind video-ad skipping and promoted-post removal.
+- [YouTube, Twitch, and X cleanup](/architecture/youtube-x) if you want the details behind video-ad skipping and promoted-post removal.
 - [Stats and cloud sync](/architecture/stats-sync) if you want to know what follows a user into a fresh install.
 
 ## Core Commands

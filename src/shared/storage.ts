@@ -22,6 +22,7 @@ export const defaultSettings: ExtensionSettings = {
   badgeEnabled: true,
   cosmeticFiltering: true,
   youtubeEnhancements: true,
+  twitchEnhancements: true,
   xEnhancements: true,
   allowedSites: [],
   blockedSites: [],

@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Build and load the performant, minimal, modern Very Good AdBlock Chrome extension.
+description: Build and load the performant, minimal, modern Very Good AdBlock Chrome extension for pop-ups, YouTube, and Twitch.
 ---
 
 # Install
