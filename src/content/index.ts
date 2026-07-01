@@ -9,6 +9,7 @@ import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, Runt
 const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
 const videoMarkersSeen = new WeakSet<Element>()
+const antiAdblockSeen = new WeakSet<Element>()
 const pending = new Map<string, BlockEvent>()
 const selectorHits = new Map<string, number>()
 const pendingRoots = new Set<Element>()
@@ -16,22 +17,38 @@ const styleId = 'very-good-adblock-cosmetics'
 const mutationSweepDelayMs = 150
 const eventFlushDelayMs = 1_000
 const maxPendingRoots = 80
+const adFastForwardRate = 16
 let cosmeticGroups: ActiveCosmeticGroup[] = []
 let observer: MutationObserver | undefined
 let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
 let scanDocumentOnNextSweep = false
 
-void boot()
+boot()
 
-async function boot(): Promise<void> {
+function boot(): void {
+  // Kill the ad flash: at document_start, synchronously hide the default
+  // placements before settings load. start() reconciles once settings arrive
+  // (removing the style if the extension is off, the site is allowlisted, or
+  // cosmetic filtering is disabled; adding aggressive selectors if enabled).
+  injectCosmeticStyle(provisionalGroups())
+  void start()
+}
+
+async function start(): Promise<void> {
   const settings = await loadSettings()
-  if (!settings.enabled || siteMatches(hostname, settings.allowedSites)) return
+  const allowed = siteMatches(hostname, settings.allowedSites)
+  const cosmeticOn = settings.enabled && !allowed && settings.cosmeticFiltering
 
-  if (settings.cosmeticFiltering) {
+  if (cosmeticOn) {
     cosmeticGroups = activeCosmeticGroups(cosmeticContext(settings))
     injectCosmeticStyle(cosmeticGroups)
   }
+  else {
+    removeCosmeticStyle()
+  }
+
+  if (!settings.enabled || allowed) return
 
   sweep(settings, [document])
   observer = new MutationObserver(mutations => scheduleSweep(settings, mutations))
@@ -41,6 +58,18 @@ async function boot(): Promise<void> {
     observer?.disconnect()
     flushEvents()
   }, { once: true })
+}
+
+/** Default-tier groups assuming enhancements on, for the pre-settings inject. */
+function provisionalGroups(): ActiveCosmeticGroup[] {
+  return activeCosmeticGroups({
+    isYouTube: isYouTube(),
+    isTwitch: isTwitch(),
+    isX: isX(),
+    youtubeEnhancements: true,
+    twitchEnhancements: true,
+    aggressive: false,
+  })
 }
 
 async function loadSettings(): Promise<ExtensionSettings> {
@@ -65,18 +94,31 @@ function cosmeticContext(settings: ExtensionSettings): CosmeticContext {
 }
 
 /**
- * Hide matched placements up front with a single stylesheet. CSS applies to
- * elements added later by YouTube's SPA without waiting for a mutation sweep,
- * so feed ads never flash in. The sweep below only counts what the CSS hides.
+ * Hide matched placements up front with a stylesheet. CSS applies to elements
+ * added later by YouTube's SPA without waiting for a mutation sweep, so feed ads
+ * never flash in. The sweep below only counts what the CSS hides.
+ *
+ * Each selector gets its own rule on purpose: in a comma-joined selector list a
+ * single invalid or unsupported selector (e.g. `:has()` on an old engine) makes
+ * the browser discard the ENTIRE rule. Per-selector rules fail in isolation, so
+ * one bad selector never disables the rest of the hiding.
  */
 function injectCosmeticStyle(groups: readonly ActiveCosmeticGroup[]): void {
   const selectors = [...new Set(groups.flatMap(group => group.selectors))]
-  if (!selectors.length || document.getElementById(styleId)) return
+  if (!selectors.length) return
 
-  const style = document.createElement('style')
-  style.id = styleId
-  style.textContent = `${selectors.join(',\n')} { display: none !important; }`
-  ;(document.head ?? document.documentElement).append(style)
+  let style = document.getElementById(styleId)
+  if (!style) {
+    style = document.createElement('style')
+    style.id = styleId
+    ;(document.head ?? document.documentElement).append(style)
+  }
+
+  style.textContent = selectors.map(selector => `${selector} { display: none !important; }`).join('\n')
+}
+
+function removeCosmeticStyle(): void {
+  document.getElementById(styleId)?.remove()
 }
 
 function scheduleSweep(settings: ExtensionSettings, mutations: MutationRecord[]): void {
@@ -96,6 +138,8 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
 
   if (settings.youtubeEnhancements && isYouTube()) {
     clickYouTubeSkip(roots)
+    fastForwardYouTubeAd()
+    dismissYouTubeAntiAdblock()
   }
 
   if (settings.twitchEnhancements && isTwitch()) {
@@ -103,6 +147,58 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
   }
 
   scheduleEventFlush()
+}
+
+/**
+ * Skippable ads have a Skip button (handled above). Non-skippable pre/mid-rolls
+ * do not, so when the player marks itself `ad-showing` we jump the ad video to
+ * its end and speed it up — YouTube then loads the real video immediately.
+ */
+function fastForwardYouTubeAd(): void {
+  const player = document.querySelector('.html5-video-player')
+  if (!player || !player.classList.contains('ad-showing')) return
+
+  const video = player.querySelector('video')
+  if (!(video instanceof HTMLVideoElement)) return
+
+  const duration = video.duration
+  if (!Number.isFinite(duration) || duration <= 0 || video.currentTime >= duration - 0.5) return
+
+  const secondsSaved = Math.max(1, Math.round(duration - video.currentTime))
+  try {
+    video.currentTime = duration
+    video.playbackRate = adFastForwardRate
+  }
+  catch {
+    return
+  }
+
+  queueEvent('video', 'media', 1, estimateBytesSaved('media'), secondsSaved)
+}
+
+/**
+ * When YouTube shows its "ad blockers violate Terms" enforcement modal it also
+ * dims and scroll-locks the page and pauses the video. The cosmetic stylesheet
+ * hides the modal card; here we clear the shared backdrop, restore scrolling,
+ * and resume playback — only when the enforcement message is actually present,
+ * so ordinary dialogs and menus are untouched.
+ */
+function dismissYouTubeAntiAdblock(): void {
+  const message = document.querySelector('ytd-enforcement-message-view-model, ytd-enforcement-message-renderer')
+  if (!message || antiAdblockSeen.has(message)) return
+  antiAdblockSeen.add(message)
+
+  for (const backdrop of document.querySelectorAll('tp-yt-iron-overlay-backdrop')) {
+    if (backdrop instanceof HTMLElement) backdrop.style.setProperty('display', 'none', 'important')
+  }
+
+  document.documentElement.style.setProperty('overflow', 'auto', 'important')
+  document.body?.style.setProperty('overflow', 'auto', 'important')
+
+  const video = document.querySelector('.html5-video-player video')
+  if (video instanceof HTMLVideoElement && video.paused) void video.play().catch(() => {})
+
+  queueEvent('youtube', 'other')
 }
 
 type SelectorRoot = Document | Element

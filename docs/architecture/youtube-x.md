@@ -14,9 +14,11 @@ The content script:
 - Detects `youtube.com` hostnames.
 - Hides feed, masthead, display, and companion ad elements (`ytd-ad-slot-renderer`, `ytd-display-ad-renderer`, `#masthead-ad`, and the grid cells that wrap them) without hiding real videos, comments, Shorts, or recommendations.
 - Clicks visible ad skip buttons when the page exposes them.
-- Records estimated video seconds saved when a skip is clicked.
+- Fast-forwards non-skippable pre/mid-roll ads: when the player is `ad-showing`, the ad video jumps to its end and speeds up so the real video loads immediately.
+- Dismisses the "ad blockers violate Terms" enforcement popup — hides the modal and shared backdrop, restores scrolling, and resumes playback, only when the enforcement message is present.
+- Records estimated video seconds saved when a skip or fast-forward happens.
 
-Both behaviors are tested with a cached YouTube-like watch page served as `www.youtube.com` in Bun WebView, asserting ads are hidden while the real feed video, comments, `<video>`, and skip button stay visible.
+These behaviors are tested with cached YouTube-like pages served as `www.youtube.com` in Bun WebView, asserting ads are hidden and skipped while the real feed video, comments, `<video>`, and skip button stay visible and playback continues.
 
 ## Twitch
 

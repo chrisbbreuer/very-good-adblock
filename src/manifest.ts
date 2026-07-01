@@ -19,7 +19,7 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
       service_worker: 'background.js',
       type: 'module',
     },
-    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'scripting'],
+    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'scripting', 'alarms'],
     host_permissions: ['http://*/*', 'https://*/*'],
     icons: {
       16: 'icons/icon-16.png',
@@ -31,7 +31,7 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
       {
         matches: ['http://*/*', 'https://*/*'],
         js: ['content.js'],
-        run_at: 'document_idle',
+        run_at: 'document_start',
       },
     ],
     declarative_net_request: {

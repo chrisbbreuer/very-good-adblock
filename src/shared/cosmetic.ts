@@ -72,6 +72,9 @@ export const youtubeCosmetic: CosmeticGroup = {
     'ytd-brand-video-shelf-renderer',
     'ytd-brand-video-singleton-renderer',
     'ytd-search-pyv-renderer',
+    'ytd-enforcement-message-view-model',
+    'ytd-enforcement-message-renderer',
+    'ytd-popup-container:has(ytd-enforcement-message-view-model)',
   ],
   aggressive: [
     'ytd-rich-section-renderer:has(ytd-statement-banner-renderer)',

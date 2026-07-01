@@ -1,8 +1,57 @@
-import { dynamicRuleEndId, dynamicRuleStartId } from '../shared/constants'
+import { dynamicRuleEndId, dynamicRuleStartId, maxRefreshRules, refreshRuleStartId } from '../shared/constants'
 import { normalizeHostname } from '../shared/domain'
 import type { ExtensionSettings } from '../shared/types'
 
 let syncQueue = Promise.resolve()
+
+const refreshResourceTypes: chrome.declarativeNetRequest.ResourceType[] = [
+  resourceType('script'),
+  resourceType('image'),
+  resourceType('xmlhttprequest'),
+  resourceType('sub_frame'),
+  resourceType('media'),
+  resourceType('font'),
+  resourceType('stylesheet'),
+]
+
+export interface HostRefreshOptions {
+  exclude?: Set<string>
+  startId?: number
+  max?: number
+}
+
+/**
+ * Turn a fetched host list into block rules for the reserved refresh ID range.
+ * Hosts already shipped in the static ruleset are excluded so the refresh only
+ * adds what is genuinely new since the build, and the result is deduped, sanity
+ * checked, and capped to stay inside the dynamic-rule budget.
+ */
+export function buildHostRefreshRules(hosts: string[], options: HostRefreshOptions = {}): chrome.declarativeNetRequest.Rule[] {
+  const startId = options.startId ?? refreshRuleStartId
+  const max = options.max ?? maxRefreshRules
+  const exclude = options.exclude
+  const seen = new Set<string>()
+  const rules: chrome.declarativeNetRequest.Rule[] = []
+
+  for (const raw of hosts) {
+    const host = raw.trim().toLowerCase()
+    if (!isBlockableHost(host) || seen.has(host) || exclude?.has(host)) continue
+    seen.add(host)
+    rules.push({
+      id: startId + rules.length,
+      priority: 1,
+      action: { type: 'block' as const },
+      condition: { urlFilter: `||${host}^`, resourceTypes: refreshResourceTypes },
+    })
+    if (rules.length >= max) break
+  }
+
+  return rules
+}
+
+function isBlockableHost(host: string): boolean {
+  return host.length > 0 && host.length < 254 && host.includes('.') && /^[a-z0-9.-]+$/.test(host)
+}
 
 function ruleId(offset: number): number {
   return dynamicRuleStartId + offset

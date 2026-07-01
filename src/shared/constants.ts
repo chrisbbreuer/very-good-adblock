@@ -5,6 +5,14 @@ export const dynamicRuleStartId = 50000
 export const dynamicRuleEndId = 50999
 export const maxRecentEvents = 240
 
+// Reserved dynamic-rule range for hosts fetched by the scheduled filter refresh.
+// Kept disjoint from the allow/block dynamic range so neither clobbers the other.
+export const refreshRuleStartId = 60000
+export const refreshRuleEndId = 89999
+export const maxRefreshRules = 25000
+export const filterRefreshAlarm = 'very-good-adblock-filter-refresh'
+export const filterRefreshUrl = 'https://raw.githubusercontent.com/chrisbbreuer/very-good-adblock/main/rules/generated/network-hosts.json'
+
 export const protectedHosts = {
   youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],
   twitch: ['twitch.tv', 'www.twitch.tv', 'm.twitch.tv'],

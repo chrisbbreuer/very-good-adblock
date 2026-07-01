@@ -24,12 +24,21 @@ Dynamic rules are derived from settings:
 - Manually blocked sites receive block rules.
 - Rules are bounded to the configured dynamic ID range.
 
+## Filter Refresh
+
+MV3 static rules can only change with an extension update, so a daily
+`chrome.alarms` job fetches the maintained host list and loads any hosts newer
+than the shipped ruleset as dynamic rules in a separate reserved ID range. The
+fetch is bounded, deduped against the shipped set, and non-fatal on failure —
+the shipped static and dynamic rules stay active regardless.
+
 ## Content Scripts
 
 Content scripts handle the placements network rules cannot reach:
 
-- Cosmetic filtering hides first-party ad placements (YouTube feed/masthead/display ads, Twitch display banners, X promoted entries) via an injected stylesheet.
-- YouTube skip buttons that are visible and actionable.
+- Cosmetic filtering hides first-party ad placements (YouTube feed/masthead/display ads, Twitch display banners, X promoted entries) via a stylesheet injected at `document_start` so ads never flash in.
+- YouTube skip-button clicks plus fast-forwarding of non-skippable video ads.
+- Dismissal of YouTube's anti-adblock enforcement popup, restoring scroll and playback.
 - Twitch video-ad markers used to estimate saved time.
 - Throttled mutation scans that tag hidden placements and catch late-loading video controls and markers.
 

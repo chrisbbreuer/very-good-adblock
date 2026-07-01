@@ -1,7 +1,8 @@
 import packageJson from '../../package.json'
 import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
+import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId } from '../shared/constants'
 import { curatedRuleSeeds } from '../rules/static-rules'
-import { syncDynamicRules } from '../rules/dynamic-rules'
+import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { hostnameFromUrl } from '../shared/domain'
 import { formatBytes } from '../shared/metrics'
 import {
@@ -76,6 +77,10 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   void updateBadge(tabId)
 })
 
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === filterRefreshAlarm) void refreshFilters()
+})
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return
 
@@ -94,6 +99,39 @@ async function setup(): Promise<void> {
   await initializeStorage()
   await syncDynamicRules(await getSettings())
   await updateBadge()
+  chrome.alarms?.create(filterRefreshAlarm, { periodInMinutes: 24 * 60 })
+  void refreshFilters()
+}
+
+/**
+ * Fetch the maintained host list and load any hosts newer than the shipped
+ * static ruleset as dynamic rules. MV3 static rules can only change with an
+ * extension update, so this keeps network blocking fresh between releases.
+ * Any failure is non-fatal — the shipped ruleset stays active.
+ */
+async function refreshFilters(): Promise<void> {
+  try {
+    const response = await fetch(filterRefreshUrl, { cache: 'no-cache' })
+    if (!response.ok) return
+
+    const data = await response.json() as { hosts?: unknown }
+    const hosts = Array.isArray(data.hosts) ? data.hosts.filter((host): host is string => typeof host === 'string') : []
+    if (!hosts.length) return
+
+    const shipped = new Set(generatedNetworkHosts.hosts)
+    const addRules = buildHostRefreshRules(hosts, { exclude: shipped })
+
+    const existing = await chrome.declarativeNetRequest.getDynamicRules()
+    const removeRuleIds = existing
+      .map(rule => rule.id)
+      .filter(id => id >= refreshRuleStartId && id <= refreshRuleEndId)
+
+    if (!addRules.length && !removeRuleIds.length) return
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules })
+  }
+  catch {
+    // Ignore refresh failures; static and dynamic rules already loaded stay active.
+  }
 }
 
 async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.MessageSender): Promise<unknown> {

@@ -17,10 +17,18 @@ deferral asked for.
 
 ## How It Works
 
-- On a protected page the content script injects one stylesheet that sets
-  `display: none !important` on the active ad selectors. CSS hides matching
-  elements immediately, including ones YouTube's SPA adds later, so feed ads
-  never flash in and no per-element mutation race is needed.
+- The content script runs at `document_start` and injects the default
+  stylesheet synchronously, before the page parses, so ads never paint. Once
+  settings load it reconciles — removing the sheet if the extension is off, the
+  site is allowlisted, or cosmetic filtering is disabled, and adding aggressive
+  selectors when enabled.
+- The stylesheet sets `display: none !important` per selector. CSS hides
+  matching elements immediately, including ones YouTube's SPA adds later, so no
+  per-element mutation race is needed.
+- Each selector gets its **own** rule. In a comma-joined selector list a single
+  invalid or unsupported selector (for example `:has()` on an old engine) makes
+  the browser discard the entire rule; per-selector rules fail in isolation, so
+  one bad selector never disables the rest of the hiding.
 - A throttled mutation sweep then tags each hidden node (`data-adblock-hidden`)
   and attributes it to the selector that matched, feeding the blocked count and
   per-page diagnostics.

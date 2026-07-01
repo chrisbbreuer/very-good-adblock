@@ -11,8 +11,9 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 - Chrome MV3 `declarativeNetRequest` blocking with static bundled rules.
 - Dynamic local rules for per-site allowlisting.
 - Pinned generated host rules from EasyList and AdGuard filter-list revisions.
-- YouTube skip assist through a conservative content script.
+- YouTube skip assist, non-skippable video-ad fast-forward, and anti-adblock popup dismissal through a conservative content script.
 - Twitch video-ad marker detection for estimated saved-time stats.
+- Daily filter-list refresh that loads newer hosts as dynamic rules between releases.
 - Local-first stats for blocked ads, estimated data saved, and estimated video time saved, with compact Chrome cloud sync for fresh installs.
 - Premium, minimal STX popup and dashboard UI with external scripts for MV3 CSP safety.
 - Performance-conscious content scripts with throttled observers and site-specific cosmetic hiding for first-party ad placements.
