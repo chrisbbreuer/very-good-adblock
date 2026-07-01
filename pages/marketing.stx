@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a polished, performant, minimal, modern Chrome MV3 ad blocker for pop-ups, YouTube, Twitch, and ad cleanup.">
+    <meta name="description" content="Very Good AdBlock is a polished, performant, minimal, modern Chrome MV3 ad blocker for pop-ups, YouTube, Twitch, and ad protection.">
     <title>Very Good AdBlock - Immediate, Modern Ad Protection</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
@@ -28,7 +28,7 @@
           <h1>Very Good AdBlock</h1>
           <p class="hero-lede">
             A polished, performant, minimal, modern Chrome MV3 ad blocker for immediate pop-up, YouTube, Twitch,
-            and ad cleanup. Built to stay fast while removing intrusive interruptions before they take over the page.
+            and ad protection. Built to stay fast while removing intrusive interruptions before they take over the page.
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install">Install locally</a>
@@ -88,7 +88,7 @@
       <section id="features" class="marketing-band">
         <div class="section-kicker">
           <p class="eyebrow">Coverage</p>
-          <h2>Immediate cleanup for the interruptions people actually feel.</h2>
+          <h2>Immediate protection without fragile page rewrites.</h2>
         </div>
         <div class="feature-grid">
           <article>
@@ -98,13 +98,13 @@
           </article>
           <article>
             <span class="feature-icon video" aria-hidden="true"></span>
-            <h3>YouTube and Twitch cleanup</h3>
-            <p>Removes sponsored placements, detects video ad states, clicks available YouTube skip controls, and cleans Twitch ad overlays.</p>
+            <h3>YouTube and Twitch helpers</h3>
+            <p>Clicks available YouTube skip controls and detects Twitch video-ad markers without broad cosmetic DOM hiding.</p>
           </article>
           <article>
             <span class="feature-icon social" aria-hidden="true"></span>
-            <h3>X/Twitter cleanup</h3>
-            <p>Cleans promoted feed entries and timeline clutter while keeping normal posts, search, profiles, and navigation usable.</p>
+            <h3>Social ad blocking</h3>
+            <p>Blocks known promoted-content and ad request paths through MV3 rules while avoiding fragile feed DOM removal.</p>
           </article>
           <article>
             <span class="feature-icon control" aria-hidden="true"></span>
@@ -154,7 +154,7 @@
         </div>
         <div class="privacy-list">
           <div><span></span>Chrome MV3 declarativeNetRequest</div>
-          <div><span></span>Performance-conscious content cleanup</div>
+          <div><span></span>No cosmetic DOM hiding in v1</div>
           <div><span></span>Local and sync storage split</div>
           <div><span></span>Exportable stats and reset controls</div>
         </div>

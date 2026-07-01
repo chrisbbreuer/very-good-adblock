@@ -4,8 +4,10 @@ import {
   cloudStatsSnapshotBytes,
   defaultLifetimeStats,
   defaultLocalStats,
+  getSettings,
   hydrateLocalStatsFromCloud,
   mergeLifetimeStats,
+  setSettings,
 } from '../src/shared/storage'
 import type { LocalStats, SiteStats, StatBucket } from '../src/shared/types'
 
@@ -89,6 +91,56 @@ describe('cloud stats sync', () => {
     expect(merged.videoSecondsSaved).toBe(90)
     expect(merged.since).toBe('2026-06-01T00:00:00.000Z')
     expect(merged.lastUpdated).toBe('2026-06-20T00:00:00.000Z')
+  })
+
+  it('drops legacy cosmetic and X settings from sync storage', async () => {
+    const originalChrome = globalThis.chrome
+    const store: Record<string, unknown> = {
+      settings: {
+        enabled: true,
+        badgeEnabled: true,
+        cosmeticFiltering: true,
+        youtubeEnhancements: true,
+        twitchEnhancements: true,
+        xEnhancements: true,
+        allowedSites: ['example.com'],
+        blockedSites: [],
+      },
+    }
+
+    Object.defineProperty(globalThis, 'chrome', {
+      configurable: true,
+      value: {
+        storage: {
+          sync: {
+            async get(key: string) {
+              return { [key]: store[key] }
+            },
+            async set(values: Record<string, unknown>) {
+              Object.assign(store, values)
+            },
+          },
+        },
+      } as unknown as typeof chrome,
+    })
+
+    try {
+      const settings = await getSettings()
+      expect('cosmeticFiltering' in settings).toBe(false)
+      expect('xEnhancements' in settings).toBe(false)
+
+      await setSettings({ youtubeEnhancements: false })
+      const persisted = store.settings as Record<string, unknown>
+      expect(persisted.cosmeticFiltering).toBeUndefined()
+      expect(persisted.xEnhancements).toBeUndefined()
+      expect(persisted.youtubeEnhancements).toBe(false)
+    }
+    finally {
+      Object.defineProperty(globalThis, 'chrome', {
+        configurable: true,
+        value: originalChrome,
+      })
+    }
   })
 })
 

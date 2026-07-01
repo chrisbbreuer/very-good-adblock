@@ -5,7 +5,7 @@ import { describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
 
 describe('cached Twitch content script fixture', () => {
-  it('cleans Twitch video ad overlays and records estimated saved time', async () => {
+  it('records Twitch video ad markers without hiding page containers', async () => {
     const contentScript = await buildContentScript()
     const page = wrapFixture(twitchFixture(), contentScript)
     const certDir = await mkdtemp(join(tmpdir(), 'adblock-twitch-test-'))
@@ -50,7 +50,6 @@ describe('cached Twitch content script fixture', () => {
 
     try {
       await view.navigate(`https://www.twitch.tv:${server.port}/streamer`)
-      await waitFor(view, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 5`, 'Twitch ad cleanup')
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'batched event flush')
 
       const hiddenCount = await view.evaluate<number>(`document.querySelectorAll('[data-adblock-hidden="true"]').length`)
@@ -59,8 +58,7 @@ describe('cached Twitch content script fixture', () => {
       const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
 
       expect(errors).toEqual([])
-      expect(hiddenCount).toBeGreaterThanOrEqual(5)
-      expect(eventSources.has('twitch')).toBe(true)
+      expect(hiddenCount).toBe(0)
       expect(eventSources.has('video')).toBe(true)
       expect(videoSecondsSaved).toBeGreaterThanOrEqual(15)
     }
@@ -127,10 +125,8 @@ function wrapFixture(fixture: string, contentScript: string): string {
                 settings: {
                   enabled: true,
                   badgeEnabled: true,
-                  cosmeticFiltering: true,
                   youtubeEnhancements: true,
                   twitchEnhancements: true,
-                  xEnhancements: true,
                   allowedSites: [],
                   blockedSites: [],
                 },

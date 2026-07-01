@@ -10,10 +10,8 @@ const elements = {
   version: byId('dashboard-version'),
   dailyChart: byId('daily-chart'),
   enabled: byId<HTMLInputElement>('setting-enabled'),
-  cosmetic: byId<HTMLInputElement>('setting-cosmetic'),
   youtube: byId<HTMLInputElement>('setting-youtube'),
   twitch: byId<HTMLInputElement>('setting-twitch'),
-  x: byId<HTMLInputElement>('setting-x'),
   badge: byId<HTMLInputElement>('setting-badge'),
   rulesStatus: byId('rules-status'),
   allowedCount: byId('allowed-count'),
@@ -36,10 +34,8 @@ void refresh()
 
 for (const [key, input] of Object.entries({
   enabled: elements.enabled,
-  cosmeticFiltering: elements.cosmetic,
   youtubeEnhancements: elements.youtube,
   twitchEnhancements: elements.twitch,
-  xEnhancements: elements.x,
   badgeEnabled: elements.badge,
 })) {
   input.addEventListener('change', async () => {
@@ -96,10 +92,8 @@ function render(next: DashboardState): void {
   elements.video.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.version.textContent = next.manifestVersion
   elements.enabled.checked = next.settings.enabled
-  elements.cosmetic.checked = next.settings.cosmeticFiltering
   elements.youtube.checked = next.settings.youtubeEnhancements
   elements.twitch.checked = next.settings.twitchEnhancements
-  elements.x.checked = next.settings.xEnhancements
   elements.badge.checked = next.settings.badgeEnabled
   elements.rulesStatus.textContent = `${next.filters.staticRuleCount.toLocaleString()} static rules`
   elements.allowedCount.textContent = String(next.settings.allowedSites.length)

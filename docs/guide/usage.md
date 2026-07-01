@@ -24,7 +24,7 @@ Use the options dashboard to:
 
 - Review lifetime stats and 60-day history.
 - Manage allowed and blocked sites.
-- Toggle cosmetic filtering, YouTube cleanup, Twitch cleanup, X/Twitter cleanup, and badge counts.
+- Toggle YouTube skip assist, Twitch video detection, and badge counts.
 - Export or reset local stats.
 - Inspect filter and cloud-sync diagnostics.
 

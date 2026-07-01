@@ -11,7 +11,7 @@ describe('metrics', () => {
     const totals = eventTotals([
       {
         hostname: 'example.com',
-        source: 'cosmetic',
+        source: 'dnr',
         category: 'image',
         count: 2,
         bytesSaved: estimateBytesSaved('image', 2),

@@ -61,20 +61,12 @@
             <input id="setting-enabled" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Cosmetic filtering</span>
-            <input id="setting-cosmetic" type="checkbox">
-          </label>
-          <label class="toggle-row">
-            <span>YouTube cleanup</span>
+            <span>YouTube skip assist</span>
             <input id="setting-youtube" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Twitch cleanup</span>
+            <span>Twitch video detection</span>
             <input id="setting-twitch" type="checkbox">
-          </label>
-          <label class="toggle-row">
-            <span>X/Twitter cleanup</span>
-            <input id="setting-x" type="checkbox">
           </label>
           <label class="toggle-row">
             <span>Badge count</span>

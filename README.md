@@ -11,12 +11,16 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 - Chrome MV3 `declarativeNetRequest` blocking with static bundled rules.
 - Dynamic local rules for per-site allowlisting.
 - Pinned generated host rules from EasyList and AdGuard filter-list revisions.
-- Cosmetic filtering and cleanup for common ad containers.
-- Balanced YouTube, Twitch, and X/Twitter cleanup through content scripts.
+- YouTube skip assist through a conservative content script.
+- Twitch video-ad marker detection for estimated saved-time stats.
 - Local-first stats for blocked ads, estimated data saved, and estimated video time saved, with compact Chrome cloud sync for fresh installs.
 - Premium, minimal STX popup and dashboard UI with external scripts for MV3 CSP safety.
-- Performance-conscious content cleanup with throttled observers and resilient selectors.
-- Bun WebView smoke coverage for UI rendering, screenshots, content cleanup, and overflow checks.
+- Performance-conscious content scripts with throttled observers and no cosmetic DOM hiding.
+- Bun WebView smoke coverage for UI rendering, screenshots, video helpers, and overflow checks.
+
+## Deferred
+
+Cosmetic filtering is intentionally disabled for now. YouTube layout and playback changes made broad DOM hiding too risky, so the next implementation should ship behind focused tests, site-specific guardrails, and quick rollback controls.
 
 ## Setup
 

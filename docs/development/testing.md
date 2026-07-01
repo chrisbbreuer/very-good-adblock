@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: How Very Good AdBlock verifies rules, UI, performance-sensitive cleanup, and packaged output.
+description: How Very Good AdBlock verifies rules, UI, performance-sensitive video helpers, and packaged output.
 ---
 
 # Testing
@@ -32,11 +32,10 @@ bun run smoke:chrome
 
 The smoke test uses Bun WebView. It checks:
 
-- Generic cosmetic cleanup.
-- YouTube watch pages and Shorts cleanup.
+- YouTube watch pages and Shorts skip assist.
 - YouTube skip-button automation.
-- Twitch video-ad overlay cleanup and estimated saved-time events.
-- X/Twitter promoted-content cleanup.
+- No cosmetic DOM hiding on YouTube or Twitch fixtures.
+- Twitch video-ad marker detection and estimated saved-time events.
 - Popup and options dashboard rendering.
 - Reset/export controls.
 - Desktop and mobile overflow.

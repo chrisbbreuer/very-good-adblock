@@ -1,4 +1,4 @@
-import { defaultCosmeticSelectors, twitchSelectors, twitchVideoAdMarkers, xSelectors, youtubeSelectors } from '../shared/constants'
+import { twitchVideoAdMarkers } from '../shared/constants'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { estimateBytesSaved, estimateVideoSecondsSaved } from '../shared/metrics'
 import { defaultSettings } from '../shared/storage'
@@ -56,56 +56,18 @@ function scheduleSweep(settings: ExtensionSettings, mutations: MutationRecord[])
 function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): void {
   if (!roots.length) return
 
-  if (settings.cosmeticFiltering) hideSelectors(defaultCosmeticSelectors, roots, 'cosmetic', 'other')
-
   if (settings.youtubeEnhancements && isYouTube()) {
     clickYouTubeSkip(roots)
-    hideSelectors(youtubeSelectors, roots, 'youtube', 'media')
   }
 
   if (settings.twitchEnhancements && isTwitch()) {
     recordTwitchVideoAds(roots)
-    hideSelectors(twitchSelectors, roots, 'twitch', 'media')
-  }
-
-  if (settings.xEnhancements && isX()) {
-    hidePromotedArticles(roots)
-    hideSelectors(xSelectors, roots, 'x', 'xhr')
   }
 
   scheduleEventFlush()
 }
 
 type SelectorRoot = Document | Element
-
-function hideSelectors(selectors: readonly string[], roots: readonly SelectorRoot[], source: BlockSource, category: ResourceCategory): void {
-  for (const selector of selectors) {
-    for (const root of roots) {
-      for (const element of queryAllSafe(root, selector)) {
-        hideElement(element, source, category)
-      }
-    }
-  }
-}
-
-function hidePromotedArticles(roots: readonly SelectorRoot[]): void {
-  for (const root of roots) {
-    for (const article of queryAllSafe(root, 'article')) {
-      hidePromotedArticle(article)
-    }
-
-    if (root instanceof Element) {
-      const article = root.closest('article')
-      if (article) hidePromotedArticle(article)
-    }
-  }
-}
-
-function hidePromotedArticle(article: Element): void {
-  if (seen.has(article)) return
-  const text = article.textContent?.toLowerCase() ?? ''
-  if (text.includes('promoted')) hideElement(article, 'x', 'xhr')
-}
 
 function clickYouTubeSkip(roots: readonly SelectorRoot[]): void {
   for (const root of roots) {
@@ -128,17 +90,6 @@ function recordTwitchVideoAds(roots: readonly SelectorRoot[]): void {
       }
     }
   }
-}
-
-function hideElement(element: Element, source: BlockSource, category: ResourceCategory): void {
-  if (seen.has(element)) return
-  seen.add(element)
-  element.setAttribute('data-adblock-hidden', 'true')
-  if (element instanceof HTMLElement) {
-    element.style.setProperty('display', 'none', 'important')
-    element.style.setProperty('visibility', 'hidden', 'important')
-  }
-  queueEvent(source, category)
 }
 
 function queryAllSafe(root: SelectorRoot, selector: string): Element[] {
@@ -230,8 +181,4 @@ function isYouTube(): boolean {
 
 function isTwitch(): boolean {
   return hostname === 'twitch.tv' || hostname.endsWith('.twitch.tv')
-}
-
-function isX(): boolean {
-  return hostname === 'x.com' || hostname.endsWith('.x.com') || hostname === 'twitter.com' || hostname.endsWith('.twitter.com')
 }

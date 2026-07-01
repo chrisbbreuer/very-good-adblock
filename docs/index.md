@@ -1,6 +1,6 @@
 ---
 title: Very Good AdBlock
-description: A polished, performant, minimal, modern Chrome MV3 ad blocker with local-first stats and immediate pop-up, placement, YouTube, and Twitch cleanup.
+description: A polished, performant, minimal, modern Chrome MV3 ad blocker with local-first stats and immediate pop-up, placement, YouTube, and Twitch protection.
 layout: home
 hero:
   name: Very Good AdBlock
@@ -16,8 +16,8 @@ hero:
 features:
   - title: MV3 Native Blocking
     details: Uses Chrome declarativeNetRequest static rules plus dynamic per-site rules for allowlists and manual blocks.
-  - title: YouTube, Twitch, and X Cleanup
-    details: Content scripts remove ad containers, promoted placements, Twitch ad overlays, and click YouTube skip buttons when the page exposes them.
+  - title: YouTube and Twitch Helpers
+    details: Content scripts click exposed YouTube skip buttons and detect Twitch video-ad markers without broad cosmetic DOM hiding.
   - title: Stats That Follow You
     details: Lifetime totals and compact history sync through Chrome so fresh installs can restore your dashboard.
   - title: Local by Default
@@ -39,7 +39,7 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 
 - [Install locally](/guide/install) if you want to load the unpacked extension in Chrome.
 - [Usage](/guide/usage) if you want to pause a site, inspect stats, or reset/export history.
-- [YouTube, Twitch, and X cleanup](/architecture/youtube-x) if you want the details behind video-ad skipping and promoted-post removal.
+- [YouTube and Twitch video helpers](/architecture/youtube-x) if you want the details behind skip automation and saved-time estimates.
 - [Stats and cloud sync](/architecture/stats-sync) if you want to know what follows a user into a fresh install.
 
 ## Core Commands

@@ -1,14 +1,12 @@
 export type ResourceCategory = 'document' | 'script' | 'image' | 'media' | 'stylesheet' | 'xhr' | 'font' | 'other'
 
-export type BlockSource = 'dnr' | 'cosmetic' | 'youtube' | 'twitch' | 'x' | 'video' | 'manual'
+export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual'
 
 export interface ExtensionSettings {
   enabled: boolean
   badgeEnabled: boolean
-  cosmeticFiltering: boolean
   youtubeEnhancements: boolean
   twitchEnhancements: boolean
-  xEnhancements: boolean
   allowedSites: string[]
   blockedSites: string[]
 }

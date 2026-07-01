@@ -15,7 +15,6 @@ const hostResolverRules = [
   'MAP example.test 127.0.0.1',
   'MAP www.youtube.com 127.0.0.1',
   'MAP www.twitch.tv 127.0.0.1',
-  'MAP x.com 127.0.0.1',
 ].join(',')
 
 const webViewBackend: Bun.WebView.Backend = {
@@ -52,13 +51,9 @@ const server = Bun.serve({
       return html(injectSmokeShim(await Bun.file(join(extensionPath, 'options.html')).text()))
     }
 
-    if (url.pathname === '/fixture/generic') return html(contentFixture(genericFixture()))
     if (url.pathname === '/watch') return html(contentFixture(youtubeFixture()))
     if (url.pathname === '/shorts/smoke') return html(contentFixture(youtubeFixture()))
     if (url.pathname === '/directory/category/smoke' || url.pathname === '/streamer') return html(contentFixture(twitchFixture()))
-    if (url.pathname === '/home' || url.pathname === '/search' || url.pathname === '/profile/adblock') {
-      return html(contentFixture(xFixture()))
-    }
 
     const asset = await assetResponse(url.pathname)
     if (asset) return asset
@@ -68,63 +63,33 @@ const server = Bun.serve({
 })
 
 try {
-  const generic = openView(900, 700)
-  await generic.navigate(origin('example.test', '/fixture/generic'))
-  await waitFor(generic, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 3`, 'generic cosmetic filtering')
-  await waitFor(generic, `window.__adblockContentEvents?.length > 0`, 'generic metrics flush')
-  await generic.evaluate(`(() => {
-    const lateAd = document.createElement('div');
-    lateAd.className = 'ad-container';
-    lateAd.textContent = 'late cosmetic ad';
-    document.body.append(lateAd);
-  })()`)
-  await waitFor(generic, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 4`, 'incremental mutation cleanup')
-  const genericHidden = await countHidden(generic)
-  const genericEvents = await contentEvents(generic)
-  assert(genericHidden >= 3, `Expected generic cleanup to hide at least 3 elements, saw ${genericHidden}`)
-  assert(genericEvents >= 1, `Expected generic cleanup to report events, saw ${genericEvents}`)
-  closeView(generic)
-
   const youtube = openView(900, 700)
   await youtube.navigate(origin('www.youtube.com', '/watch?v=smoke'))
-  await waitFor(youtube, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 3`, 'YouTube cleanup')
   await waitFor(youtube, `document.body.dataset.skipped === 'true'`, 'YouTube skip automation')
   await waitFor(youtube, `window.__adblockContentEvents?.length > 0`, 'YouTube metrics flush')
   const youtubeHidden = await countHidden(youtube)
   const youtubeEvents = await contentEvents(youtube)
-  assert(youtubeHidden >= 3, `Expected YouTube cleanup to hide at least 3 elements, saw ${youtubeHidden}`)
-  assert(youtubeEvents >= 2, `Expected YouTube cleanup to report cleanup and video events, saw ${youtubeEvents}`)
+  assert(youtubeHidden === 0, `Expected YouTube skip assist to leave page containers visible, saw ${youtubeHidden} hidden nodes`)
+  assert(youtubeEvents >= 1, `Expected YouTube skip assist to report video events, saw ${youtubeEvents}`)
   closeView(youtube)
 
   const shorts = openView(900, 700)
   await shorts.navigate(origin('www.youtube.com', '/shorts/smoke'))
-  await waitFor(shorts, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 3`, 'YouTube Shorts cleanup')
+  await waitFor(shorts, `document.body.dataset.skipped === 'true'`, 'YouTube Shorts skip automation')
   const shortsHidden = await countHidden(shorts)
-  assert(shortsHidden >= 3, `Expected YouTube Shorts cleanup to hide at least 3 elements, saw ${shortsHidden}`)
+  assert(shortsHidden === 0, `Expected YouTube Shorts skip assist to leave page containers visible, saw ${shortsHidden} hidden nodes`)
   closeView(shorts)
 
   const twitch = openView(900, 700)
   await twitch.navigate(origin('www.twitch.tv', '/streamer'))
-  await waitFor(twitch, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 4`, 'Twitch cleanup')
   await waitFor(twitch, `window.__adblockContentEvents?.length > 0`, 'Twitch metrics flush')
   const twitchHidden = await countHidden(twitch)
   const twitchEvents = await contentEvents(twitch)
   const twitchVideoSeconds = await twitch.evaluate<number>(`window.__adblockContentEvents?.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0) ?? 0`)
-  assert(twitchHidden >= 4, `Expected Twitch cleanup to hide at least 4 elements, saw ${twitchHidden}`)
-  assert(twitchEvents >= 2, `Expected Twitch cleanup to report cleanup and video events, saw ${twitchEvents}`)
-  assert(twitchVideoSeconds >= 15, `Expected Twitch cleanup to estimate saved video time, saw ${twitchVideoSeconds}`)
+  assert(twitchHidden === 0, `Expected Twitch video detection to leave page containers visible, saw ${twitchHidden} hidden nodes`)
+  assert(twitchEvents >= 2, `Expected Twitch video detection to report video events, saw ${twitchEvents}`)
+  assert(twitchVideoSeconds >= 15, `Expected Twitch video detection to estimate saved video time, saw ${twitchVideoSeconds}`)
   closeView(twitch)
-
-  const xHiddenCounts: number[] = []
-  for (const path of ['/home', '/search?q=ads', '/profile/adblock']) {
-    const x = openView(900, 700)
-    await x.navigate(origin('x.com', path))
-    await waitFor(x, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 2`, `X cleanup ${path}`)
-    xHiddenCounts.push(await countHidden(x))
-    closeView(x)
-  }
-  const xHidden = xHiddenCounts.reduce((total, count) => total + count, 0)
-  assert(xHidden >= 6, `Expected X cleanup to hide at least 6 elements across home/search/profile, saw ${xHidden}`)
 
   const popup = openView(390, 620)
   await popup.navigate(origin('example.test', '/popup.html'))
@@ -178,11 +143,9 @@ try {
 
   console.log([
     'Bun WebView smoke tested Very Good AdBlock:',
-    `generic=${genericHidden}`,
     `youtube=${youtubeHidden}`,
     `shorts=${shortsHidden}`,
     `twitch=${twitchHidden}`,
-    `x=${xHidden}`,
     `popup=${todayBlocked}`,
     `dashboard=${dashboardBlocked}`,
     'marketing=ok',
@@ -338,15 +301,6 @@ function contentFixture(body: string): string {
 </html>`
 }
 
-function genericFixture(): string {
-  return `
-    <h1>Fixture</h1>
-    <div id="google_ads_iframe_1">network ad</div>
-    <div class="ad-container">cosmetic ad</div>
-    <div data-ad-slot="fixture">slot ad</div>
-  `
-}
-
 function youtubeFixture(): string {
   return `
     <h1>YouTube fixture</h1>
@@ -366,14 +320,6 @@ function twitchFixture(): string {
     <div data-a-target="video-ad-countdown">0:24</div>
     <div data-a-target="video-player-ad-overlay">video overlay ad</div>
     <div class="stream-display-ad__container">display ad</div>
-  `
-}
-
-function xFixture(): string {
-  return `
-    <h1>X fixture</h1>
-    <article><div>Promoted</div><p>paid placement</p></article>
-    <div data-testid="placementTracking">tracked placement</div>
   `
 }
 
@@ -424,11 +370,10 @@ function makeDashboardState(): DashboardState {
   const daily = Array.from({ length: 14 }, (_, index) => bucket(now, index - 13, 'day', 8 + index))
   const recentEvents: BlockEvent[] = [
     event('example.test', 'dnr', 'script', 18),
-    event('youtube.com', 'youtube', 'media', 9, 25_200_000, 135),
     event('youtube.com', 'video', 'media', 3, 8_400_000, 45),
     event('twitch.tv', 'twitch', 'media', 6, 16_800_000, 90),
-    event('x.com', 'x', 'xhr', 7),
-    event('news.example', 'cosmetic', 'other', 5),
+    event('x.com', 'dnr', 'xhr', 7),
+    event('news.example', 'dnr', 'other', 5),
   ]
   const local: LocalStats = {
     hourly,
@@ -487,10 +432,8 @@ function defaultSmokeSettings(): ExtensionSettings {
   return {
     enabled: true,
     badgeEnabled: true,
-    cosmeticFiltering: true,
     youtubeEnhancements: true,
     twitchEnhancements: true,
-    xEnhancements: true,
     allowedSites: [],
     blockedSites: [],
   }

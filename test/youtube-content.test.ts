@@ -7,7 +7,7 @@ import type { BlockEvent } from '../src/shared/types'
 const fixturePath = new URL('./fixtures/youtube-watch.cached.html', import.meta.url)
 
 describe('cached YouTube content script fixture', () => {
-  it('clicks nested video ad skip buttons before hiding ad containers', async () => {
+  it('clicks nested video ad skip buttons without hiding page containers', async () => {
     const contentScript = await buildContentScript()
     const fixture = await Bun.file(fixturePath).text()
     const page = wrapFixture(fixture, contentScript)
@@ -54,7 +54,6 @@ describe('cached YouTube content script fixture', () => {
     try {
       await view.navigate(`https://www.youtube.com:${server.port}/watch?v=adblock-fixture`)
       await waitFor(view, `document.body.dataset.skipped === 'true'`, 'skip button click')
-      await waitFor(view, `document.querySelectorAll('[data-adblock-hidden="true"]').length >= 6`, 'YouTube ad cleanup')
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'batched event flush')
 
       const hiddenCount = await view.evaluate<number>(`document.querySelectorAll('[data-adblock-hidden="true"]').length`)
@@ -63,8 +62,7 @@ describe('cached YouTube content script fixture', () => {
       const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
 
       expect(errors).toEqual([])
-      expect(hiddenCount).toBeGreaterThanOrEqual(6)
-      expect(eventSources.has('youtube')).toBe(true)
+      expect(hiddenCount).toBe(0)
       expect(eventSources.has('video')).toBe(true)
       expect(videoSecondsSaved).toBeGreaterThanOrEqual(15)
     }
@@ -109,10 +107,8 @@ function wrapFixture(fixture: string, contentScript: string): string {
                 settings: {
                   enabled: true,
                   badgeEnabled: true,
-                  cosmeticFiltering: true,
                   youtubeEnhancements: true,
                   twitchEnhancements: true,
-                  xEnhancements: true,
                   allowedSites: [],
                   blockedSites: [],
                 },

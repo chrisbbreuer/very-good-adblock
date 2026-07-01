@@ -9,7 +9,7 @@ Very Good AdBlock uses a balanced, performance-conscious Manifest V3 architectur
 
 - Static `declarativeNetRequest` rules for known network ad domains and URL patterns.
 - Dynamic `declarativeNetRequest` rules for user site overrides.
-- Content scripts for cosmetic cleanup, promoted-content removal, YouTube skip automation, and Twitch video-ad overlay cleanup.
+- Content scripts for YouTube skip automation and Twitch video-ad marker detection.
 - Chrome storage for settings, stats, and cross-install sync.
 
 ## Static Rules
@@ -24,14 +24,14 @@ Dynamic rules are derived from settings:
 - Manually blocked sites receive block rules.
 - Rules are bounded to the configured dynamic ID range.
 
-## Content Cleanup
+## Content Scripts
 
-Content scripts handle cases that network blocking cannot cover safely:
+Content scripts currently handle only low-risk video helpers:
 
-- Cosmetic ad containers.
-- YouTube ad modules and display placements.
-- Twitch video-ad notices, overlays, and ad banners.
-- X/Twitter promoted articles and tracking placements.
-- Skip buttons that are visible and actionable.
+- YouTube skip buttons that are visible and actionable.
+- Twitch video-ad markers used to estimate saved time.
+- Throttled mutation scans for late-loading video controls and markers.
 
 The goal is to remove interruptions immediately without brittle page-breaking media hacks.
+
+Cosmetic filtering and promoted-post DOM removal are deferred until they can be tested without breaking YouTube playback or normal page layout. See [Deferred Cosmetic Filtering](/architecture/deferred-cosmetic-filtering).

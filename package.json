@@ -2,7 +2,7 @@
   "name": "very-good-adblock",
   "type": "module",
   "version": "0.1.0",
-  "description": "A polished, performant, minimal, modern STX-powered Chrome MV3 ad blocker for popup, ad, YouTube, and Twitch cleanup.",
+  "description": "A polished, performant, minimal, modern STX-powered Chrome MV3 ad blocker for popup, ad, YouTube, and Twitch protection.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
   "homepage": "https://github.com/chrisbbreuer/adblock#readme",

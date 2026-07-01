@@ -20,10 +20,8 @@ const cloudSiteRollupLimit = 20
 export const defaultSettings: ExtensionSettings = {
   enabled: true,
   badgeEnabled: true,
-  cosmeticFiltering: true,
   youtubeEnhancements: true,
   twitchEnhancements: true,
-  xEnhancements: true,
   allowedSites: [],
   blockedSites: [],
 }
@@ -66,11 +64,11 @@ export function cloudStatsSnapshotBytes(snapshot: CloudStatsSnapshot): number {
 
 export async function getSettings(): Promise<ExtensionSettings> {
   const result = await chrome.storage.sync.get(syncKeys.settings)
-  return { ...defaultSettings, ...(result[syncKeys.settings] as Partial<ExtensionSettings> | undefined) }
+  return normalizeSettings(result[syncKeys.settings])
 }
 
 export async function setSettings(settings: Partial<ExtensionSettings>): Promise<ExtensionSettings> {
-  const next = { ...(await getSettings()), ...settings }
+  const next = normalizeSettings({ ...(await getSettings()), ...settings })
   next.allowedSites = uniqueSites(next.allowedSites)
   next.blockedSites = uniqueSites(next.blockedSites)
   await chrome.storage.sync.set({ [syncKeys.settings]: next })
@@ -192,6 +190,18 @@ export async function getActiveTabState(settings?: ExtensionSettings): Promise<A
 
 function uniqueSites(sites: string[]): string[] {
   return [...new Set(sites.map(normalizeHostname).filter(Boolean))].sort()
+}
+
+function normalizeSettings(value: unknown): ExtensionSettings {
+  const settings = value as Partial<ExtensionSettings> | undefined
+  return {
+    enabled: settings?.enabled ?? defaultSettings.enabled,
+    badgeEnabled: settings?.badgeEnabled ?? defaultSettings.badgeEnabled,
+    youtubeEnhancements: settings?.youtubeEnhancements ?? defaultSettings.youtubeEnhancements,
+    twitchEnhancements: settings?.twitchEnhancements ?? defaultSettings.twitchEnhancements,
+    allowedSites: Array.isArray(settings?.allowedSites) ? settings.allowedSites : defaultSettings.allowedSites,
+    blockedSites: Array.isArray(settings?.blockedSites) ? settings.blockedSites : defaultSettings.blockedSites,
+  }
 }
 
 export function mergeLifetimeStats(local?: Partial<LifetimeStats>, cloud?: Partial<LifetimeStats>): LifetimeStats {
