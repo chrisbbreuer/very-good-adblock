@@ -38,6 +38,7 @@ interface PageVisitState {
   network: number
   url?: string
   loadedAt: number
+  networkCheckedAt: number
 }
 
 const pageBadgeStats = new Map<number, PageVisitState>()
@@ -48,6 +49,7 @@ const badgeRefreshDelayMs = 400
 let badgeRefreshTimer: ReturnType<typeof setTimeout> | undefined
 const badgePollIntervalMs = 2_000
 const badgePollMaxTicks = 8
+const networkRefreshMinIntervalMs = 1_500
 let badgePollTimer: ReturnType<typeof setTimeout> | undefined
 let badgePollTabId: number | undefined
 let badgePollTicksLeft = 0
@@ -72,13 +74,15 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender, sendRespo
 })
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {
+  // A one-shot refresh only. Polling is started on navigation-complete, not on
+  // every activation, so rapid tab switching can't perpetually reset the poll
+  // budget and keep the service worker awake.
   void updateBadge(tabId)
-  startBadgePolling(tabId)
 })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' || changeInfo.url) {
-    pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now() })
+    pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
     void updateBadge(tabId)
   }
@@ -92,7 +96,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
-  if (badgePollTabId === tabId) badgePollTabId = undefined
+  if (badgePollTabId === tabId) {
+    badgePollTabId = undefined
+    badgePollTicksLeft = 0
+  }
 })
 
 // Live network-block feedback. Only fires for unpacked/dev installs; packed
@@ -180,6 +187,8 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return getDashboard()
     }
     case 'record-blocks': {
+      // Don't accrue stats while protection is off, so the numbers match reality.
+      if (!(await getSettings()).enabled) return true
       await recordBlockEvents(message.events)
       if (sender.tab?.id !== undefined) {
         incrementPageContent(sender.tab.id, message.events.reduce((total, event) => total + event.count, 0), sender.tab.url)
@@ -188,6 +197,7 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return true
     }
     case 'record-cosmetic': {
+      if (!(await getSettings()).enabled) return true
       if (sender.tab?.id !== undefined) recordCosmeticActivity(sender.tab.id, message.hits)
       return true
     }
@@ -349,6 +359,7 @@ function incrementPageContent(tabId: number, count: number, url?: string): void 
     network: existing?.network ?? 0,
     url: url ?? existing?.url,
     loadedAt: existing?.loadedAt ?? Date.now(),
+    networkCheckedAt: existing?.networkCheckedAt ?? 0,
   })
 }
 
@@ -361,6 +372,13 @@ function incrementPageContent(tabId: number, count: number, url?: string): void 
 async function refreshTabNetworkCount(tabId: number): Promise<void> {
   const details = pageBadgeStats.get(tabId)
   if (!details) return
+
+  // getMatchedRules is quota-limited (~20/10min without extra allowance). updateBadge
+  // fires from many events, so throttle real calls per tab and reuse the last count
+  // in between — otherwise a burst exhausts the quota and the badge freezes.
+  const now = Date.now()
+  if (now - details.networkCheckedAt < networkRefreshMinIntervalMs) return
+  details.networkCheckedAt = now
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
