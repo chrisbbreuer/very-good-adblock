@@ -21,6 +21,15 @@ const cloudDailyBucketLimit = 30
 const cloudSiteRollupLimit = 15
 const cloudStatsMaxBytes = 8_000
 
+// chrome.storage.sync is write-quota limited (~120 writes/min). Block events flush
+// every second, so coalesce the lifetime/cloud writes to at most once per window
+// while keeping the frequent local write immediate. `pendingSyncStats` is the
+// in-memory source of truth between flushes so reads never see a stale lifetime.
+const syncFlushIntervalMs = 15_000
+let pendingSyncStats: { lifetime: LifetimeStats, local: LocalStats } | undefined
+let syncFlushTimer: ReturnType<typeof setTimeout> | undefined
+let lastSyncFlushAt = 0
+
 export const defaultSettings: ExtensionSettings = {
   enabled: true,
   badgeEnabled: true,
@@ -92,6 +101,9 @@ export async function setSettings(settings: Partial<ExtensionSettings>): Promise
 }
 
 export async function getLifetimeStats(): Promise<LifetimeStats> {
+  // Prefer the un-flushed in-memory total so the dashboard reflects recent blocks
+  // that the debounced sync write has not persisted yet.
+  if (pendingSyncStats) return { ...pendingSyncStats.lifetime }
   const result = await chrome.storage.sync.get(syncKeys.lifetime)
   return { ...defaultLifetimeStats(), ...(result[syncKeys.lifetime] as Partial<LifetimeStats> | undefined) }
 }
@@ -137,13 +149,28 @@ export async function hydrateSyncedStats(value: unknown): Promise<void> {
   const cloudStats = normalizeCloudStatsSnapshot(value)
   if (!cloudStats) return
 
-  const lifetime = mergeLifetimeStats(await getLifetimeStats(), cloudStats.lifetime)
-  const local = hydrateLocalStatsFromCloud(await getLocalStats(), cloudStats)
+  const current = await readPersistedStats()
+  const lifetime = mergeLifetimeStats(current.lifetime, cloudStats.lifetime)
+  const local = hydrateLocalStatsFromCloud(current.local, cloudStats)
+  // Update the in-memory truth, then write lifetime + local directly (not
+  // cloudStats) so this merge can't re-trigger itself through storage.onChanged.
+  pendingSyncStats = { lifetime, local }
   await Promise.all([setLifetimeStats(lifetime), setLocalStats(local)])
 }
 
 export async function resetStats(): Promise<void> {
-  await persistStats(defaultLifetimeStats(), defaultLocalStats())
+  pendingSyncStats = undefined
+  if (syncFlushTimer) {
+    clearTimeout(syncFlushTimer)
+    syncFlushTimer = undefined
+  }
+  const lifetime = defaultLifetimeStats()
+  const local = defaultLocalStats()
+  lastSyncFlushAt = Date.now()
+  await Promise.all([
+    setLocalStats(local),
+    chrome.storage.sync.set({ [syncKeys.lifetime]: lifetime, [syncKeys.cloudStats]: buildCloudStatsSnapshot(lifetime, local) }),
+  ])
 }
 
 export async function recordBlockEvents(events: BlockEvent[]): Promise<void> {
@@ -151,8 +178,7 @@ export async function recordBlockEvents(events: BlockEvent[]): Promise<void> {
 
   const now = new Date()
   const totals = eventTotals(events)
-  const lifetime = await getLifetimeStats()
-  const local = await getLocalStats()
+  const { lifetime, local } = await readPersistedStats()
 
   lifetime.adsBlocked += totals.adsBlocked
   lifetime.bytesSaved += totals.bytesSaved
@@ -247,14 +273,36 @@ export function hydrateLocalStatsFromCloud(local: LocalStats, cloud?: CloudStats
   }
 }
 
+/** Latest stats: the un-flushed in-memory copy if present, else storage. */
+async function readPersistedStats(): Promise<{ lifetime: LifetimeStats, local: LocalStats }> {
+  if (pendingSyncStats) return pendingSyncStats
+  return { lifetime: await getLifetimeStats(), local: await getLocalStats() }
+}
+
 async function persistStats(lifetime: LifetimeStats, local: LocalStats): Promise<void> {
-  await Promise.all([
-    chrome.storage.sync.set({
-      [syncKeys.lifetime]: lifetime,
-      [syncKeys.cloudStats]: buildCloudStatsSnapshot(lifetime, local),
-    }),
-    setLocalStats(local),
-  ])
+  // Local is cheap and quota-generous — write it now so the dashboard is current.
+  // The sync mirror (lifetime + cloud snapshot) is coalesced behind a timer.
+  pendingSyncStats = { lifetime, local }
+  await setLocalStats(local)
+  scheduleSyncFlush()
+}
+
+function scheduleSyncFlush(): void {
+  if (syncFlushTimer) return
+  const delay = Math.max(0, syncFlushIntervalMs - (Date.now() - lastSyncFlushAt))
+  syncFlushTimer = setTimeout(() => void flushSyncStats(), delay)
+}
+
+async function flushSyncStats(): Promise<void> {
+  syncFlushTimer = undefined
+  const pending = pendingSyncStats
+  if (!pending) return
+  pendingSyncStats = undefined
+  lastSyncFlushAt = Date.now()
+  await chrome.storage.sync.set({
+    [syncKeys.lifetime]: pending.lifetime,
+    [syncKeys.cloudStats]: buildCloudStatsSnapshot(pending.lifetime, pending.local),
+  })
 }
 
 function normalizeCloudStatsSnapshot(value: unknown): CloudStatsSnapshot | undefined {

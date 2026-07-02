@@ -145,10 +145,18 @@ async function setup(): Promise<void> {
  * extension update, so this keeps network blocking fresh between releases.
  * Any failure is non-fatal — the shipped ruleset stays active.
  */
+const filterRefreshedAtKey = 'filterRefreshedAt'
+const filterRefreshMinIntervalMs = 12 * 60 * 60 * 1000
+
 async function refreshFilters(): Promise<void> {
   try {
+    const stored = await chrome.storage.local.get(filterRefreshedAtKey)
+    const last = stored[filterRefreshedAtKey]
+    if (typeof last === 'number' && Date.now() - last < filterRefreshMinIntervalMs) return
+
     const response = await fetch(filterRefreshUrl, { cache: 'no-cache' })
     if (!response.ok) return
+    await chrome.storage.local.set({ [filterRefreshedAtKey]: Date.now() })
 
     const data = await response.json() as { hosts?: unknown }
     const hosts = Array.isArray(data.hosts) ? data.hosts.filter((host): host is string => typeof host === 'string') : []
