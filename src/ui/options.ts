@@ -200,6 +200,7 @@ function renderDiagnostics(next: DashboardState): void {
     ['Filter sources', next.filters.sources.length],
     ['DNR telemetry', next.dnr.available ? `${next.dnr.recentMatchedRules} recent` : 'Unavailable'],
     ['Active-tab DNR', next.dnr.available ? next.dnr.activeTabMatchedRules : 0],
+    ['Blocked on this page', `${next.activePage.blocked} (${next.activePage.network} network, ${next.activePage.content} hidden)`],
     ['Privacy', 'No telemetry'],
   ]
 

@@ -29,10 +29,29 @@ let state: DashboardState | undefined
 
 void refresh()
 
-// Keep the live "on this page" count ticking while the popup is open.
+// Keep the live counts (blocked-on-this-page, running totals) ticking while the
+// popup is open. This refreshes text only — the 24h chart and category list are
+// left in place so they don't rebuild (and drop hover/focus) every few seconds.
 const liveRefreshMs = 2_000
-const livePoll = setInterval(() => void refresh(), liveRefreshMs)
+let liveTickPending = false
+const livePoll = setInterval(() => void liveTick(), liveRefreshMs)
 window.addEventListener('pagehide', () => clearInterval(livePoll), { once: true })
+
+async function liveTick(): Promise<void> {
+  if (liveTickPending) return
+  liveTickPending = true
+  try {
+    state = await sendMessage<DashboardState>({ type: 'get-dashboard' })
+    if (elements.root.dataset.view === 'ready') renderLive(state)
+    else render(state)
+  }
+  catch {
+    // Transient messaging failure; the next tick retries.
+  }
+  finally {
+    liveTickPending = false
+  }
+}
 
 elements.protectionToggle.addEventListener('click', async () => {
   if (!state) return
@@ -63,6 +82,17 @@ async function refresh(): Promise<void> {
 }
 
 function render(next: DashboardState): void {
+  renderLive(next)
+
+  renderBars(elements.hourlyChart, next.local.hourly.map(bucket => bucket.adsBlocked), 24, {
+    interactive: true,
+    valueLabel: (value, index) => `${hourLabel(index)}: ${value.toLocaleString()} blocked`,
+  })
+  renderTopCategories(next)
+}
+
+/** Text-only updates cheap enough to run on every live tick. */
+function renderLive(next: DashboardState): void {
   const active = next.activeTab
   const enabled = next.settings.enabled
   const allowed = active ? siteMatches(active.hostname, next.settings.allowedSites) : false
@@ -82,12 +112,7 @@ function render(next: DashboardState): void {
   elements.protectionToggle.classList.toggle('off', !enabled)
   elements.status.textContent = allowed ? 'This site is allowed. Global protection remains available elsewhere.' : 'Network blocking is active. Estimates are computed locally.'
 
-  renderBars(elements.hourlyChart, hourlyValues, 24, {
-    interactive: true,
-    valueLabel: (value, index) => `${hourLabel(index)}: ${value.toLocaleString()} blocked`,
-  })
   renderCurrentSiteStats(next)
-  renderTopCategories(next)
 }
 
 function renderCurrentSiteStats(next: DashboardState): void {
