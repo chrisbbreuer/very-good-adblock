@@ -65,6 +65,12 @@ deferral asked for.
 - **Global + per-site kill switches.** `cosmeticFiltering` disables all hiding
   without touching network blocking; the per-site YouTube/Twitch toggles and the
   allowlist scope it further.
+- **Opt-in cookie-consent hiding.** `cookieConsentFiltering` (off by default)
+  adds a group targeting the common consent-management platforms by their
+  dedicated container ids/classes only (OneTrust, Didomi, Cookiebot,
+  Usercentrics, Quantcast, Sourcepoint, and more) — never a generic
+  `[class*="cookie"]`. When a banner is hidden the content script also restores
+  the page scroll these overlays lock.
 - **Narrow default, opt-in aggressive.** A high-confidence set ships on;
   `aggressiveCosmetic` adds broader matches for people who accept a small risk of
   over-hiding.

@@ -70,6 +70,10 @@
             <input id="setting-aggressive" type="checkbox">
           </label>
           <label class="toggle-row">
+            <span>Hide cookie banners</span>
+            <input id="setting-consent" type="checkbox">
+          </label>
+          <label class="toggle-row">
             <span>YouTube skip assist</span>
             <input id="setting-youtube" type="checkbox">
           </label>

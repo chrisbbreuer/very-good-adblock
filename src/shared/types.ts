@@ -1,12 +1,13 @@
 export type ResourceCategory = 'document' | 'script' | 'image' | 'media' | 'stylesheet' | 'xhr' | 'font' | 'other'
 
-export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual' | 'cosmetic' | 'youtube' | 'x'
+export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual' | 'cosmetic' | 'youtube' | 'x' | 'consent'
 
 export interface ExtensionSettings {
   enabled: boolean
   badgeEnabled: boolean
   cosmeticFiltering: boolean
   aggressiveCosmetic: boolean
+  cookieConsentFiltering: boolean
   youtubeEnhancements: boolean
   twitchEnhancements: boolean
   allowedSites: string[]

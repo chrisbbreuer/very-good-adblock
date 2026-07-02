@@ -463,6 +463,7 @@ function defaultSmokeSettings(): ExtensionSettings {
     badgeEnabled: true,
     cosmeticFiltering: true,
     aggressiveCosmetic: false,
+    cookieConsentFiltering: false,
     youtubeEnhancements: true,
     twitchEnhancements: true,
     allowedSites: [],

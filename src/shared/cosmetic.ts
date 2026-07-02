@@ -140,12 +140,55 @@ export const xCosmetic: CosmeticGroup = {
   ],
 }
 
+/**
+ * Cookie-consent / GDPR banners from the common consent-management platforms.
+ * Opt-in (`cookieConsentFiltering`) because a consent overlay is a whole-page UI,
+ * so these target the platforms' dedicated container ids/classes only — never a
+ * generic `[class*="cookie"]`. Hiding the container removes the banner; the
+ * content script also restores page scrolling that these overlays lock.
+ */
+export const consentCosmetic: CosmeticGroup = {
+  source: 'consent',
+  category: 'other',
+  default: [
+    '#onetrust-consent-sdk',
+    '#onetrust-banner-sdk',
+    '#didomi-host',
+    '.didomi-consent-popup',
+    '#CybotCookiebotDialog',
+    '#CybotCookiebotDialogBodyUnderlay',
+    '#usercentrics-root',
+    '#usercentrics-cmp-ui',
+    '.fc-consent-root',
+    '.qc-cmp2-container',
+    '.qc-cmp-cleanslate',
+    '#truste-consent-track',
+    '.truste_overlay',
+    '.truste_box_overlay',
+    '.sp_message_container',
+    '[id^="sp_message_container_"]',
+    '.osano-cm-window',
+    '#cookiescript_injected',
+    '#cmplz-cookiebanner-container',
+    '.cmplz-cookiebanner',
+    '#BorlabsCookieBox',
+    '.cky-consent-container',
+    '.cky-overlay',
+    '#cookie-law-info-bar',
+    '.cc-window.cc-banner',
+    '#gdpr-consent-tool-wrapper',
+    '#termly-code-snippet-support',
+  ],
+  aggressive: [],
+}
+
 export interface CosmeticContext {
   isYouTube: boolean
   isTwitch: boolean
   isX: boolean
   youtubeEnhancements: boolean
   twitchEnhancements: boolean
+  cookieConsent: boolean
   aggressive: boolean
 }
 
@@ -171,6 +214,7 @@ export function activeCosmeticGroups(context: CosmeticContext): ActiveCosmeticGr
   if (context.isYouTube && context.youtubeEnhancements) groups.push(resolveGroup(youtubeCosmetic, context.aggressive))
   if (context.isTwitch && context.twitchEnhancements) groups.push(resolveGroup(twitchCosmetic, context.aggressive))
   if (context.isX) groups.push(resolveGroup(xCosmetic, context.aggressive))
+  if (context.cookieConsent) groups.push(resolveGroup(consentCosmetic, context.aggressive))
 
   return groups.filter(group => group.selectors.length > 0)
 }

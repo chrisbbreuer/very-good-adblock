@@ -25,7 +25,7 @@ Use the options dashboard to:
 
 - Review lifetime stats and 60-day history.
 - Manage allowed and blocked sites, and import/export the allowlist as JSON.
-- Toggle YouTube skip assist, Twitch video detection, and badge counts.
+- Toggle YouTube skip assist, Twitch video detection, cookie-banner hiding, and badge counts.
 - Update the network filter list on demand ("Update filters").
 - Export or reset local stats.
 - Inspect filter and cloud-sync diagnostics.

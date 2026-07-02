@@ -12,6 +12,7 @@ const elements = {
   enabled: byId<HTMLInputElement>('setting-enabled'),
   cosmetic: byId<HTMLInputElement>('setting-cosmetic'),
   aggressive: byId<HTMLInputElement>('setting-aggressive'),
+  consent: byId<HTMLInputElement>('setting-consent'),
   youtube: byId<HTMLInputElement>('setting-youtube'),
   twitch: byId<HTMLInputElement>('setting-twitch'),
   badge: byId<HTMLInputElement>('setting-badge'),
@@ -44,6 +45,7 @@ for (const [key, input] of Object.entries({
   enabled: elements.enabled,
   cosmeticFiltering: elements.cosmetic,
   aggressiveCosmetic: elements.aggressive,
+  cookieConsentFiltering: elements.consent,
   youtubeEnhancements: elements.youtube,
   twitchEnhancements: elements.twitch,
   badgeEnabled: elements.badge,
@@ -158,6 +160,7 @@ function render(next: DashboardState): void {
   elements.cosmetic.checked = next.settings.cosmeticFiltering
   elements.aggressive.checked = next.settings.aggressiveCosmetic
   elements.aggressive.disabled = !next.settings.cosmeticFiltering
+  elements.consent.checked = next.settings.cookieConsentFiltering
   elements.youtube.checked = next.settings.youtubeEnhancements
   elements.twitch.checked = next.settings.twitchEnhancements
   elements.badge.checked = next.settings.badgeEnabled

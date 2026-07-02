@@ -113,6 +113,7 @@ function provisionalGroups(): ActiveCosmeticGroup[] {
     isX: isX(),
     youtubeEnhancements: true,
     twitchEnhancements: true,
+    cookieConsent: false,
     aggressive: false,
   })
 }
@@ -134,6 +135,7 @@ function cosmeticContext(settings: ExtensionSettings): CosmeticContext {
     isX: isX(),
     youtubeEnhancements: settings.youtubeEnhancements,
     twitchEnhancements: settings.twitchEnhancements,
+    cookieConsent: settings.cookieConsentFiltering,
     aggressive: settings.aggressiveCosmetic,
   }
 }
@@ -256,6 +258,7 @@ type SelectorRoot = Document | Element
  * selector for per-page diagnostics and the blocked-count metric.
  */
 function countHiddenPlacements(roots: readonly SelectorRoot[]): void {
+  let hidConsent = false
   for (const group of cosmeticGroups) {
     for (const selector of group.selectors) {
       for (const root of roots) {
@@ -265,9 +268,25 @@ function countHiddenPlacements(roots: readonly SelectorRoot[]): void {
           element.setAttribute('data-adblock-hidden', 'true')
           selectorHits.set(selector, (selectorHits.get(selector) ?? 0) + 1)
           queueEvent(group.source, group.category)
+          if (group.source === 'consent') hidConsent = true
         }
       }
     }
+  }
+
+  // Consent overlays usually scroll-lock the page; once we hide one, undo the lock
+  // so the page stays usable.
+  if (hidConsent) restoreConsentScroll()
+}
+
+const consentScrollLockClasses = ['ot-lock', 'modal-open', 'didomi-popup-open', 'cmplz-blocked', 'sp-message-open', 'no-scroll', 'cky-consent', 'cookiebot-scroll-lock']
+
+function restoreConsentScroll(): void {
+  document.documentElement.style.setProperty('overflow', 'auto', 'important')
+  document.body?.style.setProperty('overflow', 'auto', 'important')
+  for (const className of consentScrollLockClasses) {
+    document.documentElement.classList.remove(className)
+    document.body?.classList.remove(className)
   }
 }
 
