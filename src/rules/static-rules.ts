@@ -55,6 +55,27 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   { id: 31, name: 'LinkedIn ads pixel', category: 'script', urlFilter: '||px.ads.linkedin.com^', resourceTypes: thirdPartyTypes },
 ]
 
+export interface RedirectRuleSeed {
+  name: string
+  urlFilter: string
+  path: string
+}
+
+/**
+ * Ad SDK loaders are neutered (redirected to inert stubs), not hard-blocked, so
+ * pages that await the SDK keep working while no ad is requested. Redirect rules
+ * run at priority 2 so they win over the domain block rules above. The IMA video
+ * SDK is deliberately not stubbed here — YouTube video ads are already removed by
+ * source pruning, and a partial IMA stub risks breaking third-party players.
+ */
+export const redirectRuleSeeds: RedirectRuleSeed[] = [
+  { name: 'Google Publisher Tag', urlFilter: '||googletagservices.com/tag/js/gpt.js', path: '/stubs/googletag.js' },
+  { name: 'Google Publisher Tag (securepubads)', urlFilter: '||securepubads.g.doubleclick.net/tag/js/gpt.js', path: '/stubs/googletag.js' },
+  { name: 'Google AdSense', urlFilter: '||pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', path: '/stubs/adsbygoogle.js' },
+]
+
+const staticRedirectStartId = 90_000
+
 export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
   const curatedRules = curatedRuleSeeds.map(seed => ({
     id: seed.id,
@@ -63,6 +84,16 @@ export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
     condition: {
       urlFilter: seed.urlFilter,
       resourceTypes: seed.resourceTypes,
+    },
+  }))
+
+  const redirectRules = redirectRuleSeeds.map((seed, index) => ({
+    id: staticRedirectStartId + index,
+    priority: 2,
+    action: { type: 'redirect' as const, redirect: { extensionPath: seed.path } },
+    condition: {
+      urlFilter: seed.urlFilter,
+      resourceTypes: [resourceType('script')],
     },
   }))
 
@@ -76,7 +107,7 @@ export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
     },
   }))
 
-  return [...curatedRules, ...generatedRules]
+  return [...curatedRules, ...redirectRules, ...generatedRules]
 }
 
 function resourceType(value: string): chrome.declarativeNetRequest.ResourceType {

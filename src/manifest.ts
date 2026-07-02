@@ -65,5 +65,12 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
     content_security_policy: {
       extension_pages: `script-src 'self'; object-src 'self'`,
     },
+    web_accessible_resources: [
+      {
+        // Inert stubs the ad-SDK redirect rules point at (see redirectRuleSeeds).
+        resources: ['stubs/googletag.js', 'stubs/adsbygoogle.js'],
+        matches: ['<all_urls>'],
+      },
+    ],
   }
 }

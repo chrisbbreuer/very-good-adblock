@@ -1,7 +1,7 @@
 import packageJson from '../../package.json'
 import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
 import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId } from '../shared/constants'
-import { curatedRuleSeeds } from '../rules/static-rules'
+import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { hostnameFromUrl } from '../shared/domain'
 import { formatBytes } from '../shared/metrics'
@@ -19,7 +19,7 @@ import {
 } from '../shared/storage'
 import type { ActivePageStats, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, RuntimeMessage, RuntimeResponse } from '../shared/types'
 
-const staticRuleCount = curatedRuleSeeds.length + generatedNetworkHosts.hosts.length
+const staticRuleCount = curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.hosts.length
 const filterSources = generatedNetworkHosts.sources.map(source => ({
   name: source.name,
   revision: source.revision,

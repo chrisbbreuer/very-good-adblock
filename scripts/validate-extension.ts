@@ -27,6 +27,14 @@ for (const script of manifest.content_scripts ?? []) {
   for (const css of script.css ?? []) requiredFiles.add(css)
 }
 
+const webAccessible = new Set<string>()
+for (const entry of manifest.web_accessible_resources ?? []) {
+  for (const resource of (entry as { resources?: string[] }).resources ?? []) {
+    webAccessible.add(resource)
+    requiredFiles.add(resource)
+  }
+}
+
 if (manifest.background && 'service_worker' in manifest.background) {
   requiredFiles.add(manifest.background.service_worker)
 }
@@ -67,6 +75,13 @@ for (const rule of staticRules) {
   ruleIds.add(rule.id)
   if (!rule.action?.type) throw new Error(`Static DNR rule ${rule.id} has no action`)
   if (!rule.condition?.resourceTypes?.length) throw new Error(`Static DNR rule ${rule.id} has no resource types`)
+
+  const extensionPath = (rule.action as { redirect?: { extensionPath?: string } }).redirect?.extensionPath
+  if (rule.action.type === 'redirect' && extensionPath) {
+    const relative = extensionPath.replace(/^\//, '')
+    if (!existsSync(join(dist, relative))) throw new Error(`Redirect rule ${rule.id} targets missing file: ${extensionPath}`)
+    if (!webAccessible.has(relative)) throw new Error(`Redirect rule ${rule.id} target is not web-accessible: ${extensionPath}`)
+  }
 }
 
 console.log(`Validated MV3 artifact: ${requiredFiles.size} referenced files, ${staticRules.length} static rules`)
