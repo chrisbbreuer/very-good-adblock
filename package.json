@@ -30,6 +30,7 @@
   "scripts": {
     "build": "bun --bun scripts/build-extension.ts",
     "cache:youtube-fixture": "bun --bun scripts/cache-youtube-fixture.ts",
+    "icons": "bun --bun scripts/generate-icons.ts",
     "docs:build": "bunpress build",
     "docs:dev": "bunpress dev",
     "docs:preview": "bunpress preview",
