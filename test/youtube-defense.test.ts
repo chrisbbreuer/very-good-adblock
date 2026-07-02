@@ -11,19 +11,31 @@ beforeAll(async () => {
 })
 
 describe('YouTube video-ad defenses', () => {
-  it('fast-forwards a non-skippable video ad to its end', async () => {
+  it('speeds up a non-skippable video ad without seeking, then restores the rate', async () => {
     await withYouTubePage(fastForwardFixture(), async (view) => {
-      await waitFor(view, `document.getElementById('ad-video').currentTime >= 29`, 'ad fast-forwarded')
-
-      const currentTime = await view.evaluate<number>(`document.getElementById('ad-video').currentTime`)
-      const playbackRate = await view.evaluate<number>(`document.getElementById('ad-video').playbackRate`)
-      expect(currentTime).toBeGreaterThanOrEqual(29.5)
-      expect(playbackRate).toBe(16)
+      // The ad is sped up via playbackRate — NOT seeked to the end, which can
+      // stall the player and freeze the ad.
+      await waitFor(view, `document.getElementById('ad-video').playbackRate === 16`, 'ad sped up')
+      expect(await view.evaluate<number>(`document.getElementById('ad-video').currentTime`)).toBe(0)
 
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'event flush')
       const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
       const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
-      expect(videoSecondsSaved).toBeGreaterThanOrEqual(29)
+      expect(videoSecondsSaved).toBeGreaterThanOrEqual(1)
+
+      // When the ad ends, the viewer's original speed is restored for the real video.
+      await view.evaluate(`document.getElementById('movie_player').classList.remove('ad-showing')`)
+      await waitFor(view, `document.getElementById('ad-video').playbackRate === 1`, 'rate restored')
+    })
+  }, 30_000)
+
+  it('clicks a skip button that becomes visible without a DOM mutation', async () => {
+    await withYouTubePage(pollSkipFixture(), async (view) => {
+      // The button is in the DOM from the start but hidden; it is revealed via a
+      // style change (an attribute mutation the childList observer ignores), so
+      // only the ad-poll interval can catch it.
+      await waitFor(view, `window.__skipClicked === true`, 'skip clicked by the poll', 6_000)
+      expect(await view.evaluate<boolean>(`window.__skipClicked === true`)).toBe(true)
     })
   }, 30_000)
 
@@ -103,6 +115,20 @@ function fastForwardFixture(): string {
         let ct = 0;
         Object.defineProperty(v, 'currentTime', { configurable: true, get: () => ct, set: (value) => { ct = value; } });
       })();
+    </script>
+  </ytd-app>`
+}
+
+function pollSkipFixture(): string {
+  return `<ytd-app>
+    <div id="movie_player" class="html5-video-player ad-showing">
+      <video id="ad-video"></video>
+      <button class="ytp-ad-skip-button-modern" style="display:none" onclick="window.__skipClicked = true">Skip</button>
+    </div>
+    <script>
+      setTimeout(() => {
+        document.querySelector('.ytp-ad-skip-button-modern').style.display = 'block';
+      }, 700);
     </script>
   </ytd-app>`
 }

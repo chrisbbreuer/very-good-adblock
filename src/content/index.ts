@@ -19,10 +19,14 @@ const eventFlushDelayMs = 1_000
 const maxPruneEventCount = 200
 const maxPendingRoots = 80
 const adFastForwardRate = 16
+const youtubeAdPollMs = 300
+const youtubeSkipSelectors = '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-container button, button[class*="ytp-ad-skip"]'
 let cosmeticGroups: ActiveCosmeticGroup[] = []
 let observer: MutationObserver | undefined
 let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
+let youtubeAdTimer: number | undefined
+let adRestoreRate: number | undefined
 let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
@@ -99,8 +103,16 @@ async function start(): Promise<void> {
   observer = new MutationObserver(mutations => scheduleSweep(settings, mutations))
   observer.observe(document.documentElement, { childList: true, subtree: true })
 
+  // YouTube toggles the skip button's visibility via class/attribute changes that
+  // don't fire our childList observer, so poll the ad state directly. This makes
+  // auto-skip reliable instead of depending on an unrelated mutation.
+  if (settings.youtubeEnhancements && isYouTube()) {
+    youtubeAdTimer = window.setInterval(() => handleYouTubeAds(), youtubeAdPollMs)
+  }
+
   window.addEventListener('pagehide', () => {
     observer?.disconnect()
+    if (youtubeAdTimer) window.clearInterval(youtubeAdTimer)
     flushEvents()
   }, { once: true })
 }
@@ -185,11 +197,7 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
 
   if (settings.cosmeticFiltering && isX()) hideXPromotedTweets(roots)
 
-  if (settings.youtubeEnhancements && isYouTube()) {
-    clickYouTubeSkip(roots)
-    fastForwardYouTubeAd()
-    dismissYouTubeAntiAdblock()
-  }
+  if (settings.youtubeEnhancements && isYouTube()) handleYouTubeAds()
 
   if (settings.twitchEnhancements && isTwitch()) {
     recordTwitchVideoAds(roots)
@@ -198,31 +206,50 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
   scheduleEventFlush()
 }
 
+/** Runs every poll tick and on each sweep: click Skip, close overlays, speed ads. */
+function handleYouTubeAds(): void {
+  clickYouTubeSkip()
+  closeYouTubeOverlayAd()
+  fastForwardYouTubeAd()
+  dismissYouTubeAntiAdblock()
+}
+
 /**
- * Skippable ads have a Skip button (handled above). Non-skippable pre/mid-rolls
- * do not, so when the player marks itself `ad-showing` we jump the ad video to
- * its end and speed it up — YouTube then loads the real video immediately.
+ * Non-skippable pre/mid-rolls have no Skip button, so when the player is
+ * `ad-showing` we speed the ad video up so it finishes fast. We deliberately do
+ * NOT seek to the end — seeking can stall YouTube and leave the ad frozen. The
+ * pre-ad playback rate is captured and restored once the ad ends, so the real
+ * video keeps the viewer's chosen speed.
  */
 function fastForwardYouTubeAd(): void {
   const player = document.querySelector('.html5-video-player')
-  if (!player || !player.classList.contains('ad-showing')) return
-
-  const video = player.querySelector('video')
+  const video = player?.querySelector('video')
   if (!(video instanceof HTMLVideoElement)) return
 
-  const duration = video.duration
-  if (!Number.isFinite(duration) || duration <= 0 || video.currentTime >= duration - 0.5) return
+  const adShowing = player?.classList.contains('ad-showing') ?? false
 
-  const secondsSaved = Math.max(1, Math.round(duration - video.currentTime))
-  try {
-    video.currentTime = duration
-    video.playbackRate = adFastForwardRate
+  if (adShowing) {
+    if (adRestoreRate === undefined && video.playbackRate < adFastForwardRate) {
+      adRestoreRate = video.playbackRate
+      queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+    }
+    try {
+      if (video.playbackRate < adFastForwardRate) video.playbackRate = adFastForwardRate
+    }
+    catch {
+      // Player rejected the change; leave the ad to the Skip button.
+    }
   }
-  catch {
-    return
+  else if (adRestoreRate !== undefined) {
+    // Ad ended — restore the viewer's chosen speed for the real video.
+    try {
+      video.playbackRate = adRestoreRate
+    }
+    catch {
+      // Ignore; YouTube manages the player state from here.
+    }
+    adRestoreRate = undefined
   }
-
-  queueEvent('video', 'media', 1, estimateBytesSaved('media'), secondsSaved)
 }
 
 /**
@@ -290,15 +317,37 @@ function restoreConsentScroll(): void {
   }
 }
 
-function clickYouTubeSkip(roots: readonly SelectorRoot[]): void {
-  for (const root of roots) {
-    for (const button of queryAllSafe(root, '.ytp-ad-skip-button, .ytp-skip-ad-button, button[class*="ytp-ad-skip"]')) {
-      if (!(button instanceof HTMLButtonElement) || button.offsetParent === null || seen.has(button)) continue
+/**
+ * Click the Skip button whenever it is visible in the player. We click on every
+ * poll tick it is present (harmless once the ad is gone) so a click that lands
+ * before YouTube wires the handler still gets retried, and count each button
+ * once. Scans the whole document, not just mutation roots, since the button
+ * often becomes visible without a childList mutation.
+ */
+function clickYouTubeSkip(): void {
+  for (const button of document.querySelectorAll(youtubeSkipSelectors)) {
+    if (!(button instanceof HTMLElement) || !isVisible(button)) continue
+    button.click()
+    if (!seen.has(button)) {
       seen.add(button)
-      button.click()
       queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
     }
   }
+}
+
+/** Dismiss the small banner ad overlaid on the video. */
+function closeYouTubeOverlayAd(): void {
+  for (const button of document.querySelectorAll('.ytp-ad-overlay-close-button, .ytp-ad-overlay-close-container button')) {
+    if (button instanceof HTMLElement && isVisible(button) && !seen.has(button)) {
+      seen.add(button)
+      button.click()
+      queueEvent('youtube', 'other')
+    }
+  }
+}
+
+function isVisible(element: HTMLElement): boolean {
+  return element.offsetParent !== null || element.getClientRects().length > 0
 }
 
 /**
