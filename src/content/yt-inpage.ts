@@ -19,10 +19,52 @@ import { isYouTubeAdResponseUrl, pruneYouTubeAds } from '../shared/yt-prune'
 import { createPruneBridge, requestUrl } from './inpage-bridge'
 
 const bridge = createPruneBridge(ytConfigMessageSource, ytPruneMessageSource)
+// Captured before interceptJsonParse patches JSON.parse, so the fetch hook can
+// parse without the hook pre-pruning (and zeroing) its result.
+const nativeJsonParse = JSON.parse
 
 defuseAdPeriod()
+interceptJsonParse()
 interceptInlinePlayerResponse()
 installFetchPruner()
+
+/**
+ * Prune ads from anything parsed via `JSON.parse` — uBlock Origin's `json-prune`.
+ * YouTube parses player/browse responses through `JSON.parse` in code paths the
+ * `fetch` wrap and the inline accessor can miss (module-scoped vars, workers'
+ * results serialized back, prefetch). A cheap string test on the raw text keeps
+ * this from walking every unrelated parse.
+ */
+function interceptJsonParse(): void {
+  const original = JSON.parse
+  if (typeof original !== 'function' || (original as { __vgaPatched?: boolean }).__vgaPatched) return
+
+  const patched = function patchedParse(this: unknown, text: string, reviver?: (key: string, value: unknown) => unknown): unknown {
+    const result = (original as (t: string, r?: (key: string, value: unknown) => unknown) => unknown).call(this, text, reviver)
+    try {
+      if (bridge.isEnabled() && typeof text === 'string' && looksAdShaped(text) && result && typeof result === 'object') {
+        const removed = pruneYouTubeAds(result)
+        if (removed > 0) bridge.report(removed)
+      }
+    }
+    catch {
+      // Never let ad pruning break a parse — return the untouched result.
+    }
+    return result
+  }
+
+  ;(patched as { __vgaPatched?: boolean }).__vgaPatched = true
+  JSON.parse = patched as typeof JSON.parse
+}
+
+/** Fast pre-check so JSON.parse only walks payloads that could carry ads. */
+function looksAdShaped(text: string): boolean {
+  return text.includes('adPlacements')
+    || text.includes('playerAds')
+    || text.includes('adSlotRenderer')
+    || text.includes('adClientParams')
+    || text.includes('inFeedAdLayoutRenderer')
+}
 
 /**
  * Force YouTube's client-side ad-period gate (`isAdPeriod`) to false — uBlock
@@ -90,7 +132,7 @@ function installFetchPruner(): void {
       if (!isYouTubeAdResponseUrl(requestUrl(input))) return response
       if (!(response.headers.get('content-type') ?? '').includes('json')) return response
 
-      const data = JSON.parse(await response.clone().text()) as unknown
+      const data = nativeJsonParse(await response.clone().text()) as unknown
       const removed = pruneYouTubeAds(data)
       if (removed <= 0) return response
 

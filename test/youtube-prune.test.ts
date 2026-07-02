@@ -68,6 +68,8 @@ describe('built YouTube MAIN-world pruner', () => {
         fetchAdPlacements: boolean
         fetchAdSlots: boolean
         fetchStreamingFormats: number
+        jsonParseAdPlacements: boolean
+        jsonParseStreaming: boolean
         reportedCount: number
       }>(`window.__ytTest`)
 
@@ -80,8 +82,12 @@ describe('built YouTube MAIN-world pruner', () => {
       expect(result.fetchAdSlots).toBe(false)
       expect(result.fetchStreamingFormats).toBe(1)
 
-      // The pruner reported removed ads back over postMessage (inline + fetch).
-      expect(result.reportedCount).toBeGreaterThanOrEqual(2)
+      // JSON.parse of an ad-shaped payload is pruned, playback data kept.
+      expect(result.jsonParseAdPlacements).toBe(false)
+      expect(result.jsonParseStreaming).toBe(true)
+
+      // The pruner reported removed ads back over postMessage (inline + fetch + parse).
+      expect(result.reportedCount).toBeGreaterThanOrEqual(3)
 
       expect(errors).toEqual([])
     }
@@ -151,6 +157,9 @@ function fixture(inpageScript: string): string {
 
         const inline = window.ytInitialPlayerResponse || {};
 
+        // A player response parsed via JSON.parse (the path fetch/accessor miss).
+        var parsed = JSON.parse('{"adPlacements":[{"a":1}],"playerAds":[{"b":2}],"streamingData":{"formats":[{"itag":22}]}}');
+
         fetch('/youtubei/v1/player?prettyPrint=false')
           .then(function (r) { return r.json(); })
           .then(function (data) {
@@ -160,6 +169,8 @@ function fixture(inpageScript: string): string {
               fetchAdPlacements: Boolean(data.adPlacements),
               fetchAdSlots: Boolean(data.adSlots),
               fetchStreamingFormats: (data.streamingData && data.streamingData.formats ? data.streamingData.formats.length : 0),
+              jsonParseAdPlacements: Boolean(parsed.adPlacements),
+              jsonParseStreaming: Boolean(parsed.streamingData),
               reportedCount: reportedCount,
               done: true,
             };
