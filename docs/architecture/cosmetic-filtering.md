@@ -36,21 +36,29 @@ deferral asked for.
 ## Guardrails
 
 - **Site-specific selectors.** Selectors target dedicated ad-only custom
-  elements (`ytd-ad-slot-renderer`, `ytd-display-ad-renderer`, `#masthead-ad`,
-  `.stream-display-ad__container`), not broad `[class*="ad"]` matches. Real
-  videos, comments, Shorts, and recommendations are never targeted.
+  elements (`ytd-ad-slot-renderer`, `ytd-display-ad-renderer`, `#masthead-ad`),
+  not broad `[class*="ad"]` matches. Real videos, comments, Shorts, and
+  recommendations are never targeted.
 - **X promoted tweets are matched by label, not test id.** X reuses its media
   container (`[data-testid="placementTracking"]`) on ordinary tweets, so hiding
   that test id would remove real photos and videos. Promoted tweets are instead
-  detected in the content script by their standalone "Ad"/"Promoted" label and
-  the whole timeline cell is hidden.
+  detected in the content script by their standalone "Ad"/"Promoted" label,
+  matched against a set of locale strings (see `xPromotedLabels` in
+  `constants.ts`), and the whole timeline cell is hidden. Only translations
+  verified against a real source are included — unverified ones are omitted so a
+  wrong string can never hide a genuine post.
 - **Never the player.** Instream video ads are handled by skip automation.
   Player-region containers (`.video-ads`, `.ytp-ad-module`) are intentionally
   not hidden, so hiding an ad can never hide the skip control or the video.
-- **Detection, not hiding, for stream ads.** Twitch video-ad markers
-  (`.player-ad-notice`, `.commercial-break-in-progress`, countdown/label) stay
-  visible and are only counted — the ad is the live stream, so hiding the notice
-  would remove feedback while the ad keeps playing.
+- **Detection, not hiding, for stream ads.** Twitch now stitches video ads into
+  the stream server-side (SSAI), so the legacy display-ad selectors
+  (`.stream-display-ad__container`, `sad-overlay`, `video-ad-banner`) are gone
+  from the maintained filter lists and were dropped. What remains is hiding the
+  ad-only affordances (`Leave feedback for this Ad` / `Learn more about this ad`
+  buttons) and the anti-adblock nag overlay. The in-stream ad markers
+  (`.commercial-break-in-progress`, `[data-a-target="video-ad-label"]`,
+  countdown) stay visible and are only counted — the ad is the live stream, so
+  hiding the notice would remove feedback while the ad keeps playing.
 - **Global + per-site kill switches.** `cosmeticFiltering` disables all hiding
   without touching network blocking; the per-site YouTube/Twitch toggles and the
   allowlist scope it further.
@@ -72,8 +80,9 @@ which keeps the selector policy testable without a browser.
 - `test/youtube-content.test.ts` loads a YouTube-like page in Bun WebView and
   asserts masthead, feed, and display ads are hidden while the real feed video,
   comments, `<video>`, and the skip button stay visible and playback works.
-- `test/twitch-content.test.ts` asserts the display banner is hidden while the
-  video-ad markers stay visible for detection.
+- `test/twitch-content.test.ts` asserts the ad-only feedback button and the
+  anti-adblock nag overlay are hidden, the dropped legacy display-ad container is
+  left visible, and the in-stream video-ad markers stay visible for detection.
 - `test/x-content.test.ts` asserts a promoted tweet cell is hidden while an
   ordinary tweet's photo and video (in the same `placementTracking` container)
   stay visible.

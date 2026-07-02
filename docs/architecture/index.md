@@ -36,7 +36,7 @@ the shipped static and dynamic rules stay active regardless.
 
 Content scripts handle the placements network rules cannot reach:
 
-- Cosmetic filtering hides first-party ad placements (YouTube feed/masthead/display ads, Twitch display banners, X promoted entries) via a stylesheet injected at `document_start` so ads never flash in.
+- Cosmetic filtering hides first-party ad placements (YouTube feed/masthead/display ads, Twitch ad affordances) via a stylesheet injected at `document_start` so ads never flash in. X promoted tweets are hidden in the content script by their locale ad label, since X reuses its media-container test id on real posts.
 - YouTube skip-button clicks plus fast-forwarding of non-skippable video ads.
 - Dismissal of YouTube's anti-adblock enforcement popup, restoring scroll and playback.
 - Twitch video-ad markers used to estimate saved time.

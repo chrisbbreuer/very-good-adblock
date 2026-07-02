@@ -25,11 +25,11 @@ These behaviors are tested with cached YouTube-like pages served as `www.youtube
 The content script:
 
 - Detects `twitch.tv` hostnames.
-- Hides Twitch display banner ads (`.stream-display-ad__container`).
+- Hides Twitch's ad-only affordances — the "Leave feedback for this Ad" / "Learn more about this ad" buttons and the anti-adblock nag overlay. (Twitch now stitches video ads into the stream server-side, so the old display-banner containers no longer exist and were dropped.)
 - Records estimated video seconds saved when Twitch video-ad markers appear — the markers stay visible because the ad is the live stream itself.
 - Uses throttled mutation scans so stream chat and live page updates stay responsive.
 
-Twitch changes often, so the implementation focuses on banner hiding plus marker detection instead of brittle player rewrites.
+Twitch changes often, so the implementation focuses on ad-affordance hiding plus marker detection instead of brittle player rewrites.
 
 ## Limits
 
