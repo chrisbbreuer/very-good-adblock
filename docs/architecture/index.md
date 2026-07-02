@@ -7,8 +7,9 @@ description: How Very Good AdBlock combines performant DNR rules, dynamic rules,
 
 Very Good AdBlock uses a balanced, performance-conscious Manifest V3 architecture:
 
-- Static `declarativeNetRequest` rules for known network ad domains and URL patterns.
-- Dynamic `declarativeNetRequest` rules for user site overrides.
+- Static `declarativeNetRequest` rules for known network ad domains and URL patterns (~14k hosts plus curated seeds).
+- Redirect rules that neuter ad-SDK loaders (gpt.js, adsbygoogle.js) to inert web-accessible stubs instead of hard-blocking them, so pages that await the SDK keep working.
+- Dynamic `declarativeNetRequest` rules for user site overrides; disabling protection installs a single global allow rule that bypasses all blocking.
 - Content scripts for cosmetic filtering, YouTube skip automation, and Twitch video-ad marker detection.
 - Chrome storage for settings, stats, and cross-install sync.
 
