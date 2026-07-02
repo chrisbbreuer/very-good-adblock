@@ -148,11 +148,13 @@ async function setup(): Promise<void> {
 const filterRefreshedAtKey = 'filterRefreshedAt'
 const filterRefreshMinIntervalMs = 12 * 60 * 60 * 1000
 
-async function refreshFilters(): Promise<void> {
+async function refreshFilters(force = false): Promise<void> {
   try {
-    const stored = await chrome.storage.local.get(filterRefreshedAtKey)
-    const last = stored[filterRefreshedAtKey]
-    if (typeof last === 'number' && Date.now() - last < filterRefreshMinIntervalMs) return
+    if (!force) {
+      const stored = await chrome.storage.local.get(filterRefreshedAtKey)
+      const last = stored[filterRefreshedAtKey]
+      if (typeof last === 'number' && Date.now() - last < filterRefreshMinIntervalMs) return
+    }
 
     const response = await fetch(filterRefreshUrl, { cache: 'no-cache' })
     if (!response.ok) return
@@ -212,6 +214,9 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
     case 'reset-stats':
       await resetStats()
       await updateBadge()
+      return getDashboard()
+    case 'refresh-filters':
+      await refreshFilters(true)
       return getDashboard()
     case 'export-data':
       return getDashboard()

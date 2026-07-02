@@ -28,8 +28,12 @@ const elements = {
   blockedSites: byId('blocked-sites'),
   diagnostics: byId('diagnostics'),
   status: byId('options-status'),
+  updateFilters: byId<HTMLButtonElement>('update-filters'),
   exportData: byId<HTMLButtonElement>('export-data'),
   resetStats: byId<HTMLButtonElement>('reset-stats'),
+  exportAllow: byId<HTMLButtonElement>('export-allow'),
+  importAllow: byId<HTMLButtonElement>('import-allow'),
+  importAllowFile: byId<HTMLInputElement>('import-allow-file'),
 }
 
 let state: DashboardState | undefined
@@ -80,6 +84,59 @@ elements.exportData.addEventListener('click', async () => {
 elements.resetStats.addEventListener('click', async () => {
   state = await sendMessage<DashboardState>({ type: 'reset-stats' })
   render(state)
+})
+
+elements.updateFilters.addEventListener('click', async () => {
+  elements.updateFilters.disabled = true
+  const original = elements.updateFilters.textContent
+  elements.updateFilters.textContent = 'Updating...'
+  try {
+    state = await sendMessage<DashboardState>({ type: 'refresh-filters' })
+    render(state)
+    elements.status.textContent = 'Filters refreshed from the maintained host list.'
+  }
+  catch (error) {
+    elements.status.textContent = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    elements.updateFilters.textContent = original
+    elements.updateFilters.disabled = false
+  }
+})
+
+elements.exportAllow.addEventListener('click', () => {
+  if (!state) return
+  downloadJson(`very-good-adblock-allowlist-${new Date().toISOString().slice(0, 10)}.json`, {
+    allowedSites: state.settings.allowedSites,
+  })
+})
+
+elements.importAllow.addEventListener('click', () => elements.importAllowFile.click())
+
+elements.importAllowFile.addEventListener('change', async () => {
+  const file = elements.importAllowFile.files?.[0]
+  elements.importAllowFile.value = ''
+  if (!file || !state) return
+
+  try {
+    const parsed = JSON.parse(await file.text()) as { allowedSites?: unknown }
+    const incoming = Array.isArray(parsed.allowedSites) ? parsed.allowedSites : parsed
+    const hosts = (Array.isArray(incoming) ? incoming : [])
+      .filter((host): host is string => typeof host === 'string')
+      .map(normalizeHostname)
+      .filter(Boolean)
+    if (!hosts.length) {
+      elements.status.textContent = 'No valid hostnames found in that file.'
+      return
+    }
+    const allowedSites = [...new Set([...state.settings.allowedSites, ...hosts])]
+    state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { allowedSites } })
+    render(state)
+    elements.status.textContent = `Imported ${hosts.length} site${hosts.length === 1 ? '' : 's'} into the allowlist.`
+  }
+  catch {
+    elements.status.textContent = 'Could not read that allowlist file (expected JSON).'
+  }
 })
 
 async function refresh(): Promise<void> {

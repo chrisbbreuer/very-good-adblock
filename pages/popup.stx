@@ -13,7 +13,7 @@
           <p class="eyebrow">Very Good AdBlock</p>
           <h1 id="site-title">Protection active</h1>
         </div>
-        <button id="protection-toggle" class="power-button" type="button" aria-label="Toggle protection">
+        <button id="protection-toggle" class="power-button" type="button" aria-label="Toggle protection" aria-pressed="true">
           <span></span>
         </button>
       </section>

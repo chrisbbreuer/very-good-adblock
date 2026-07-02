@@ -141,6 +141,7 @@ export type RuntimeMessage =
   | { type: 'record-blocks', events: BlockEvent[] }
   | { type: 'record-cosmetic', hostname: string, hits: CosmeticSelectorHit[] }
   | { type: 'reset-stats' }
+  | { type: 'refresh-filters' }
   | { type: 'export-data' }
 
 export interface RuntimeResponse<T = unknown> {

@@ -297,6 +297,26 @@ h1 {
   border-radius: 10px;
 }
 
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ghost-button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: rgba(243, 251, 248, 0.72);
+  background: transparent;
+}
+
+.ghost-button:hover {
+  color: var(--text);
+  background: var(--panel-strong);
+}
+
 .site-row,
 .diagnostic-row,
 .toggle-row {

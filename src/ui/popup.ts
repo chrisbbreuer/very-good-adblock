@@ -110,6 +110,7 @@ function renderLive(next: DashboardState): void {
   elements.siteToggle.textContent = allowed ? 'Protect' : 'Allow'
   elements.siteToggle.disabled = !active
   elements.protectionToggle.classList.toggle('off', !enabled)
+  elements.protectionToggle.setAttribute('aria-pressed', String(enabled))
   elements.status.textContent = allowed ? 'This site is allowed. Global protection remains available elsewhere.' : 'Network blocking is active. Estimates are computed locally.'
 
   renderCurrentSiteStats(next)

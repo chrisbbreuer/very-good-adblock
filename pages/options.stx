@@ -14,6 +14,7 @@
           <h1>Protection dashboard</h1>
         </div>
         <div class="header-actions">
+          <button id="update-filters" class="soft-button" type="button">Update filters</button>
           <button id="export-data" class="soft-button" type="button">Export</button>
           <button id="reset-stats" class="danger-button" type="button">Reset</button>
         </div>
@@ -48,7 +49,7 @@
             <span>History</span>
             <strong>60 days</strong>
           </div>
-          <div id="daily-chart" class="bar-chart large" aria-hidden="true"></div>
+          <div id="daily-chart" class="bar-chart large" role="img" aria-label="Blocked ads per day, last 60 days"></div>
         </article>
 
         <article class="glass-panel dashboard-panel">
@@ -92,6 +93,11 @@
             <button class="soft-button" type="submit">Add</button>
           </form>
           <div id="allowed-sites" class="pill-list"></div>
+          <div class="panel-actions">
+            <button id="export-allow" class="ghost-button" type="button">Export list</button>
+            <button id="import-allow" class="ghost-button" type="button">Import list</button>
+            <input id="import-allow-file" type="file" accept="application/json,.json" hidden>
+          </div>
         </article>
 
         <article class="glass-panel dashboard-panel">
