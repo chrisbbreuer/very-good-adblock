@@ -100,8 +100,8 @@ try {
   await popup.navigate(origin('example.test', '/popup.html'))
   await waitFor(popup, `document.querySelector('#status-message')?.textContent !== 'Loading protection state...'`, 'popup ready state')
   await assertNoHorizontalOverflow(popup, 'popup')
-  const todayBlocked = await numberText(popup, '#today-blocked')
-  assert(todayBlocked >= minimumStatsEvents, `Expected popup blocked count to render seeded events, saw ${todayBlocked}`)
+  const pageBlocked = await numberText(popup, '#page-blocked')
+  assert(pageBlocked >= minimumStatsEvents, `Expected popup blocked count to render seeded events, saw ${pageBlocked}`)
   await waitFor(popup, `document.querySelector('#site-blocked')?.textContent === '41'`, 'current-site blocked stats')
   await waitFor(popup, `document.querySelector('#site-data')?.textContent === '2.0 MB'`, 'current-site data stats')
   await waitFor(popup, `document.querySelector('#hourly-chart span:last-child')?.getAttribute('data-tooltip')?.includes('blocked')`, 'popup chart hover values')
@@ -153,7 +153,7 @@ try {
     'Bun WebView smoke tested Very Good AdBlock:',
     `youtube=${youtubeHidden}`,
     `twitch=${twitchHidden}`,
-    `popup=${todayBlocked}`,
+    `popup=${pageBlocked}`,
     `dashboard=${dashboardBlocked}`,
     'marketing=ok',
     `screenshots=${screenshotDir}`,
@@ -330,8 +330,7 @@ function twitchFixture(): string {
     <div class="commercial-break-in-progress">Ad 1 of 2</div>
     <div data-a-target="video-ad-label">Advertisement</div>
     <div data-a-target="video-ad-countdown">0:24</div>
-    <div data-a-target="video-player-ad-overlay">video overlay ad</div>
-    <div class="stream-display-ad__container">display ad</div>
+    <button aria-label="Leave feedback for this Ad">Feedback</button>
   `
 }
 
