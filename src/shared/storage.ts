@@ -14,8 +14,12 @@ const localKeys = {
 } as const
 
 const cloudStatsSchemaVersion = 1
-const cloudDailyBucketLimit = 60
-const cloudSiteRollupLimit = 20
+// chrome.storage.sync caps a single item at 8 KB (QUOTA_BYTES_PER_ITEM). Keep the
+// snapshot comfortably under that: 30 daily buckets + 15 site rollups serialize to
+// well below the limit, where 60 + 20 could overflow and reject the whole write.
+const cloudDailyBucketLimit = 30
+const cloudSiteRollupLimit = 15
+const cloudStatsMaxBytes = 8_000
 
 export const defaultSettings: ExtensionSettings = {
   enabled: true,
@@ -49,7 +53,7 @@ export function defaultLocalStats(): LocalStats {
 }
 
 export function buildCloudStatsSnapshot(lifetime: LifetimeStats, local: LocalStats, now: Date = new Date()): CloudStatsSnapshot {
-  return {
+  const snapshot: CloudStatsSnapshot = {
     schemaVersion: cloudStatsSchemaVersion,
     lifetime,
     daily: compactBuckets(local.daily, cloudDailyBucketLimit),
@@ -58,6 +62,16 @@ export function buildCloudStatsSnapshot(lifetime: LifetimeStats, local: LocalSta
       .slice(0, cloudSiteRollupLimit),
     syncedAt: now.toISOString(),
   }
+
+  // Guarantee the item stays under the 8 KB sync quota regardless of history size:
+  // drop the oldest daily buckets first, then trailing site rollups, if needed.
+  while (cloudStatsSnapshotBytes(snapshot) > cloudStatsMaxBytes) {
+    if (snapshot.daily.length > 1) snapshot.daily = snapshot.daily.slice(1)
+    else if (snapshot.sites.length > 0) snapshot.sites = snapshot.sites.slice(0, -1)
+    else break
+  }
+
+  return snapshot
 }
 
 export function cloudStatsSnapshotBytes(snapshot: CloudStatsSnapshot): number {

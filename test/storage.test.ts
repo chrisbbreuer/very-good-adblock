@@ -31,8 +31,8 @@ describe('cloud stats sync', () => {
     const snapshot = buildCloudStatsSnapshot(lifetime, local, new Date('2026-06-28T00:00:00.000Z'))
 
     expect(snapshot.lifetime.adsBlocked).toBe(1234)
-    expect(snapshot.daily).toHaveLength(60)
-    expect(snapshot.sites).toHaveLength(20)
+    expect(snapshot.daily).toHaveLength(30)
+    expect(snapshot.sites).toHaveLength(15)
     expect(snapshot.sites[0].adsBlocked).toBe(29)
     expect(cloudStatsSnapshotBytes(snapshot)).toBeLessThan(8192)
   })
