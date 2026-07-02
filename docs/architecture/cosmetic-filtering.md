@@ -37,9 +37,13 @@ deferral asked for.
 
 - **Site-specific selectors.** Selectors target dedicated ad-only custom
   elements (`ytd-ad-slot-renderer`, `ytd-display-ad-renderer`, `#masthead-ad`,
-  `.stream-display-ad__container`, `[data-testid="placementTracking"]`), not
-  broad `[class*="ad"]` matches. Real videos, comments, Shorts, and
-  recommendations are never targeted.
+  `.stream-display-ad__container`), not broad `[class*="ad"]` matches. Real
+  videos, comments, Shorts, and recommendations are never targeted.
+- **X promoted tweets are matched by label, not test id.** X reuses its media
+  container (`[data-testid="placementTracking"]`) on ordinary tweets, so hiding
+  that test id would remove real photos and videos. Promoted tweets are instead
+  detected in the content script by their standalone "Ad"/"Promoted" label and
+  the whole timeline cell is hidden.
 - **Never the player.** Instream video ads are handled by skip automation.
   Player-region containers (`.video-ads`, `.ytp-ad-module`) are intentionally
   not hidden, so hiding an ad can never hide the skip control or the video.
@@ -70,5 +74,8 @@ which keeps the selector policy testable without a browser.
   comments, `<video>`, and the skip button stay visible and playback works.
 - `test/twitch-content.test.ts` asserts the display banner is hidden while the
   video-ad markers stay visible for detection.
+- `test/x-content.test.ts` asserts a promoted tweet cell is hidden while an
+  ordinary tweet's photo and video (in the same `placementTracking` container)
+  stay visible.
 - `scripts/smoke-extension.ts` screenshots the built extension against YouTube,
   Twitch, popup, options, and marketing surfaces.

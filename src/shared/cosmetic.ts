@@ -104,13 +104,22 @@ export const twitchCosmetic: CosmeticGroup = {
   ],
 }
 
-/** X / Twitter promoted feed entries. Only the structural marker is on. */
+/**
+ * X / Twitter ad surfaces.
+ *
+ * Promoted *timeline tweets* are intentionally NOT hidden with a CSS selector.
+ * X wraps ordinary tweet media (photos, videos, GIFs, cards) in the same
+ * `[data-testid="placementTracking"]` container it uses for promoted media, so
+ * that selector hides real posts — the reported "random images not showing"
+ * bug. Promoted tweets are instead detected in the content script by their
+ * "Ad" / "Promoted" label and the whole cell is hidden (see `hideXPromotedTweets`).
+ *
+ * Only unambiguous, non-tweet ad slots stay here.
+ */
 export const xCosmetic: CosmeticGroup = {
   source: 'x',
   category: 'other',
-  default: [
-    '[data-testid="placementTracking"]',
-  ],
+  default: [],
   aggressive: [
     'div[data-testid="trend"]:has([data-testid="promotedIndicator"])',
   ],

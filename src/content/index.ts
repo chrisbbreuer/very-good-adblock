@@ -136,6 +136,8 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
 
   if (settings.cosmeticFiltering && cosmeticGroups.length) countHiddenPlacements(roots)
 
+  if (settings.cosmeticFiltering && isX()) hideXPromotedTweets(roots)
+
   if (settings.youtubeEnhancements && isYouTube()) {
     clickYouTubeSkip(roots)
     fastForwardYouTubeAd()
@@ -233,6 +235,56 @@ function clickYouTubeSkip(roots: readonly SelectorRoot[]): void {
       queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
     }
   }
+}
+
+/** Standalone labels X renders on promoted timeline tweets. */
+const xPromotedLabels = new Set(['Ad', 'Promoted', 'Promoted Tweet'])
+
+/**
+ * Hide promoted tweets in the X timeline. We cannot use a CSS selector because
+ * the only reliable ad marker is the "Ad" / "Promoted" text label — and X reuses
+ * its media-container test ids on ordinary tweets, so matching those would hide
+ * real posts. Instead we walk each timeline cell, confirm the label, and hide the
+ * whole cell (so no empty gap is left) while counting it for stats.
+ */
+function hideXPromotedTweets(roots: readonly SelectorRoot[]): void {
+  for (const root of roots) {
+    for (const cell of queryAllSafe(root, 'div[data-testid="cellInnerDiv"]')) {
+      if (seen.has(cell)) continue
+
+      // Skip until the tweet has actually rendered so we don't mark an empty cell
+      // seen and miss the label that appears a tick later.
+      const article = cell.querySelector('article')
+      if (!article) continue
+
+      // Mark every rendered cell seen — promoted status is fixed at render, so a
+      // non-promoted cell never needs re-checking on later sweeps.
+      seen.add(cell)
+      if (!isPromotedTweet(article)) continue
+
+      cell.setAttribute('data-adblock-hidden', 'true')
+      if (cell instanceof HTMLElement) cell.style.setProperty('display', 'none', 'important')
+      selectorHits.set('x:promoted-tweet', (selectorHits.get('x:promoted-tweet') ?? 0) + 1)
+      queueEvent('x', 'other')
+    }
+  }
+}
+
+/**
+ * A tweet is promoted when it carries a standalone "Ad" / "Promoted" label. We
+ * only accept leaf spans outside the tweet body and author name so a post that
+ * merely contains the word "Ad" in its text is never mistaken for one.
+ */
+function isPromotedTweet(article: Element): boolean {
+  for (const span of article.querySelectorAll('span')) {
+    if (span.childElementCount > 0) continue
+    const text = span.textContent?.trim()
+    if (!text || !xPromotedLabels.has(text)) continue
+    if (span.closest('[data-testid="tweetText"], [data-testid="User-Name"]')) continue
+    return true
+  }
+
+  return false
 }
 
 function recordTwitchVideoAds(roots: readonly SelectorRoot[]): void {
