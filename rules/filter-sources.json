@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedAt": "",
-  "maxHostsPerSource": 1500,
+  "maxHostsPerSource": 12000,
   "sources": [
     {
       "name": "EasyList general block",
