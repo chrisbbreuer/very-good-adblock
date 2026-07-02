@@ -58,6 +58,24 @@ function ruleId(offset: number): number {
 }
 
 export function buildDynamicRules(settings: ExtensionSettings): chrome.declarativeNetRequest.Rule[] {
+  // Protection off: a single high-priority allowAllRequests rule whitelists every
+  // frame tree, so it overrides the static host ruleset, the block-site rules, and
+  // the refresh rules without having to toggle each ruleset. Re-enabling rebuilds
+  // the normal set below.
+  if (!settings.enabled) {
+    return [{
+      id: ruleId(250),
+      priority: 100,
+      action: { type: 'allowAllRequests' as const },
+      condition: {
+        resourceTypes: [
+          resourceType('main_frame'),
+          resourceType('sub_frame'),
+        ],
+      },
+    }]
+  }
+
   const allowedRules = settings.allowedSites.slice(0, 200).map((hostname, index) => ({
     id: ruleId(index),
     priority: 10,
