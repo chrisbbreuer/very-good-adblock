@@ -10,6 +10,8 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
     name: extensionName,
     description: extensionDescription,
     version: input.version,
+    // world: 'MAIN' content scripts (the X/YouTube source pruners) need Chrome 111+.
+    minimum_chrome_version: '111',
     action: {
       default_title: extensionName,
       default_popup: 'popup.html',

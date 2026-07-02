@@ -33,7 +33,7 @@
     "docs:build": "bunpress build",
     "docs:dev": "bunpress dev",
     "docs:preview": "bunpress preview",
-    "package": "bun run build && bun --bun scripts/package-extension.ts",
+    "package": "bun run build && bun run validate:extension && bun --bun scripts/package-extension.ts",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
     "update:filters": "bun --bun scripts/update-filter-sources.ts",
