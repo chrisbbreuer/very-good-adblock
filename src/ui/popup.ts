@@ -7,6 +7,9 @@ const elements = {
   root: document.querySelector<HTMLElement>('.popup-frame')!,
   siteTitle: byId('site-title'),
   protectionToggle: byId<HTMLButtonElement>('protection-toggle'),
+  pauseRow: byId('pause-row'),
+  pauseLabel: byId('pause-label'),
+  resumeBtn: byId<HTMLButtonElement>('resume-btn'),
   dataSaved: byId('data-saved'),
   videoTime: byId('video-time'),
   lifetimeBlocked: byId('lifetime-blocked'),
@@ -70,6 +73,20 @@ elements.openOptions.addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
 })
 
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-pause]')) {
+  button.addEventListener('click', async () => {
+    const minutes = Number(button.dataset.pause)
+    if (!Number.isFinite(minutes)) return
+    state = await sendMessage<DashboardState>({ type: 'pause-protection', minutes })
+    render(state)
+  })
+}
+
+elements.resumeBtn.addEventListener('click', async () => {
+  state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { enabled: true } })
+  render(state)
+})
+
 async function refresh(): Promise<void> {
   try {
     state = await sendMessage<DashboardState>({ type: 'get-dashboard' })
@@ -111,6 +128,7 @@ function renderLive(next: DashboardState): void {
   elements.siteToggle.disabled = !active
   elements.protectionToggle.classList.toggle('off', !enabled)
   elements.protectionToggle.setAttribute('aria-pressed', String(enabled))
+  renderPause(next)
   elements.status.textContent = allowed ? 'This site is allowed. Global protection remains available elsewhere.' : 'Network blocking is active. Estimates are computed locally.'
 
   renderCurrentSiteStats(next)
@@ -135,6 +153,38 @@ function renderCurrentSiteStats(next: DashboardState): void {
   elements.siteLastActivity.textContent = site?.lastBlockedAt
     ? `Last blocked here ${relativeTime(site.lastBlockedAt)}`
     : active ? 'No blocked events recorded for this site yet.' : 'Open a site to see per-site stats.'
+}
+
+function renderPause(next: DashboardState): void {
+  const enabled = next.settings.enabled
+  const resumeAt = next.settings.resumeAt
+  const paused = !enabled && typeof resumeAt === 'number' && resumeAt > Date.now()
+  const pauseButtons = elements.pauseRow.querySelectorAll<HTMLButtonElement>('[data-pause]')
+
+  if (enabled) {
+    elements.pauseRow.hidden = false
+    elements.pauseLabel.textContent = 'Pause protection'
+    elements.resumeBtn.hidden = true
+    for (const button of pauseButtons) button.hidden = false
+  }
+  else if (paused) {
+    elements.pauseRow.hidden = false
+    elements.pauseLabel.textContent = `Paused · resumes in ${formatCountdown(resumeAt - Date.now())}`
+    elements.resumeBtn.hidden = false
+    for (const button of pauseButtons) button.hidden = true
+  }
+  else {
+    // Disabled manually (not paused) — the power toggle handles resuming.
+    elements.pauseRow.hidden = true
+  }
+}
+
+function formatCountdown(ms: number): string {
+  const minutes = Math.max(1, Math.round(ms / 60_000))
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`
 }
 
 function renderPageVisit(next: DashboardState): void {

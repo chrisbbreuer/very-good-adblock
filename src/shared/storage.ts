@@ -245,6 +245,7 @@ function normalizeSettings(value: unknown): ExtensionSettings {
     twitchEnhancements: settings?.twitchEnhancements ?? defaultSettings.twitchEnhancements,
     allowedSites: Array.isArray(settings?.allowedSites) ? settings.allowedSites : defaultSettings.allowedSites,
     blockedSites: Array.isArray(settings?.blockedSites) ? settings.blockedSites : defaultSettings.blockedSites,
+    resumeAt: typeof settings?.resumeAt === 'number' ? settings.resumeAt : undefined,
   }
 }
 

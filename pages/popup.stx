@@ -18,6 +18,16 @@
         </button>
       </section>
 
+      <div id="pause-row" class="pause-row" hidden>
+        <span id="pause-label" class="muted">Pause protection</span>
+        <div class="pause-buttons">
+          <button class="chip-button" data-pause="15" type="button">15m</button>
+          <button class="chip-button" data-pause="30" type="button">30m</button>
+          <button class="chip-button" data-pause="60" type="button">1h</button>
+          <button id="resume-btn" class="chip-button accent" type="button" hidden>Resume now</button>
+        </div>
+      </div>
+
       <section class="stat-grid" aria-label="Very Good AdBlock statistics">
         <article class="metric-card primary">
           <span>Blocked</span>

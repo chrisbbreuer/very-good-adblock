@@ -1,6 +1,6 @@
 import packageJson from '../../package.json'
 import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
-import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId } from '../shared/constants'
+import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { hostnameFromUrl } from '../shared/domain'
@@ -115,6 +115,7 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
 
 chrome.alarms?.onAlarm.addListener((alarm) => {
   if (alarm.name === filterRefreshAlarm) void refreshFilters()
+  if (alarm.name === resumeAlarm) void resumeProtection()
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -133,10 +134,36 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 async function setup(): Promise<void> {
   await initializeStorage()
-  await syncDynamicRules(await getSettings())
+  const settings = await getSettings()
+  await syncDynamicRules(settings)
+  await reconcilePause(settings.resumeAt)
   await updateBadge()
   chrome.alarms?.create(filterRefreshAlarm, { periodInMinutes: 24 * 60 })
   void refreshFilters()
+}
+
+/** Pause protection for a bounded number of minutes; a resume alarm re-enables it. */
+async function pauseProtection(minutes: number): Promise<void> {
+  const clamped = Math.min(Math.max(Math.round(minutes), 1), 24 * 60)
+  const resumeAt = Date.now() + clamped * 60_000
+  const settings = await setSettings({ enabled: false, resumeAt })
+  await syncDynamicRules(settings)
+  chrome.alarms?.create(resumeAlarm, { when: resumeAt })
+  await updateBadge()
+}
+
+async function resumeProtection(): Promise<void> {
+  chrome.alarms?.clear(resumeAlarm)
+  const settings = await setSettings({ enabled: true, resumeAt: undefined })
+  await syncDynamicRules(settings)
+  await updateBadge()
+}
+
+/** On startup, resume if the pause elapsed while closed, else re-arm the alarm. */
+async function reconcilePause(resumeAt?: number): Promise<void> {
+  if (resumeAt === undefined) return
+  if (Date.now() >= resumeAt) await resumeProtection()
+  else chrome.alarms?.create(resumeAlarm, { when: resumeAt })
 }
 
 /**
@@ -185,9 +212,18 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
     case 'get-dashboard':
       return getDashboard()
     case 'set-settings': {
-      const settings = await setSettings(message.settings)
+      let settings = await setSettings(message.settings)
+      // Manually turning protection back on cancels any active pause.
+      if (message.settings.enabled === true && settings.resumeAt !== undefined) {
+        chrome.alarms?.clear(resumeAlarm)
+        settings = await setSettings({ resumeAt: undefined })
+      }
       await syncDynamicRules(settings)
       await updateBadge()
+      return getDashboard()
+    }
+    case 'pause-protection': {
+      await pauseProtection(message.minutes)
       return getDashboard()
     }
     case 'toggle-site': {

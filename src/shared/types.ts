@@ -11,6 +11,8 @@ export interface ExtensionSettings {
   twitchEnhancements: boolean
   allowedSites: string[]
   blockedSites: string[]
+  /** When set and in the future, protection is paused until this time (ms epoch). */
+  resumeAt?: number
 }
 
 export interface LifetimeStats {
@@ -142,6 +144,7 @@ export type RuntimeMessage =
   | { type: 'record-cosmetic', hostname: string, hits: CosmeticSelectorHit[] }
   | { type: 'reset-stats' }
   | { type: 'refresh-filters' }
+  | { type: 'pause-protection', minutes: number }
   | { type: 'export-data' }
 
 export interface RuntimeResponse<T = unknown> {
