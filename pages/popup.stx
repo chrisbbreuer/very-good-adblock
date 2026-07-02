@@ -21,8 +21,8 @@
       <section class="stat-grid" aria-label="Very Good AdBlock statistics">
         <article class="metric-card primary">
           <span>Blocked</span>
-          <strong id="today-blocked">0</strong>
-          <small>today</small>
+          <strong id="page-blocked">0</strong>
+          <small id="page-breakdown">on this page</small>
         </article>
         <article class="metric-card">
           <span>Data saved</span>
@@ -57,6 +57,7 @@
           </div>
           <button id="site-toggle" class="soft-button" type="button">Allow</button>
         </div>
+        <span class="site-stat-caption">All time on this site</span>
         <div id="current-site-stats" class="site-stat-grid" aria-label="Current site statistics">
           <article>
             <span>Blocked here</span>

@@ -13,6 +13,8 @@ Use the popup to:
 
 - Toggle global protection.
 - Allow or protect the current site.
+- See how many items were blocked on the current page visit (network requests
+  plus hidden placements), updating live while the popup is open.
 - View today's blocked count.
 - View lifetime blocked count.
 - See estimated data and video time saved.

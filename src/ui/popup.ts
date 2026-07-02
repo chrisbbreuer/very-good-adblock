@@ -7,7 +7,6 @@ const elements = {
   root: document.querySelector<HTMLElement>('.popup-frame')!,
   siteTitle: byId('site-title'),
   protectionToggle: byId<HTMLButtonElement>('protection-toggle'),
-  todayBlocked: byId('today-blocked'),
   dataSaved: byId('data-saved'),
   videoTime: byId('video-time'),
   lifetimeBlocked: byId('lifetime-blocked'),
@@ -15,6 +14,8 @@ const elements = {
   hourlyChart: byId('hourly-chart'),
   currentSite: byId('current-site'),
   siteToggle: byId<HTMLButtonElement>('site-toggle'),
+  pageBlocked: byId('page-blocked'),
+  pageBreakdown: byId('page-breakdown'),
   siteBlocked: byId('site-blocked'),
   siteData: byId('site-data'),
   siteVideo: byId('site-video'),
@@ -27,6 +28,11 @@ const elements = {
 let state: DashboardState | undefined
 
 void refresh()
+
+// Keep the live "on this page" count ticking while the popup is open.
+const liveRefreshMs = 2_000
+const livePoll = setInterval(() => void refresh(), liveRefreshMs)
+window.addEventListener('pagehide', () => clearInterval(livePoll), { once: true })
 
 elements.protectionToggle.addEventListener('click', async () => {
   if (!state) return
@@ -57,7 +63,6 @@ async function refresh(): Promise<void> {
 }
 
 function render(next: DashboardState): void {
-  const today = next.local.daily.at(-1)?.adsBlocked ?? 0
   const active = next.activeTab
   const enabled = next.settings.enabled
   const allowed = active ? siteMatches(active.hostname, next.settings.allowedSites) : false
@@ -66,7 +71,7 @@ function render(next: DashboardState): void {
   elements.root.dataset.view = 'ready'
   elements.root.dataset.enabled = String(enabled && !allowed)
   elements.siteTitle.textContent = enabled && !allowed ? 'Protection active' : 'Protection paused'
-  elements.todayBlocked.textContent = today.toLocaleString()
+  renderPageVisit(next)
   elements.dataSaved.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
@@ -104,6 +109,19 @@ function renderCurrentSiteStats(next: DashboardState): void {
   elements.siteLastActivity.textContent = site?.lastBlockedAt
     ? `Last blocked here ${relativeTime(site.lastBlockedAt)}`
     : active ? 'No blocked events recorded for this site yet.' : 'Open a site to see per-site stats.'
+}
+
+function renderPageVisit(next: DashboardState): void {
+  const page = next.activePage
+
+  elements.pageBlocked.textContent = page.blocked.toLocaleString()
+  elements.pageBreakdown.textContent = next.activeTab ? 'on this page' : 'no active tab'
+
+  const title = next.activeTab
+    ? `${page.blocked.toLocaleString()} blocked on this page — ${page.network.toLocaleString()} network requests, ${page.content.toLocaleString()} placements hidden`
+    : 'No active tab'
+  elements.pageBlocked.title = title
+  elements.pageBreakdown.title = title
 }
 
 function renderTopCategories(next: DashboardState): void {
