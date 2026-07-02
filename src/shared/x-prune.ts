@@ -31,10 +31,13 @@ function entryIsPromoted(entry: unknown): boolean {
   if (!entry || typeof entry !== 'object') return false
   const typed = entry as TimelineEntry
 
-  if (typeof typed.entryId === 'string' && typed.entryId.startsWith('promoted-')) return true
-
   const content = typed.content
   if (!content || typeof content !== 'object') return false
+
+  // The `promoted-` id prefix is only trusted on real timeline entries (those
+  // with a `content` object), so an unrelated `entries` array whose elements
+  // merely have such an id is never pruned.
+  if (typeof typed.entryId === 'string' && typed.entryId.startsWith('promoted-')) return true
 
   if (content.itemContent?.promotedMetadata) return true
 

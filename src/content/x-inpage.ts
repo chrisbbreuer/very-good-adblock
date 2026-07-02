@@ -16,6 +16,7 @@ installFetchPruner()
 function installFetchPruner(): void {
   const original = window.fetch
   if (typeof original !== 'function') return
+  if ((original as { __vgaPatched?: boolean }).__vgaPatched) return
 
   const bridge = createPruneBridge(xConfigMessageSource, xPruneMessageSource)
 
@@ -44,6 +45,9 @@ function installFetchPruner(): void {
     }
   }
 
-  // Preserve any static members (e.g. fetch.preconnect) before swapping in.
-  window.fetch = Object.assign(patched, original) as typeof window.fetch
+  // Preserve any static members (e.g. fetch.preconnect) before swapping in, and
+  // mark it so a second injection does not double-wrap.
+  const merged = Object.assign(patched, original)
+  ;(merged as { __vgaPatched?: boolean }).__vgaPatched = true
+  window.fetch = merged as typeof window.fetch
 }

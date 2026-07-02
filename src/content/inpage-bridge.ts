@@ -20,7 +20,7 @@ export function createPruneBridge(configSource: string, pruneSource: string): Pr
   let enabled = true
 
   window.addEventListener('message', (event) => {
-    if (event.source !== window) return
+    if (event.source !== window || event.origin !== window.location.origin) return
     const data = event.data as { source?: string, enabled?: unknown } | null
     if (!data || data.source !== configSource) return
     if (typeof data.enabled === 'boolean') enabled = data.enabled

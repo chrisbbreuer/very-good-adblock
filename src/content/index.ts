@@ -16,6 +16,7 @@ const pendingRoots = new Set<Element>()
 const styleId = 'very-good-adblock-cosmetics'
 const mutationSweepDelayMs = 150
 const eventFlushDelayMs = 1_000
+const maxPruneEventCount = 200
 const maxPendingRoots = 80
 const adFastForwardRate = 16
 let cosmeticGroups: ActiveCosmeticGroup[] = []
@@ -23,6 +24,8 @@ let observer: MutationObserver | undefined
 let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
 let scanDocumentOnNextSweep = false
+let xPruneActive = false
+let ytPruneActive = false
 
 boot()
 
@@ -46,18 +49,21 @@ function boot(): void {
  * the counts they report back, attributed to the right source.
  */
 function onPruneMessage(event: MessageEvent): void {
-  if (event.source !== window) return
+  if (event.source !== window || event.origin !== location.origin) return
   const data = event.data as { source?: string, count?: unknown } | null
   if (!data) return
 
-  const count = Number(data.count)
+  // The MAIN world is shared with the page, so treat counts as untrusted: cap
+  // them (no real response carries hundreds of ads) and only record when the
+  // feature is actually active, so allowlisted/disabled sites never accrue stats.
+  const count = Math.min(Number(data.count), maxPruneEventCount)
   if (!Number.isFinite(count) || count <= 0) return
 
-  if (data.source === xPruneMessageSource) {
+  if (data.source === xPruneMessageSource && xPruneActive) {
     queueEvent('x', 'other', count)
     scheduleEventFlush()
   }
-  else if (data.source === ytPruneMessageSource) {
+  else if (data.source === ytPruneMessageSource && ytPruneActive) {
     queueEvent('video', 'media', count, estimateBytesSaved('media', count), estimateVideoSecondsSaved() * count)
     scheduleEventFlush()
   }
@@ -78,10 +84,13 @@ async function start(): Promise<void> {
 
   // Tell the MAIN-world pruners whether to run, so they honor the global off
   // switch, the allowlist, and the relevant per-feature toggle.
-  if (isX()) window.postMessage({ source: xConfigMessageSource, enabled: cosmeticOn }, location.origin)
+  if (isX()) {
+    xPruneActive = cosmeticOn
+    window.postMessage({ source: xConfigMessageSource, enabled: cosmeticOn }, location.origin)
+  }
   if (isYouTube()) {
-    const youtubeOn = settings.enabled && !allowed && settings.youtubeEnhancements
-    window.postMessage({ source: ytConfigMessageSource, enabled: youtubeOn }, location.origin)
+    ytPruneActive = settings.enabled && !allowed && settings.youtubeEnhancements
+    window.postMessage({ source: ytConfigMessageSource, enabled: ytPruneActive }, location.origin)
   }
 
   if (!settings.enabled || allowed) return
