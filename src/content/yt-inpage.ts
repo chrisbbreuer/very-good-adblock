@@ -2,19 +2,20 @@
  * MAIN-world content script for YouTube.
  *
  * Runs in the page's own JavaScript context (manifest `world: "MAIN"`) at
- * document_start, before YouTube's app, and strips ad instructions
- * (`adPlacements` / `adSlots` / `playerAds`) out of player responses so the
- * player has nothing to schedule — the video starts immediately with no pre- or
- * mid-rolls, while `streamingData` and the rest of the response are untouched.
+ * document_start, before YouTube's app, and strips ads out of its Innertube JSON
+ * so nothing schedules or renders: video ads (`adPlacements`/`adSlots`/`playerAds`)
+ * from player responses, Shorts ads from reel sequences, and feed ad cells from
+ * browse/search responses — while `streamingData` and real content are untouched.
  * This is uBlock Origin's source-level approach; it replaces guessing in the DOM
- * and only supplements the existing skip/fast-forward safety net.
+ * and only supplements the existing skip/fast-forward and cosmetic safety nets.
  *
  * Two entry points cover both loads:
  * - the inline `ytInitialPlayerResponse` used for the first video, and
- * - the `/youtubei/v1/player` fetch used for every subsequent video.
+ * - the `/youtubei/v1/{player,browse,search,reel_watch_sequence}` fetches used
+ *   for every subsequent video, feed page, and Shorts sequence.
  */
 import { ytConfigMessageSource, ytPruneMessageSource } from '../shared/constants'
-import { isYouTubePlayerUrl, pruneYouTubeAds } from '../shared/yt-prune'
+import { isYouTubeAdResponseUrl, pruneYouTubeAds } from '../shared/yt-prune'
 import { createPruneBridge, requestUrl } from './inpage-bridge'
 
 const bridge = createPruneBridge(ytConfigMessageSource, ytPruneMessageSource)
@@ -61,7 +62,7 @@ function installFetchPruner(): void {
     if (!bridge.isEnabled()) return response
 
     try {
-      if (!isYouTubePlayerUrl(requestUrl(input))) return response
+      if (!isYouTubeAdResponseUrl(requestUrl(input))) return response
       if (!(response.headers.get('content-type') ?? '').includes('json')) return response
 
       const data = JSON.parse(await response.clone().text()) as unknown
