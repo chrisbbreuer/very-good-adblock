@@ -7,14 +7,17 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="popup-shell">
-    <main class="popup-frame glass-panel" data-view="loading">
+    <main class="popup-frame" data-view="loading">
       <section class="popup-hero">
         <div>
           <p class="eyebrow">Very Good AdBlock</p>
           <h1 id="site-title">Protection active</h1>
         </div>
         <button id="protection-toggle" class="power-button" type="button" aria-label="Toggle protection" aria-pressed="true">
-          <span></span>
+          <svg class="power-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="3.6" x2="12" y2="11.4"></line>
+            <path d="M6.3 7.2a7.4 7.4 0 1 0 11.4 0"></path>
+          </svg>
         </button>
       </section>
 
@@ -61,9 +64,12 @@
 
       <section class="site-card current-site-card">
         <div class="site-card-top">
-          <div>
-            <span class="muted">Current site</span>
-            <strong id="current-site">No active tab</strong>
+          <div class="site-id">
+            <img id="site-favicon" class="site-favicon" alt="" width="20" height="20" hidden>
+            <div class="site-id-text">
+              <span class="muted">Current site</span>
+              <strong id="current-site">No active tab</strong>
+            </div>
           </div>
           <button id="site-toggle" class="soft-button" type="button">Allow</button>
         </div>

@@ -421,6 +421,7 @@ function makeDashboardState(): DashboardState {
     activeTab: {
       hostname: 'example.test',
       url: 'https://example.test/',
+      favIconUrl: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2356d4ff%22/%3E%3C/svg%3E',
       allowed: false,
       blocked: false,
     },

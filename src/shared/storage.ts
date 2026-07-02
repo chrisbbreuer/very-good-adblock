@@ -226,6 +226,7 @@ export async function getActiveTabState(settings?: ExtensionSettings): Promise<A
     tabId: tab.id,
     hostname,
     url: tab.url,
+    favIconUrl: isHttpUrl(tab.favIconUrl) ? tab.favIconUrl : undefined,
     allowed: siteMatches(hostname, settings.allowedSites),
     blocked: siteMatches(hostname, settings.blockedSites),
   }

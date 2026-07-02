@@ -16,6 +16,7 @@ const elements = {
   chartPeak: byId('chart-peak'),
   hourlyChart: byId('hourly-chart'),
   currentSite: byId('current-site'),
+  siteFavicon: byId<HTMLImageElement>('site-favicon'),
   siteToggle: byId<HTMLButtonElement>('site-toggle'),
   pageBlocked: byId('page-blocked'),
   pageBreakdown: byId('page-breakdown'),
@@ -138,6 +139,8 @@ function renderCurrentSiteStats(next: DashboardState): void {
   const active = next.activeTab
   const site = active ? siteStatsFor(next, active.hostname) : undefined
 
+  renderFavicon(active?.favIconUrl)
+
   elements.siteBlocked.textContent = (site?.adsBlocked ?? 0).toLocaleString()
   elements.siteData.textContent = formatBytes(site?.bytesSaved ?? 0)
   elements.siteVideo.textContent = formatMinutes(site?.videoSecondsSaved ?? 0)
@@ -153,6 +156,14 @@ function renderCurrentSiteStats(next: DashboardState): void {
   elements.siteLastActivity.textContent = site?.lastBlockedAt
     ? `Last blocked here ${relativeTime(site.lastBlockedAt)}`
     : active ? 'No blocked events recorded for this site yet.' : 'Open a site to see per-site stats.'
+}
+
+function renderFavicon(url: string | undefined): void {
+  const favicon = elements.siteFavicon
+  if (url && favicon.src !== url) favicon.src = url
+  favicon.hidden = !url
+  // Hide the image if it fails to load so no broken-image glyph shows.
+  favicon.onerror = () => { favicon.hidden = true }
 }
 
 function renderPause(next: DashboardState): void {

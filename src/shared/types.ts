@@ -133,6 +133,7 @@ export interface ActiveTabState {
   tabId?: number
   hostname: string
   url: string
+  favIconUrl?: string
   allowed: boolean
   blocked: boolean
 }
