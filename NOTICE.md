@@ -11,7 +11,11 @@ Sources currently include pinned files from:
 
 ## Technique credits
 
-The X / Twitter promoted-tweet pruner removes entries carrying
-`content.itemContent.promotedMetadata` from GraphQL timeline responses. This
-source-level approach is the one used by uBlock Origin (<https://github.com/uBlockOrigin/uAssets>);
-the implementation here is original — no uBlock code is included.
+The source-level ad pruners follow uBlock Origin's approach
+(<https://github.com/uBlockOrigin/uAssets>); the implementations here are
+original — no uBlock code is included.
+
+- X / Twitter: removes timeline entries carrying
+  `content.itemContent.promotedMetadata` from GraphQL responses.
+- YouTube: removes `adPlacements` / `adSlots` / `playerAds` from player
+  responses (inline `ytInitialPlayerResponse` and the `/youtubei/v1/player` API).

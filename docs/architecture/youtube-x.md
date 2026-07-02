@@ -9,16 +9,17 @@ YouTube and Twitch use small, site-specific content helpers on top of normal DNR
 
 ## YouTube
 
-The content script:
+Video ads are removed at the source. A MAIN-world script (`content/yt-inpage.ts`) runs in the page's own context at `document_start` and deletes the ad instructions (`adPlacements`, `adSlots`, `playerAds`) from YouTube's player responses — both the inline `ytInitialPlayerResponse` (first video, via an accessor installed before it is assigned) and the `/youtubei/v1/player` fetch (every subsequent video). With no ads to schedule, the player starts the real video immediately; `streamingData` and everything else is left intact. This is uBlock Origin's approach and is much cleaner than fast-forwarding. It honors the off switch, allowlist, and YouTube toggle via a config message from the isolated content script, and reports removed ads back for stats.
+
+On top of that source-level pruning, the isolated content script:
 
 - Detects `youtube.com` hostnames.
 - Hides feed, masthead, display, and companion ad elements (`ytd-ad-slot-renderer`, `ytd-display-ad-renderer`, `#masthead-ad`, and the grid cells that wrap them) without hiding real videos, comments, Shorts, or recommendations.
-- Clicks visible ad skip buttons when the page exposes them.
-- Fast-forwards non-skippable pre/mid-roll ads: when the player is `ad-showing`, the ad video jumps to its end and speeds up so the real video loads immediately.
+- Clicks visible ad skip buttons and fast-forwards any `ad-showing` pre/mid-roll — a safety net for ads that slip past the pruner.
 - Dismisses the "ad blockers violate Terms" enforcement popup — hides the modal and shared backdrop, restores scrolling, and resumes playback, only when the enforcement message is present.
-- Records estimated video seconds saved when a skip or fast-forward happens.
+- Records estimated video seconds saved when an ad is pruned, skipped, or fast-forwarded.
 
-These behaviors are tested with cached YouTube-like pages served as `www.youtube.com` in Bun WebView, asserting ads are hidden and skipped while the real feed video, comments, `<video>`, and skip button stay visible and playback continues.
+These behaviors are tested with cached YouTube-like pages served as `www.youtube.com` in Bun WebView, asserting ads are hidden and skipped while the real feed video, comments, `<video>`, and skip button stay visible and playback continues. `test/youtube-prune.test.ts` additionally runs the built `yt-inpage.js` in real Chromium and asserts ads are stripped from both inline and fetched player responses while `streamingData` survives.
 
 ## Twitch
 
