@@ -37,6 +37,22 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   { id: 15, name: 'Twitch ads GraphQL', category: 'xhr', urlFilter: '|https://gql.twitch.tv/gql?operationName=VideoAd', resourceTypes: [resourceType('xmlhttprequest')] },
   { id: 16, name: 'Twitch ad events', category: 'xhr', urlFilter: '||twitch.tv/ads^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('ping')] },
   { id: 17, name: 'Twitch ad telemetry', category: 'xhr', urlFilter: '||twitch.tv/widgets/advertising^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('script')] },
+  // Mainstream analytics/ad trackers that the truncated host list can miss — a
+  // guaranteed floor of high-value domains, kept as a stable curated set.
+  { id: 18, name: 'Google Analytics', category: 'script', urlFilter: '||google-analytics.com^', resourceTypes: thirdPartyTypes },
+  { id: 19, name: 'Google Tag Manager', category: 'script', urlFilter: '||googletagmanager.com^', resourceTypes: thirdPartyTypes },
+  { id: 20, name: 'Google ad service', category: 'script', urlFilter: '||adservice.google.com^', resourceTypes: thirdPartyTypes },
+  { id: 21, name: 'App measurement', category: 'script', urlFilter: '||app-measurement.com^', resourceTypes: thirdPartyTypes },
+  { id: 22, name: 'ScorecardResearch', category: 'script', urlFilter: '||scorecardresearch.com^', resourceTypes: thirdPartyTypes },
+  { id: 23, name: 'Quantserve', category: 'script', urlFilter: '||quantserve.com^', resourceTypes: thirdPartyTypes },
+  { id: 24, name: 'Criteo', category: 'script', urlFilter: '||criteo.com^', resourceTypes: thirdPartyTypes },
+  { id: 25, name: 'Criteo net', category: 'script', urlFilter: '||criteo.net^', resourceTypes: thirdPartyTypes },
+  { id: 26, name: 'Casale Media', category: 'script', urlFilter: '||casalemedia.com^', resourceTypes: thirdPartyTypes },
+  { id: 27, name: 'Moat ads', category: 'script', urlFilter: '||moatads.com^', resourceTypes: thirdPartyTypes },
+  { id: 28, name: 'Adform', category: 'script', urlFilter: '||adform.net^', resourceTypes: thirdPartyTypes },
+  { id: 29, name: 'Twitter ads pixel', category: 'script', urlFilter: '||ads-twitter.com^', resourceTypes: thirdPartyTypes },
+  { id: 30, name: 'Bing ad tracker', category: 'xhr', urlFilter: '||bat.bing.com^', resourceTypes: thirdPartyTypes },
+  { id: 31, name: 'LinkedIn ads pixel', category: 'script', urlFilter: '||px.ads.linkedin.com^', resourceTypes: thirdPartyTypes },
 ]
 
 export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {

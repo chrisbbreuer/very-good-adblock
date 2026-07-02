@@ -35,12 +35,17 @@ export const genericCosmetic: CosmeticGroup = {
     '[id^="div-gpt-ad"]',
     '[data-google-query-id]',
     '[aria-label="Advertisement"]',
+    'amp-ad',
+    '[id^="taboola-"]',
+    'iframe[src*="googleads.g.doubleclick.net"]',
   ],
   aggressive: [
     '[id*="ad-container"]',
     '[class*="ad-container"]',
     'iframe[src*="/ads/"]',
     '[data-ad-slot]',
+    '[data-ad-unit]',
+    '[id^="ad-position-"]',
   ],
 }
 

@@ -20,8 +20,32 @@ import { createPruneBridge, requestUrl } from './inpage-bridge'
 
 const bridge = createPruneBridge(ytConfigMessageSource, ytPruneMessageSource)
 
+defuseAdPeriod()
 interceptInlinePlayerResponse()
 installFetchPruner()
+
+/**
+ * Force YouTube's client-side ad-period gate (`isAdPeriod`) to false — uBlock
+ * Origin's `set-constant Object.prototype.isAdPeriod false`. This defuses one
+ * class of ad scheduling/anti-adblock that can survive response pruning. Gated on
+ * the enable flag so an allowlisted or disabled page keeps its normal behavior.
+ */
+function defuseAdPeriod(): void {
+  try {
+    Object.defineProperty(Object.prototype, 'isAdPeriod', {
+      configurable: true,
+      get() {
+        return bridge.isEnabled() ? false : undefined
+      },
+      set() {
+        // Swallow assignments so the forced value stands while enabled.
+      },
+    })
+  }
+  catch {
+    // Property already locked down elsewhere; the response pruning still applies.
+  }
+}
 
 /**
  * The first watch page ships its player response as `window.ytInitialPlayerResponse`.
@@ -56,6 +80,7 @@ function interceptInlinePlayerResponse(): void {
 function installFetchPruner(): void {
   const original = window.fetch
   if (typeof original !== 'function') return
+  if ((original as { __vgaPatched?: boolean }).__vgaPatched) return
 
   const patched = async function patchedFetch(this: unknown, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const response = await original.call(this as typeof globalThis, input, init)
@@ -82,5 +107,7 @@ function installFetchPruner(): void {
     }
   }
 
-  window.fetch = Object.assign(patched, original) as typeof window.fetch
+  const merged = Object.assign(patched, original)
+  ;(merged as { __vgaPatched?: boolean }).__vgaPatched = true
+  window.fetch = merged as typeof window.fetch
 }
