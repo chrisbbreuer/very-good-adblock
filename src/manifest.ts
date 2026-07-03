@@ -61,7 +61,7 @@ export function buildManifest(input: ManifestInput): BuildManifestResult {
           },
         }
       : {}),
-    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'scripting', 'alarms'],
+    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'alarms'],
     host_permissions: ['http://*/*', 'https://*/*'],
     icons: {
       16: 'icons/icon-16.png',
