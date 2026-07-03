@@ -1,5 +1,6 @@
 export const extensionName = 'Very Good AdBlock'
-export const extensionDescription = 'A polished, performant, minimal, modern Manifest V3 ad blocker for popup, ad, YouTube, and Twitch protection.'
+// Store-facing summary (Chrome caps this at 132 chars).
+export const extensionDescription = 'Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. Fast, private, no telemetry.'
 // Firefox requires a stable add-on ID (browser_specific_settings.gecko.id) to sign
 // and publish an MV3 extension. Changing this after the first AMO submission
 // creates a new, disconnected listing, so it must stay fixed going forward.
