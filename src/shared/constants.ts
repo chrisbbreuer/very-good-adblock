@@ -1,5 +1,9 @@
 export const extensionName = 'Very Good AdBlock'
-export const extensionDescription = 'A polished, performant, minimal, modern Chrome MV3 ad blocker for popup, ad, YouTube, and Twitch protection.'
+export const extensionDescription = 'A polished, performant, minimal, modern Manifest V3 ad blocker for popup, ad, YouTube, and Twitch protection.'
+// Firefox requires a stable add-on ID (browser_specific_settings.gecko.id) to sign
+// and publish an MV3 extension. Changing this after the first AMO submission
+// creates a new, disconnected listing, so it must stay fixed going forward.
+export const extensionGeckoId = 'extension@verygoodadblock.org'
 export const staticRulesetId = 'very_good_adblock_static_rules'
 export const dynamicRuleStartId = 50000
 export const dynamicRuleEndId = 50999

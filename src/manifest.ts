@@ -1,26 +1,66 @@
-import { extensionDescription, extensionName, staticRulesetId } from './shared/constants'
+import { extensionDescription, extensionGeckoId, extensionName, staticRulesetId } from './shared/constants'
+
+export type ManifestTarget = 'chrome' | 'firefox'
 
 export interface ManifestInput {
   version: string
+  target?: ManifestTarget
 }
 
-export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
+// @types/chrome's ManifestV3.background only allows the Chrome `service_worker`
+// shape; widen it to also allow Firefox's `scripts` event-page shape, and add
+// the Firefox-only `browser_specific_settings` key.
+export type BuildManifestResult = Omit<chrome.runtime.ManifestV3, 'background'> & {
+  background?: { service_worker: string, type?: 'module' } | { scripts: string[], type?: 'module' }
+  browser_specific_settings?: {
+    gecko: {
+      id: string
+      strict_min_version: string
+      data_collection_permissions: {
+        required: ['none']
+      }
+    }
+  }
+}
+
+export function buildManifest(input: ManifestInput): BuildManifestResult {
+  const target = input.target ?? 'chrome'
+  const isFirefox = target === 'firefox'
+
   return {
     manifest_version: 3,
     name: extensionName,
     description: extensionDescription,
     version: input.version,
     // world: 'MAIN' content scripts (the X/YouTube source pruners) need Chrome 111+.
-    minimum_chrome_version: '111',
+    ...(isFirefox ? {} : { minimum_chrome_version: '111' }),
     action: {
       default_title: extensionName,
       default_popup: 'popup.html',
     },
     options_page: 'options.html',
-    background: {
-      service_worker: 'background.js',
-      type: 'module',
-    },
+    // Firefox has no MV3 service worker support; it runs `background.scripts` as
+    // a non-persistent event page instead. Chrome ignores `scripts` and requires
+    // `service_worker`, so the two targets need distinct shapes.
+    background: isFirefox
+      ? { scripts: ['background.js'], type: 'module' }
+      : { service_worker: 'background.js', type: 'module' },
+    ...(isFirefox
+      ? {
+          // Required for Firefox to sign/publish an MV3 add-on. `world: 'MAIN'`
+          // content scripts (the X/YouTube source pruners) need Firefox 128+, but
+          // data_collection_permissions below needs 140+, which is the binding floor.
+          browser_specific_settings: {
+            gecko: {
+              id: extensionGeckoId,
+              strict_min_version: '140.0',
+              // Required by AMO for all new extensions; this ships no telemetry
+              // and sends nothing to a developer-owned server, so "none" applies.
+              data_collection_permissions: { required: ['none'] },
+            },
+          },
+        }
+      : {}),
     permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'scripting', 'alarms'],
     host_permissions: ['http://*/*', 'https://*/*'],
     icons: {
