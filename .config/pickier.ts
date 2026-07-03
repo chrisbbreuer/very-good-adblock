@@ -5,6 +5,7 @@ const config: PickierConfig = {
   ignores: [
     '**/node_modules/**',
     '**/dist/**',
+    '**/dist-firefox/**',
     '**/build/**',
     '**/bin/**',
     '**/.git/**',
