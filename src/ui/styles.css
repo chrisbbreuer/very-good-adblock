@@ -257,7 +257,9 @@ h1 {
 
 .bar-chart.large {
   grid-template-columns: repeat(60, 1fr);
-  height: 220px;
+  flex: 1;
+  min-height: 220px;
+  height: auto;
 }
 
 .bar-chart span {
@@ -564,6 +566,8 @@ h1 {
 
 .dashboard-panel {
   min-height: 260px;
+  display: flex;
+  flex-direction: column;
 }
 
 .toggle-row {
