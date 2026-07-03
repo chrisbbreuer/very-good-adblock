@@ -1,14 +1,16 @@
 import { existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
+import type { BuildManifestResult } from '../src/manifest'
 
-const dist = 'dist'
+const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
+const dist = target === 'firefox' ? 'dist-firefox' : 'dist'
 const manifestPath = join(dist, 'manifest.json')
 
 if (!existsSync(manifestPath)) {
-  throw new Error('dist/manifest.json is missing. Run bun run build first.')
+  throw new Error(`${manifestPath} is missing. Run bun run build:${target} first.`)
 }
 
-const manifest = await Bun.file(manifestPath).json() as chrome.runtime.ManifestV3
+const manifest = await Bun.file(manifestPath).json() as BuildManifestResult
 const requiredFiles = new Set<string>([
   'popup.html',
   'options.html',
@@ -20,7 +22,11 @@ const requiredFiles = new Set<string>([
   'rules/static.json',
 ])
 
-for (const icon of Object.values(manifest.icons ?? {})) requiredFiles.add(icon)
+// Cast to a plain record: Omit<> in BuildManifestResult drops ManifestBase's index
+// signature, which otherwise makes TS infer `unknown` for Object.values/entries here.
+const icons = (manifest.icons ?? {}) as Record<string, string>
+
+for (const icon of Object.values(icons)) requiredFiles.add(icon)
 for (const resource of manifest.declarative_net_request?.rule_resources ?? []) requiredFiles.add(resource.path)
 for (const script of manifest.content_scripts ?? []) {
   for (const js of script.js ?? []) requiredFiles.add(js)
@@ -38,17 +44,28 @@ for (const entry of manifest.web_accessible_resources ?? []) {
 if (manifest.background && 'service_worker' in manifest.background) {
   requiredFiles.add(manifest.background.service_worker)
 }
+if (manifest.background && 'scripts' in manifest.background) {
+  for (const script of manifest.background.scripts ?? []) requiredFiles.add(script)
+}
 
 if (manifest.action?.default_popup) requiredFiles.add(manifest.action.default_popup)
 if (manifest.options_page) requiredFiles.add(manifest.options_page)
+
+if (target === 'firefox') {
+  if (!manifest.browser_specific_settings?.gecko?.id) throw new Error('Firefox manifest is missing browser_specific_settings.gecko.id')
+  if (!manifest.background || !('scripts' in manifest.background)) throw new Error('Firefox manifest must use background.scripts, not a service worker')
+}
+else if (manifest.background && !('service_worker' in manifest.background)) {
+  throw new Error('Chrome manifest must use background.service_worker')
+}
 
 for (const file of requiredFiles) {
   const path = join(dist, file)
   if (!existsSync(path)) throw new Error(`Manifest references missing file: ${file}`)
 }
 
-for (const [size, icon] of Object.entries(manifest.icons ?? {})) {
-  if (extname(icon) !== '.png') throw new Error(`Manifest icon ${size} must be PNG for Chrome store readiness: ${icon}`)
+for (const [size, icon] of Object.entries(icons)) {
+  if (extname(icon) !== '.png') throw new Error(`Manifest icon ${size} must be PNG for store readiness: ${icon}`)
   const bytes = await Bun.file(join(dist, icon)).arrayBuffer()
   if (bytes.byteLength < 100) throw new Error(`Manifest icon ${size} is unexpectedly small: ${icon}`)
 }
@@ -84,4 +101,4 @@ for (const rule of staticRules) {
   }
 }
 
-console.log(`Validated MV3 artifact: ${requiredFiles.size} referenced files, ${staticRules.length} static rules`)
+console.log(`Validated ${target} MV3 artifact: ${requiredFiles.size} referenced files, ${staticRules.length} static rules`)

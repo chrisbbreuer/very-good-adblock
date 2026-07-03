@@ -4,7 +4,11 @@ import packageJson from '../package.json'
 import { buildManifest } from '../src/manifest'
 import { buildStaticRules } from '../src/rules/static-rules'
 
-const outdir = './dist'
+const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
+// Chrome keeps the historical flat `dist/` path other tooling (site build, smoke
+// tests, docs) already assumes; Firefox gets a sibling directory instead of
+// disturbing that default.
+const outdir = target === 'firefox' ? './dist-firefox' : './dist'
 
 async function clean(): Promise<void> {
   await Bun.$`rm -rf ${outdir}`
@@ -105,7 +109,7 @@ async function copyPublic(): Promise<void> {
 }
 
 async function writeGeneratedFiles(): Promise<void> {
-  await Bun.write(`${outdir}/manifest.json`, `${JSON.stringify(buildManifest({ version: packageJson.version }), null, 2)}\n`)
+  await Bun.write(`${outdir}/manifest.json`, `${JSON.stringify(buildManifest({ version: packageJson.version, target }), null, 2)}\n`)
   await Bun.write(`${outdir}/rules/static.json`, `${JSON.stringify(buildStaticRules(), null, 2)}\n`)
 }
 
@@ -115,4 +119,4 @@ await buildScripts()
 await copyPublic()
 await writeGeneratedFiles()
 
-console.log(`Built ${packageJson.name} ${packageJson.version} into ${outdir}`)
+console.log(`Built ${packageJson.name} ${packageJson.version} (${target}) into ${outdir}`)
