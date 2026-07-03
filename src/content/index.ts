@@ -55,7 +55,6 @@ function boot(): void {
  * the counts they report back, attributed to the right source.
  */
 function onPruneMessage(event: MessageEvent): void {
-  if (event.source !== window || event.origin !== location.origin) return
   const data = event.data as { source?: string, count?: unknown } | null
   if (!data) return
 
@@ -65,16 +64,26 @@ function onPruneMessage(event: MessageEvent): void {
   const count = Math.min(Number(data.count), maxPruneEventCount)
   if (!Number.isFinite(count) || count <= 0) return
 
+  // Pop-up blocks are reported from the guard in every frame — including the
+  // player iframe, which posts up to this top window — so they are not required
+  // to be same-window/same-origin. (Capped stats only.)
+  if (data.source === popupBlockMessageSource) {
+    if (popupBlockActive) {
+      queueEvent('popup', 'other', count)
+      scheduleEventFlush()
+    }
+    return
+  }
+
+  // Ad-prune reports come only from the same-window MAIN pruner.
+  if (event.source !== window || event.origin !== location.origin) return
+
   if (data.source === xPruneMessageSource && xPruneActive) {
     queueEvent('x', 'other', count)
     scheduleEventFlush()
   }
   else if (data.source === ytPruneMessageSource && ytPruneActive) {
     queueEvent('video', 'media', count, estimateBytesSaved('media', count), estimateVideoSecondsSaved() * count)
-    scheduleEventFlush()
-  }
-  else if (data.source === popupBlockMessageSource && popupBlockActive) {
-    queueEvent('popup', 'other', count)
     scheduleEventFlush()
   }
 }

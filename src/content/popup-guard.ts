@@ -84,7 +84,7 @@ function installPopupGuard(): void {
     if (recentOpens.length >= 3) allow = false
 
     if (!allow) {
-      bridge.report(1)
+      reportBlock()
       return decoyWindow()
     }
 
@@ -94,6 +94,22 @@ function installPopupGuard(): void {
 
   ;(guarded as { __vgaGuarded?: boolean }).__vgaGuarded = true
   window.open = guarded as typeof window.open
+}
+
+/**
+ * Report a blocked pop-up to the top frame, where the isolated content script
+ * aggregates stats. Pop-unders fire inside sub-frames (the player iframe), which
+ * have no content script of their own, so posting to the current window would be
+ * lost — post to `window.top` instead.
+ */
+function reportBlock(): void {
+  try {
+    const target = window.top ?? window
+    target.postMessage({ source: popupBlockMessageSource, count: 1 }, '*')
+  }
+  catch {
+    // Cross-origin restrictions on window.top — the block still happened.
+  }
 }
 
 interface GestureInfo {
