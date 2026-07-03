@@ -119,6 +119,15 @@ jobs:
       - name: Package Extension
         run: bun run package
 
+      - name: Build Firefox
+        run: bun run build:firefox
+
+      - name: Validate Firefox Artifact
+        run: bun run validate:extension:firefox
+
+      - name: Package Firefox
+        run: bun run package:firefox
+
   smoke:
     needs: [build]
     runs-on: ubuntu-latest
