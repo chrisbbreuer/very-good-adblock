@@ -1,11 +1,11 @@
 ---
 title: Very Good AdBlock
-description: A polished, performant, minimal, modern Chrome MV3 ad blocker with local-first stats and immediate pop-up, placement, YouTube, and Twitch protection.
+description: A polished, performant, minimal, modern Manifest V3 ad blocker for Chrome and Firefox with local-first stats and immediate pop-up, placement, YouTube, and Twitch protection.
 layout: home
 hero:
   name: Very Good AdBlock
   text: Block ads before they get in your way.
-  tagline: A polished, performant, minimal, modern Chrome Manifest V3 extension built because intrusive popups, obstructive placements, YouTube ads, and Twitch interruptions should be gone immediately, not after they interrupt you. It keeps lifetime stats, syncs compact totals for fresh installs, and stays transparent about estimates.
+  tagline: A polished, performant, minimal, modern Manifest V3 extension for Chrome and Firefox, built because intrusive popups, obstructive placements, YouTube ads, and Twitch interruptions should be gone immediately, not after they interrupt you. It keeps lifetime stats, syncs compact totals for fresh installs, and stays transparent about estimates.
   actions:
     - theme: brand
       text: Install Locally
@@ -37,7 +37,7 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 
 ## What To Read First
 
-- [Install locally](/guide/install) if you want to load the unpacked extension in Chrome.
+- [Install locally](/guide/install) if you want to load the unpacked extension in Chrome or Firefox.
 - [Usage](/guide/usage) if you want to pause a site, inspect stats, or reset/export history.
 - [YouTube and Twitch video helpers](/architecture/youtube-x) if you want the details behind skip automation and saved-time estimates.
 - [Stats and cloud sync](/architecture/stats-sync) if you want to know what follows a user into a fresh install.
@@ -51,4 +51,4 @@ bun run test
 bun run smoke:chrome
 ```
 
-Load `dist/` as an unpacked Chrome extension during development.
+Load `dist/` as an unpacked Chrome extension during development, or run `bun run build:firefox` and load `dist-firefox/` in Firefox (see [Install](/guide/install)).

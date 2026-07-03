@@ -10,10 +10,11 @@ Very Good AdBlock is a Bun TypeScript project with STX-authored extension UI and
 ## Extension Build
 
 ```bash
-bun run build
+bun run build           # Chrome, output to dist/
+bun run build:firefox   # Firefox, output to dist-firefox/
 ```
 
-Build output goes to `dist/`.
+Both targets share one codebase; `src/manifest.ts` generates the browser-specific `manifest.json` (service worker vs. event page, `browser_specific_settings.gecko`, etc.) at build time. See [Install](/guide/install) for loading and packaging each target.
 
 ## Docs
 

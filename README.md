@@ -1,6 +1,6 @@
 # Very Good AdBlock
 
-A fast Chrome Manifest V3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source, then stays out of the way. No telemetry. Built with Bun, TypeScript, and STX.
+A fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source, then stays out of the way. No telemetry. Built with Bun, TypeScript, and STX.
 
 ## Why
 
@@ -8,7 +8,8 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 
 ## Features
 
-- Chrome MV3 `declarativeNetRequest` blocking with static bundled rules.
+- Cross-browser Manifest V3 build (Chrome and Firefox) sharing one codebase, with per-target manifests generated at build time.
+- MV3 `declarativeNetRequest` blocking with static bundled rules.
 - Dynamic local rules for per-site allowlisting.
 - Pinned generated host rules from EasyList and AdGuard filter-list revisions.
 - YouTube skip assist, non-skippable video-ad fast-forward, and anti-adblock popup dismissal through a conservative content script.
@@ -30,22 +31,35 @@ bun install
 bun run build
 ```
 
-Load `dist/` as an unpacked extension in Chrome.
+Load `dist/` as an unpacked extension in Chrome (`chrome://extensions` → Developer mode → Load unpacked).
 
 The STX marketing page is emitted at `dist/marketing.html` during `bun run build`.
 The deployable website is emitted at `dist/site` during `bun run site:build`, with docs mounted under `/docs`.
+
+### Firefox
+
+```bash
+bun run build:firefox
+```
+
+This emits a Firefox-flavored build (an event-page `background`, `browser_specific_settings.gecko`, and no `minimum_chrome_version`) into `dist-firefox/`. Load it temporarily via `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → select `dist-firefox/manifest.json`, or run `bun run dev:firefox` to launch it automatically with `web-ext run`.
 
 ## Scripts
 
 ```bash
 bun run build
+bun run build:chrome
+bun run build:firefox
+bun run dev:firefox
 bun run docs:build
 bun run docs:dev
 bun run docs:preview
 bun run site:build
 bun run package
+bun run package:firefox
 bun run update:filters
 bun run validate:extension
+bun run validate:extension:firefox
 bun run validate:rules
 bun run smoke:chrome
 bun run test
