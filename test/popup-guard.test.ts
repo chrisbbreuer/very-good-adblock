@@ -38,13 +38,20 @@ describe('built pop-up guard', () => {
         oauthAllowed: boolean
         sameOriginAllowed: boolean
         floodBlocked: boolean
+        linkPiggybackBlocked: boolean
+        linkOwnHrefAllowed: boolean
         reported: number
       }>(`window.__guardTest`)
 
+      expect((result as { error?: string }).error ?? null).toBeNull()
       expect(result.blockedIsDecoy).toBe(true)
       expect(result.oauthAllowed).toBe(true)
       expect(result.sameOriginAllowed).toBe(true)
       expect(result.floodBlocked).toBe(true)
+      // Clicking a real link must not let a pop-up to a *different* ad domain
+      // through, but a pop-up to the link's own destination is fine.
+      expect(result.linkPiggybackBlocked).toBe(true)
+      expect(result.linkOwnHrefAllowed).toBe(true)
       expect(result.reported).toBeGreaterThanOrEqual(1)
       expect(errors).toEqual([])
     }
@@ -77,6 +84,8 @@ function fixture(guardScript: string): string {
   <body>
     <div id="video">play</div>
     <button id="signin">Sign in</button>
+    <a id="navlink" href="/other-page">Other page</a>
+    <a id="extlink" href="https://legit.example/page">External</a>
     <script>
       // Stand in for the native window.open so "allowed" calls are observable
       // without actually opening a window; the guard wraps this as its original.
@@ -90,27 +99,43 @@ function fixture(guardScript: string): string {
           if (e.source === window && e.data && e.data.source === ${source}) reported += Number(e.data.count) || 0;
         });
 
+        // Stop the test's synthetic link clicks from actually navigating away
+        // (the guard still records the gesture in its capture-phase listener).
+        document.addEventListener('click', function (e) { e.preventDefault(); }, true);
+
         function clickOn(id) {
-          document.getElementById(id).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          document.getElementById(id).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
         }
         function isDecoy(w) {
           return !!(w && !w.__stub && w.document && typeof w.document.write === 'function');
         }
 
-        // Pop-under: click a non-interactive div, then open a cross-origin URL.
+       try {
+        // Blocked cases first (they don't count toward the flood budget):
+        // Pop-under — click a non-interactive div, then open a cross-origin URL.
         clickOn('video');
         var blocked = window.open('https://ads.example/pop');
 
-        // OAuth: click a real button, then open a cross-origin URL.
+        // Link piggyback — click a real link, but the pop-up goes to a *different*
+        // ad domain (not where the link points).
+        clickOn('navlink');
+        var piggyback = window.open('https://ads.example/pop');
+
+        // Allowed cases (each pushes toward the flood budget):
+        // Link opening its own external destination.
+        clickOn('extlink');
+        var linkOwn = window.open('https://legit.example/page');
+
+        // Same-origin pop-up.
+        var same = window.open('/player');
+
+        // OAuth — a real button, cross-origin.
         clickOn('signin');
         var oauth = window.open('https://accounts.example/oauth');
 
-        // Same-origin pop-up (no gesture needed).
-        var same = window.open('/player');
-
-        // Flood: repeated opens from non-interactive clicks.
+        // Flood: further opens in the same window are throttled.
         var floodBlocked = false;
-        for (var i = 0; i < 4; i++) { clickOn('video'); var r = window.open('/x' + i); if (isDecoy(r)) floodBlocked = true; }
+        for (var i = 0; i < 4; i++) { clickOn('signin'); var r = window.open('/x' + i); if (isDecoy(r)) floodBlocked = true; }
 
         setTimeout(function () {
           window.__guardTest = {
@@ -118,10 +143,13 @@ function fixture(guardScript: string): string {
             oauthAllowed: !!(oauth && oauth.__stub),
             sameOriginAllowed: !!(same && same.__stub),
             floodBlocked: floodBlocked,
+            linkPiggybackBlocked: isDecoy(piggyback),
+            linkOwnHrefAllowed: !!(linkOwn && linkOwn.__stub),
             reported: reported,
             done: true,
           };
         }, 50);
+       } catch (err) { window.__guardTest = { done: true, error: String(err) }; }
       }());
     </script>
   </body>

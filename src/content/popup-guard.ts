@@ -24,14 +24,18 @@ function installPopupGuard(): void {
 
   const bridge = createPruneBridge(popupConfigMessageSource, popupBlockMessageSource)
 
-  // Track the most recent user gesture and whether it landed on a real control.
+  // Track the most recent user gesture: when, what kind of element it hit, and
+  // (for links) where that link points.
   let gestureAt = 0
-  let gestureInteractive = false
+  let gestureKind: 'anchor' | 'control' | 'other' = 'other'
+  let gestureHref = ''
   const gestureEvents = ['pointerdown', 'mousedown', 'click', 'keydown', 'touchstart']
   for (const type of gestureEvents) {
     window.addEventListener(type, (event) => {
+      const info = classifyGesture(event.target)
       gestureAt = timestamp()
-      gestureInteractive = hitInteractiveControl(event.target)
+      gestureKind = info.kind
+      gestureHref = info.href
     }, { capture: true, passive: true })
   }
 
@@ -43,16 +47,36 @@ function installPopupGuard(): void {
     const now = timestamp()
     while (recentOpens.length && now - recentOpens[0] > 4000) recentOpens.shift()
 
-    const href = url == null ? '' : String(url)
+    const openOrigin = originOf(url == null ? '' : String(url))
+    const sameOriginPage = openOrigin !== '' && openOrigin === window.location.origin
     const withGesture = now - gestureAt < 1000
-    const fromControl = withGesture && gestureInteractive
-    const crossOrigin = !isSameOrigin(href)
 
-    // Abusive when a cross-origin (or blank) pop-up is opened from a click that
-    // did not hit a link/button, with no gesture at all, or in a flood.
-    const abusive = (crossOrigin && !fromControl) || !withGesture || recentOpens.length >= 2
+    let allow: boolean
+    if (!withGesture) {
+      // No user gesture at all — a timer-driven pop-under.
+      allow = false
+    }
+    else if (gestureKind === 'anchor') {
+      // Clicking a link: only allow the pop-up if it goes where the link points
+      // (or stays same-origin). A pop-up to a different ad domain is a pop-under
+      // piggybacking on the click, even though a real link was clicked.
+      const linkOrigin = originOf(gestureHref)
+      allow = sameOriginPage || (openOrigin !== '' && openOrigin === linkOrigin)
+    }
+    else if (gestureKind === 'control') {
+      // A real button/input — OAuth, share, payment pop-ups live here.
+      allow = true
+    }
+    else {
+      // Clicking a non-interactive area (video/overlay): same-origin only.
+      allow = sameOriginPage
+    }
 
-    if (abusive) {
+    // Never let a flood through, whatever the gesture was (a couple of legit
+    // pop-ups in a row is fine; a burst is the pop-under signature).
+    if (recentOpens.length >= 3) allow = false
+
+    if (!allow) {
       bridge.report(1)
       return decoyWindow()
     }
@@ -65,30 +89,46 @@ function installPopupGuard(): void {
   window.open = guarded as typeof window.open
 }
 
-/** Walk up from the event target to see if a real interactive control was hit. */
-function hitInteractiveControl(node: EventTarget | null): boolean {
+interface GestureInfo {
+  kind: 'anchor' | 'control' | 'other'
+  href: string
+}
+
+/** Walk up from the event target to classify what the user actually clicked. */
+function classifyGesture(node: EventTarget | null): GestureInfo {
   let element = node instanceof Element ? node : null
   for (let depth = 0; element && depth < 12; depth++) {
     const tag = element.tagName
-    if (tag === 'A' && element.getAttribute('href')) return true
-    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return true
-    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return true
+    const href = element.getAttribute('href')
+    if (tag === 'A' && href) return { kind: 'anchor', href: resolve(href) }
+    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '' }
+    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '' }
     if (tag === 'INPUT') {
       const type = (element.getAttribute('type') ?? '').toLowerCase()
-      if (type === 'button' || type === 'submit' || type === 'image') return true
+      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '' }
     }
     element = element.parentElement
   }
-  return false
+  return { kind: 'other', href: '' }
 }
 
-function isSameOrigin(href: string): boolean {
-  if (!href) return false
+function resolve(href: string): string {
   try {
-    return new URL(href, window.location.href).origin === window.location.origin
+    return new URL(href, window.location.href).href
   }
   catch {
-    return false
+    return ''
+  }
+}
+
+/** The origin of a URL resolved against the page, or '' if it has none/invalid. */
+function originOf(url: string): string {
+  if (!url) return ''
+  try {
+    return new URL(url, window.location.href).origin
+  }
+  catch {
+    return ''
   }
 }
 
