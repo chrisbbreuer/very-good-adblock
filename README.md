@@ -1,6 +1,6 @@
 # Very Good AdBlock
 
-A polished, performant, minimal, modern Chrome Manifest V3 ad blocker for immediate pop-up, ad, YouTube, and Twitch interruption cleanup, built with Bun, TypeScript, and STX.
+A fast Chrome Manifest V3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source, then stays out of the way. No telemetry. Built with Bun, TypeScript, and STX.
 
 ## Why
 
