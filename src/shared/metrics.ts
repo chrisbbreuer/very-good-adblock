@@ -35,7 +35,9 @@ export function formatBytes(bytes: number): string {
 
 export function formatMinutes(seconds: number): string {
   const minutes = seconds / 60
-  return `${minutes >= 10 ? minutes.toFixed(0) : minutes.toFixed(1)} min`
+  if (minutes < 60) return `${minutes >= 10 ? minutes.toFixed(0) : minutes.toFixed(1)} min`
+  const hours = minutes / 60
+  return `${hours >= 10 ? hours.toFixed(0) : hours.toFixed(1)} hr`
 }
 
 export function compactBuckets(buckets: StatBucket[], limit: number): StatBucket[] {
