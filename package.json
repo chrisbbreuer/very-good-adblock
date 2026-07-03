@@ -41,6 +41,7 @@
     "package:firefox": "bun run build:firefox && bun run validate:extension:firefox && bun --bun scripts/package-extension.ts --target=firefox",
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
+    "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
     "update:filters": "bun --bun scripts/update-filter-sources.ts",
     "validate:extension": "bun --bun scripts/validate-extension.ts",
