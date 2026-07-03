@@ -54,11 +54,15 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
       },
       {
         // Defuses abusive pop-ups/pop-unders by wrapping window.open in the
-        // page's own context (MV3 DNR cannot block pop-ups).
+        // page's own context (MV3 DNR cannot block pop-ups). Runs in every frame
+        // — pop-under scripts live in the player iframe, and some grab a fresh
+        // window.open from an about:blank iframe to dodge a top-frame-only guard.
         matches: ['http://*/*', 'https://*/*'],
         js: ['popup-guard.js'],
         run_at: 'document_start',
         world: 'MAIN',
+        all_frames: true,
+        match_about_blank: true,
       },
     ],
     declarative_net_request: {

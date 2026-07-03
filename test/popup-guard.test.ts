@@ -61,6 +61,7 @@ describe('built pop-up guard', () => {
       Bun.WebView.closeAll()
     }
   }, 30_000)
+
 })
 
 async function buildScript(): Promise<string> {

@@ -24,6 +24,13 @@ function installPopupGuard(): void {
 
   const bridge = createPruneBridge(popupConfigMessageSource, popupBlockMessageSource)
 
+  // Sub-frames (player iframes, ad iframes) stay guarded unconditionally: the
+  // content script's config only reaches the top frame, and honoring a config
+  // message inside a sub-frame would let a hostile ad frame post its own
+  // `enabled: false` to switch the guard off. The top frame honors the config.
+  const isTopFrame = window === window.top
+  const active = (): boolean => (isTopFrame ? bridge.isEnabled() : true)
+
   // Track the most recent user gesture: when, what kind of element it hit, and
   // (for links) where that link points.
   let gestureAt = 0
@@ -42,7 +49,7 @@ function installPopupGuard(): void {
   const recentOpens: number[] = []
 
   const guarded = function open(url?: string | URL, target?: string, features?: string): Window | null {
-    if (!bridge.isEnabled()) return original.call(window, url as string, target, features)
+    if (!active()) return original.call(window, url as string, target, features)
 
     const now = timestamp()
     while (recentOpens.length && now - recentOpens[0] > 4000) recentOpens.shift()
