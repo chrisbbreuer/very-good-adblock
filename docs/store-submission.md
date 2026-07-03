@@ -1,0 +1,76 @@
+# Store submission
+
+Copy-paste reference for the Chrome Web Store and Firefox AMO listings. Keep this
+in sync with `src/shared/constants.ts` (name/description) and `package.json`.
+
+## Basics
+
+- **Name:** Very Good AdBlock
+- **Category:** Productivity (Chrome) / Privacy & Security (Firefox)
+- **Primary language:** English
+- **Short description (max 132 chars):**
+  > Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. Fast, private, no telemetry.
+
+## Detailed description
+
+> Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at
+> the source, then stays out of the way. It is a Manifest V3 extension built to be
+> fast and private: no accounts, no tracking, no data leaves your machine.
+>
+> What it does
+> - Network blocking. Stops 14,000+ ad, tracker, and annoyance hosts before the
+> request completes, using bundled declarativeNetRequest rules that refresh from
+> a pinned public filter list.
+> - YouTube and Twitch. Strips video ads out of YouTube's player response so the
+> real video starts immediately, skips anything that slips through, and detects
+> Twitch stream ads. The player itself is never touched.
+> - Pop-ups and pop-unders. Neutralizes the click-hijack pop-ups that streaming
+> and file-host sites open, including the ones fired from inside a player iframe.
+> - Cookie banners. Optional one-click hiding of the common consent overlays.
+> - One-click control. Pause protection per site, keep an allowlist, and read
+> local stats (blocked count, data saved, video time) from a clean dashboard.
+>
+> Privacy
+> - No telemetry and no analytics. Nothing about your browsing is collected or
+> sent anywhere. Settings and lifetime totals sync through your own browser
+> account only; the detailed history stays on the device.
+
+## Permission justifications
+
+| Permission | Why it is needed |
+|---|---|
+| `declarativeNetRequest` | Block ad, tracker, and pop-up network requests using bundled rule lists. |
+| `declarativeNetRequestFeedback` | Show the number of items blocked on the current page as the toolbar badge. It only reports which of the extension's own rules matched in the active tab; it does not read browsing history. |
+| `storage` | Save your settings and local statistics, and sync compact totals across your own installs. |
+| `tabs` | Read the active tab's URL and favicon to show per-site stats and the per-site allow/pause toggle. |
+| `alarms` | Schedule the daily filter-list refresh and the timer that resumes protection after a pause. |
+| `host_permissions` (`http://*/*`, `https://*/*`) | Apply cosmetic hiding, source-level ad pruning, and pop-up blocking on the pages you choose to visit. Nothing is read or sent off-device. |
+
+## Data collection disclosure
+
+Both stores ask what data is collected. The answer is **none**:
+
+- No personally identifiable information, browsing history, or content is collected.
+- No data is transmitted to the developer or any third party.
+- The only network request the extension makes is a daily fetch of the public
+  filter-host list from GitHub (no user data attached).
+
+Firefox AMO: `browser_specific_settings.gecko.data_collection_permissions` is set
+to `none` in the generated manifest.
+
+## Screenshots
+
+Generate with `bun run screenshots` (writes 1280x800 PNGs to `dist/store/`):
+
+1. `popup.png` - the toolbar popup: blocked-on-this-page count, 24h chart, per-site controls.
+2. `dashboard.png` - the dashboard: lifetime stats, history, protection toggles.
+3. `controls.png` - the popup mid-pause, showing per-site control.
+
+## Firefox notes
+
+- Build the AMO artifact with `bun run package:firefox` (produces
+  `very-good-adblock-<version>-firefox.zip` from `dist-firefox/`).
+- The add-on id (`browser_specific_settings.gecko.id`) must stay stable across
+  submissions or AMO treats it as a new, disconnected add-on.
+- Source code is required for AMO review because the build is minified: point the
+  reviewer at this repository and the `bun run build:firefox` command.
