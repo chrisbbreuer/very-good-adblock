@@ -465,6 +465,7 @@ function defaultSmokeSettings(): ExtensionSettings {
     cosmeticFiltering: true,
     aggressiveCosmetic: false,
     cookieConsentFiltering: false,
+    popupBlocking: true,
     youtubeEnhancements: true,
     twitchEnhancements: true,
     allowedSites: [],

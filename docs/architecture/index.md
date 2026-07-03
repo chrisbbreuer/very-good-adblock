@@ -39,6 +39,7 @@ Content scripts handle the placements network rules cannot reach:
 
 - Cosmetic filtering hides first-party ad placements (YouTube feed/masthead/display ads, Twitch ad affordances) via a stylesheet injected at `document_start` so ads never flash in. X promoted tweets are pruned at the source by a MAIN-world script that strips `promotedMetadata` entries from X's GraphQL responses (uBlock's approach), with a DOM label check as fallback.
 - YouTube video ads are pruned at the source by a MAIN-world script that strips `adPlacements`/`adSlots`/`playerAds` from player responses (inline and `/youtubei/v1/player`), so the real video plays with no pre/mid-roll; skip-button clicks and fast-forward remain as a safety net.
+- Pop-up/pop-under defusing: a MAIN-world script wraps `window.open` and blocks the abusive pattern (cross-origin opens from clicking non-interactive areas, gesture-less opens, floods) while allowing legit pop-ups (OAuth, share); blocked calls get a decoy window so the site doesn't retry.
 - Dismissal of YouTube's anti-adblock enforcement popup, restoring scroll and playback.
 - Twitch video-ad markers used to estimate saved time.
 - Throttled mutation scans that tag hidden placements and catch late-loading video controls and markers.

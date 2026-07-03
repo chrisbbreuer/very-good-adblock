@@ -1,6 +1,6 @@
 export type ResourceCategory = 'document' | 'script' | 'image' | 'media' | 'stylesheet' | 'xhr' | 'font' | 'other'
 
-export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual' | 'cosmetic' | 'youtube' | 'x' | 'consent'
+export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual' | 'cosmetic' | 'youtube' | 'x' | 'consent' | 'popup'
 
 export interface ExtensionSettings {
   enabled: boolean
@@ -8,6 +8,7 @@ export interface ExtensionSettings {
   cosmeticFiltering: boolean
   aggressiveCosmetic: boolean
   cookieConsentFiltering: boolean
+  popupBlocking: boolean
   youtubeEnhancements: boolean
   twitchEnhancements: boolean
   allowedSites: string[]

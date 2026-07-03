@@ -1,4 +1,4 @@
-import { twitchVideoAdMarkers, xConfigMessageSource, xPromotedLabels, xPruneMessageSource, ytConfigMessageSource, ytPruneMessageSource } from '../shared/constants'
+import { popupBlockMessageSource, popupConfigMessageSource, twitchVideoAdMarkers, xConfigMessageSource, xPromotedLabels, xPruneMessageSource, ytConfigMessageSource, ytPruneMessageSource } from '../shared/constants'
 import { activeCosmeticGroups } from '../shared/cosmetic'
 import type { ActiveCosmeticGroup, CosmeticContext } from '../shared/cosmetic'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
@@ -30,6 +30,7 @@ let adRestoreRate: number | undefined
 let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
+let popupBlockActive = false
 
 boot()
 
@@ -40,9 +41,10 @@ function boot(): void {
   // cosmetic filtering is disabled; adding aggressive selectors if enabled).
   injectCosmeticStyle(provisionalGroups())
 
-  // Count ads the MAIN-world pruners remove at the network layer. Attached early
-  // so stats capture ads pruned before settings finish loading.
-  if (isX() || isYouTube()) window.addEventListener('message', onPruneMessage)
+  // Count what the MAIN-world scripts block (ad pruners on X/YouTube, the pop-up
+  // guard everywhere). Attached early so stats capture blocks that happen before
+  // settings finish loading.
+  window.addEventListener('message', onPruneMessage)
 
   void start()
 }
@@ -71,6 +73,10 @@ function onPruneMessage(event: MessageEvent): void {
     queueEvent('video', 'media', count, estimateBytesSaved('media', count), estimateVideoSecondsSaved() * count)
     scheduleEventFlush()
   }
+  else if (data.source === popupBlockMessageSource && popupBlockActive) {
+    queueEvent('popup', 'other', count)
+    scheduleEventFlush()
+  }
 }
 
 async function start(): Promise<void> {
@@ -96,6 +102,9 @@ async function start(): Promise<void> {
     ytPruneActive = settings.enabled && !allowed && settings.youtubeEnhancements
     window.postMessage({ source: ytConfigMessageSource, enabled: ytPruneActive }, location.origin)
   }
+  // The pop-up guard runs on every site, so always tell it whether to act.
+  popupBlockActive = settings.enabled && !allowed && settings.popupBlocking
+  window.postMessage({ source: popupConfigMessageSource, enabled: popupBlockActive }, location.origin)
 
   if (!settings.enabled || allowed) return
 

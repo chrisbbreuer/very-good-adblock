@@ -57,6 +57,8 @@ export const xPruneMessageSource = 'very-good-adblock:x-prune'
 export const xConfigMessageSource = 'very-good-adblock:x-config'
 export const ytPruneMessageSource = 'very-good-adblock:yt-prune'
 export const ytConfigMessageSource = 'very-good-adblock:yt-config'
+export const popupBlockMessageSource = 'very-good-adblock:popup-blocked'
+export const popupConfigMessageSource = 'very-good-adblock:popup-config'
 
 export const twitchVideoAdMarkers = [
   '.player-ad-notice',

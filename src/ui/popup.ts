@@ -248,6 +248,7 @@ function sourceLabel(source: string): string | undefined {
   if (source === 'youtube') return 'YouTube placements'
   if (source === 'cosmetic') return 'Hidden placements'
   if (source === 'consent') return 'Cookie banners'
+  if (source === 'popup') return 'Pop-ups'
   if (source === 'x') return 'X promoted'
   if (source === 'manual') return 'Manual rules'
   return undefined

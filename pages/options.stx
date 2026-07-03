@@ -74,6 +74,10 @@
             <input id="setting-consent" type="checkbox">
           </label>
           <label class="toggle-row">
+            <span>Block pop-ups &amp; pop-unders</span>
+            <input id="setting-popup" type="checkbox">
+          </label>
+          <label class="toggle-row">
             <span>YouTube skip assist</span>
             <input id="setting-youtube" type="checkbox">
           </label>

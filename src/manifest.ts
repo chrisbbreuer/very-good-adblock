@@ -52,6 +52,14 @@ export function buildManifest(input: ManifestInput): chrome.runtime.ManifestV3 {
         run_at: 'document_start',
         world: 'MAIN',
       },
+      {
+        // Defuses abusive pop-ups/pop-unders by wrapping window.open in the
+        // page's own context (MV3 DNR cannot block pop-ups).
+        matches: ['http://*/*', 'https://*/*'],
+        js: ['popup-guard.js'],
+        run_at: 'document_start',
+        world: 'MAIN',
+      },
     ],
     declarative_net_request: {
       rule_resources: [
