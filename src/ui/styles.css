@@ -270,35 +270,33 @@ h1 {
   transform: translateY(-2px);
 }
 
-.bar-chart span::after {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  z-index: 4;
-  width: max-content;
-  max-width: 138px;
-  padding: 6px 8px;
+.chart-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483000;
+  max-width: 240px;
+  padding: 6px 9px;
   border: 1px solid rgba(226, 255, 239, 0.22);
   border-radius: 9px;
   color: #f8fffb;
-  background: rgba(4, 14, 12, 0.94);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
-  content: none;
-  font-size: 10px;
-  font-weight: 800;
+  background: rgba(4, 14, 12, 0.97);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.2;
-  opacity: 0;
   pointer-events: none;
-  text-align: center;
-  transform: translate(-50%, 4px);
-  transition: opacity 140ms ease, transform 140ms ease;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(3px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms;
 }
 
-.bar-chart span:hover::after,
-.bar-chart span:focus-visible::after {
-  content: attr(data-tooltip);
+.chart-tooltip[data-visible="true"] {
   opacity: 1;
-  transform: translate(-50%, 0);
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .timeline-footer {
