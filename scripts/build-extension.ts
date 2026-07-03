@@ -46,6 +46,7 @@ async function sanitizeHtml(filename: string, scriptNames: string[]): Promise<vo
     .replace(/\n?\s*<style\b[\s\S]*?<\/style>/g, '')
     .replace(new RegExp(`\\n?\\s*<script\\b${protectedScripts}[\\s\\S]*?<\\/script>`, 'g'), '')
     .replaceAll('href="/styles.css"', 'href="styles.css"')
+    .replaceAll('href="/icons/', 'href="icons/')
 
   for (const scriptName of scriptNames) {
     html = html.replaceAll(`src="/${scriptName}"`, `src="${scriptName}"`)

@@ -3,8 +3,16 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a polished, performant, minimal, modern Chrome MV3 ad blocker for pop-ups, YouTube, Twitch, and ad protection.">
-    <title>Very Good AdBlock - Immediate, Modern Ad Protection</title>
+    <meta name="description" content="Very Good AdBlock is a fast Chrome MV3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta name="theme-color" content="#08110f">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Very Good AdBlock">
+    <meta property="og:description" content="A fast Chrome MV3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta property="og:image" content="icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>Very Good AdBlock - fast, private Chrome ad blocker</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="marketing-shell">
@@ -25,91 +33,63 @@
       <section class="marketing-hero">
         <div class="hero-copy">
           <p class="eyebrow">Chrome MV3 ad blocker</p>
-          <h1>Very Good AdBlock</h1>
+          <h1>Ads gone before the page loads.</h1>
           <p class="hero-lede">
-            A polished, performant, minimal, modern Chrome MV3 ad blocker for immediate pop-up, YouTube, Twitch,
-            and ad protection. Built to stay fast while removing intrusive interruptions before they take over the page.
+            Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at the source,
+            then stays out of the way. No telemetry, no bloat.
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install">Install locally</a>
-            <a class="secondary-link" href="#features">See protection</a>
+            <a class="secondary-link" href="#features">How it works</a>
           </div>
         </div>
 
-        <div class="hero-product" aria-label="Very Good AdBlock product preview">
-          <div class="browser-preview">
-            <div class="browser-bar">
-              <span></span>
-              <span></span>
-              <span></span>
-              <strong>youtube.com/watch</strong>
-            </div>
-            <div class="watch-preview">
-              <div class="video-surface">
-                <div class="skip-badge">Video ad skipped · 0:27 saved</div>
-                <div class="play-ring"></div>
-              </div>
-              <div class="feed-lines">
-                <span class="line wide"></span>
-                <span class="line"></span>
-                <span class="line short"></span>
-                <span class="blocked-chip">3 sponsored placements removed</span>
-              </div>
-            </div>
-          </div>
-
-          <aside class="hero-popup-preview">
-            <div class="preview-topline">
-              <span>Protection active</span>
-              <strong>98%</strong>
-            </div>
-            <div class="preview-stats">
-              <div>
-                <strong>1,248</strong>
-                <span>blocked today</span>
-              </div>
-              <div>
-                <strong>312 MB</strong>
-                <span>data saved</span>
-              </div>
-              <div>
-                <strong>41 min</strong>
-                <span>video time</span>
-              </div>
-            </div>
-            <div class="mini-bars" aria-hidden="true">
-              <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
-          </aside>
+        <div class="hero-visual" aria-hidden="true">
+          <svg class="hero-shield" viewBox="0 0 128 128" fill="none" role="img" aria-label="Very Good AdBlock">
+            <defs>
+              <linearGradient id="heroShield" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#7dffb4"></stop>
+                <stop offset=".52" stop-color="#1ed878"></stop>
+                <stop offset="1" stop-color="#33c6ff"></stop>
+              </linearGradient>
+              <linearGradient id="heroGloss" x1="38" y1="18" x2="70" y2="78" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffffff" stop-opacity=".42"></stop>
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <path fill="url(#heroShield)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"></path>
+            <path fill="url(#heroGloss)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"></path>
+            <path fill="none" stroke="#053b28" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"></path>
+            <path fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" d="m43 63 14 15 31-36"></path>
+          </svg>
         </div>
       </section>
 
       <section id="features" class="marketing-band">
         <div class="section-kicker">
           <p class="eyebrow">Coverage</p>
-          <h2>Immediate protection without fragile page rewrites.</h2>
+          <h2>Protection at the source, not fragile page rewrites.</h2>
         </div>
         <div class="feature-grid">
           <article>
-            <span class="feature-icon network" aria-hidden="true"></span>
+            <span class="feature-icon" aria-hidden="true"></span>
             <h3>Network blocking</h3>
-            <p>Manifest V3 declarative rules stop known ad, tracker, popup, and annoyance hosts before requests complete.</p>
+            <p>Manifest V3 declarative rules stop 14,000+ ad, tracker, and annoyance hosts before the request completes.</p>
           </article>
           <article>
-            <span class="feature-icon video" aria-hidden="true"></span>
-            <h3>YouTube and Twitch helpers</h3>
-            <p>Hides YouTube feed, masthead, and display ads, clicks available skip controls, and detects Twitch video-ad markers — without ever touching the player or real videos.</p>
+            <span class="feature-icon" aria-hidden="true"></span>
+            <h3>YouTube and Twitch</h3>
+            <p>Strips video ads out of YouTube's player response, skips what slips through, and detects Twitch stream ads. The real video never breaks.</p>
           </article>
           <article>
-            <span class="feature-icon social" aria-hidden="true"></span>
-            <h3>Social ad blocking</h3>
-            <p>Blocks known promoted-content and ad request paths through MV3 rules, plus site-specific cosmetic hiding for promoted feed entries.</p>
+            <span class="feature-icon" aria-hidden="true"></span>
+            <h3>Pop-ups and pop-unders</h3>
+            <p>Neutralizes the click-hijack pop-ups streaming and file-host sites open, including the ones fired from inside the player iframe.</p>
           </article>
           <article>
-            <span class="feature-icon control" aria-hidden="true"></span>
+            <span class="feature-icon" aria-hidden="true"></span>
             <h3>One-click control</h3>
-            <p>Pause protection per site, customize the ad experience with allowlists, and inspect diagnostics from a minimal modern dashboard.</p>
+            <p>Pause per site, keep an allowlist, hide cookie banners, and read local stats from a clean dashboard. Nothing leaves your machine.</p>
           </article>
         </div>
       </section>
@@ -117,10 +97,10 @@
       <section id="stats" class="stats-showcase">
         <div>
           <p class="eyebrow">Receipts</p>
-          <h2>Modern local stats make blocking visible over time.</h2>
+          <h2>Local stats make the blocking visible.</h2>
           <p>
-            Very Good AdBlock tracks lifetime ads blocked, daily history, estimated bandwidth saved, and estimated video minutes recovered.
-            Sync-backed totals can follow a user into a new install while detailed histories stay local.
+            Lifetime blocks, a daily history, estimated bandwidth saved, and estimated video minutes recovered.
+            Compact totals sync across your installs; the detailed history stays on the device.
           </p>
         </div>
         <div class="stat-wall" aria-label="Very Good AdBlock stats examples">
@@ -148,8 +128,8 @@
           <p class="eyebrow">Privacy</p>
           <h2>No hidden telemetry. No remote rule surprises.</h2>
           <p>
-            Rules ship with releases, user site choices become local dynamic rules, and the dashboard clearly marks estimates.
-            The point is simple: remove the obstruction immediately while keeping the extension performant, minimal, and user-controlled.
+            Rules ship with each release and update from a pinned public list. Your site choices become local rules,
+            and the dashboard marks every estimate as an estimate. Nothing about your browsing is sent anywhere.
           </p>
         </div>
         <div class="privacy-list">
