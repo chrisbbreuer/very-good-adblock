@@ -1,16 +1,19 @@
 /**
- * Micro-benchmarks for Very Good AdBlock's hot paths — the work that actually
- * runs while you browse: pruning ads out of YouTube/X responses at the source,
- * compiling filter hosts into declarativeNetRequest rules, resolving cosmetic
- * selectors, aggregating local stats, and classifying request URLs.
+ * Benchmarks for Very Good AdBlock.
  *
- * These measure OUR code on representative fixtures (built below). They are not a
- * comparison against other blockers — the architectural win is that MV3
- * declarativeNetRequest does the network blocking in the browser's native stack
- * with zero per-request JavaScript; these numbers show the extras stay cheap too.
+ * Two parts:
+ *   1. Hot paths — OUR code on representative fixtures: pruning ads out of
+ *      YouTube/X responses at the source, compiling filter hosts into
+ *      declarativeNetRequest rules, resolving cosmetic selectors, aggregating
+ *      local stats, and classifying request URLs.
+ *   2. Head-to-head — how our blocking model compares to the JavaScript engines
+ *      shipped by uBlock Origin, Adblock Plus, and Ghostery, all fed the same
+ *      filter lists (see bench/lib/competitive.ts). Pass `--no-compare` to skip.
  *
- * Run: `bun run bench`
+ * Run: `bun run bench`  (add `--no-compare` for just the hot paths)
  */
+import { runCompetitive } from './lib/competitive'
+import { bench, fmtOps, fmtTime } from './lib/harness'
 import { activeCosmeticGroups } from '../src/shared/cosmetic'
 import { hostnameFromUrl, normalizeHostname, siteMatches } from '../src/shared/domain'
 import { compactBuckets, eventTotals } from '../src/shared/metrics'
@@ -117,40 +120,11 @@ const buckets: StatBucket[] = Array.from({ length: 90 }, (_, i) => ({ key: `2026
 
 const cosmeticContext = { isYouTube: true, isTwitch: false, isX: false, youtubeEnhancements: true, twitchEnhancements: true, cookieConsent: true, aggressive: true }
 
-// --- harness -----------------------------------------------------------------
-
-interface Result { name: string, note: string, nsPerOp: number, opsPerSec: number }
-
-function bench(name: string, note: string, fn: () => void, minMs = 500): Result {
-  for (let i = 0; i < 64; i++) fn() // warmup
-  const batch = 16
-  let iters = 0
-  const start = performance.now()
-  let elapsed = 0
-  do {
-    for (let i = 0; i < batch; i++) fn()
-    iters += batch
-    elapsed = performance.now() - start
-  } while (elapsed < minMs)
-  const nsPerOp = (elapsed * 1e6) / iters
-  return { name, note, nsPerOp, opsPerSec: 1e9 / nsPerOp }
-}
-
-function fmtTime(ns: number): string {
-  if (ns < 1_000) return `${ns.toFixed(0)} ns`
-  if (ns < 1_000_000) return `${(ns / 1_000).toFixed(2)} µs`
-  return `${(ns / 1_000_000).toFixed(2)} ms`
-}
-
-function fmtOps(ops: number): string {
-  if (ops >= 1e6) return `${(ops / 1e6).toFixed(1)}M/s`
-  if (ops >= 1e3) return `${(ops / 1e3).toFixed(0)}K/s`
-  return `${ops.toFixed(0)}/s`
-}
+// --- hot-path benchmarks -----------------------------------------------------
 
 const staticRuleCount = buildStaticRules().length
 
-const results: Result[] = [
+const results = [
   bench('pruneYouTubeAds', `parse + prune a browse response (${Math.round(YT_JSON.length / 1024)} KB)`, () => pruneYouTubeAds(JSON.parse(YT_JSON))),
   bench('prunePromotedFromTimeline', `parse + prune an X timeline (${Math.round(X_JSON.length / 1024)} KB)`, () => prunePromotedFromTimeline(JSON.parse(X_JSON))),
   bench('buildStaticRules', `compile the ${staticRuleCount.toLocaleString()}-rule static ruleset`, () => buildStaticRules()),
@@ -171,3 +145,15 @@ console.log('-'.repeat(nameW + noteW + 25))
 for (const r of results)
   console.log(`${r.name.padEnd(nameW)}  ${r.note.padEnd(noteW)}  ${fmtTime(r.nsPerOp).padStart(9)}  ${fmtOps(r.opsPerSec).padStart(10)}`)
 console.log('')
+
+// --- head-to-head vs uBlock Origin / Adblock Plus / Ghostery -----------------
+
+if (!process.argv.includes('--no-compare')) {
+  try {
+    await runCompetitive()
+  }
+  catch (err) {
+    console.error(`\nSkipped head-to-head comparison: ${(err as Error).message}`)
+    console.error('(It needs network access on first run to fetch the pinned filter lists into bench/fixtures/.)\n')
+  }
+}

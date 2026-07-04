@@ -61,8 +61,11 @@
     "bun-plugin-stx": "^0.2.77"
   },
   "devDependencies": {
+    "@ghostery/adblocker": "^2.18.1",
+    "@gorhill/ubo-core": "^0.1.30",
     "@stacksjs/bunpress": "^0.1.10",
     "@types/chrome": "^0.2.2",
+    "adblockpluscore": "^0.11.1",
     "better-dx": "^0.2.15",
     "typescript": "^6.0.3",
     "web-ext": "^10.4.0"
