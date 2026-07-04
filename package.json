@@ -44,6 +44,7 @@
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun scripts/generate-marketing-preview.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
+    "bench": "bun --bun bench/index.ts",
     "update:filters": "bun --bun scripts/update-filter-sources.ts",
     "validate:extension": "bun --bun scripts/validate-extension.ts",
     "validate:extension:firefox": "bun --bun scripts/validate-extension.ts --target=firefox",
