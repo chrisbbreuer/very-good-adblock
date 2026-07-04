@@ -26,6 +26,7 @@
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
           <a href="#privacy">Privacy</a>
+          <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
         </nav>
         <a class="nav-action" href="docs/">Read docs</a>
       </div>
@@ -147,11 +148,12 @@
       </section>
       <section class="cta-band">
         <div class="cta-inner">
+          <span class="cta-badge">Free and open source</span>
           <h2>Browse like the ads were never there.</h2>
-          <p>Chrome and Firefox, one codebase. No account, no telemetry, no bloat.</p>
+          <p>MIT licensed, Chrome and Firefox from one codebase, with no account and no telemetry. Read the code, file an issue, or send a pull request.</p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install">Install locally</a>
-            <a class="secondary-link" href="docs/">Read docs</a>
+            <a class="secondary-link" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">View source</a>
           </div>
         </div>
       </section>
@@ -161,6 +163,8 @@
       <span>Very Good AdBlock</span>
       <a href="docs/">Docs</a>
       <a href="docs/guide/usage">Usage</a>
+      <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://bsky.app/profile/stacksjs.com" target="_blank" rel="noopener">Bluesky</a>
     </footer>
   </body>
 </html>

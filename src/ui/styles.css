@@ -894,6 +894,21 @@ h1 {
     linear-gradient(180deg, rgba(13, 34, 27, 0.82), rgba(7, 17, 15, 0.66));
 }
 
+.cta-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(124, 255, 173, 0.3);
+  background: rgba(23, 201, 100, 0.12);
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .cta-inner h2 {
   font-size: clamp(28px, 3.8vw, 46px);
   letter-spacing: -0.02em;
