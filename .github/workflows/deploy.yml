@@ -1,0 +1,78 @@
+name: Deploy site
+
+# Auto-deploys verygoodadblock.org when the marketing site or docs change on main.
+#
+# The site is served in "server" mode from a Hetzner box via ts-cloud + the rpx
+# gateway, configured in the sibling `stacks` repo (config/cloud.ts → the
+# `verygoodadblock` site, root `../adblock/dist/site`). The actual deploy is
+# `buddy deploy`, which wraps ts-cloud.
+#
+# This runs on a SELF-HOSTED runner on Chris's machine so the Hetzner
+# credentials never leave that machine (both repos are public). The runner must
+# provide, in its own environment:
+#   - HCLOUD_TOKEN  — Hetzner Cloud API token (buddy/ts-cloud reads process.env)
+#   - SSH access to the production box (the key ts-cloud uses to scp/ssh)
+#   - local checkouts of adblock and stacks as siblings (see ADBLOCK_DIR/STACKS_DIR)
+# Register the runner under Settings → Actions → Runners. Override the two paths
+# with repo variables ADBLOCK_DIR / STACKS_DIR if your layout differs.
+#
+# GitHub Deployments visibility comes from the `environment:` block below — each
+# run shows up under the repo's Environments → production and the Deployments API,
+# with no changes to the shared ts-cloud/stacks framework.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pages/marketing.stx'
+      - 'src/ui/styles.css'
+      - 'docs/**'
+      - '.config/docs.ts'
+      - 'scripts/build-site.ts'
+      - 'scripts/build-extension.ts'
+      - 'scripts/generate-icons.ts'
+      - 'public/icons/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+# Never run two site deploys at once; let an in-flight deploy finish rather than
+# cancelling it midway through an ssh/scp to the box.
+concurrency:
+  group: deploy-verygoodadblock
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted]
+    environment:
+      name: production
+      url: https://verygoodadblock.org
+    env:
+      ADBLOCK_DIR: ${{ vars.ADBLOCK_DIR || '/Users/chris/Code/adblock' }}
+      STACKS_DIR: ${{ vars.STACKS_DIR || '/Users/chris/Code/stacks' }}
+
+    steps:
+      - name: Ensure Bun is available
+        uses: oven-sh/setup-bun@v2
+
+      # buddy builds the site from ADBLOCK_DIR (`cd ../adblock && bun run
+      # site:build`), so bring that checkout to the commit that triggered this
+      # run before deploying. ff-only keeps it honest: if the local checkout has
+      # diverged, the deploy fails loudly instead of shipping the wrong tree.
+      - name: Sync adblock checkout to this commit
+        run: |
+          set -euo pipefail
+          git -C "$ADBLOCK_DIR" fetch --quiet origin main
+          git -C "$ADBLOCK_DIR" merge --ff-only origin/main
+          echo "Deploying adblock @ $(git -C "$ADBLOCK_DIR" rev-parse --short HEAD)"
+
+      # Single-site deploy: builds + ships only ../adblock/dist/site, reloads the
+      # rpx gateway from the FULL site model (other sites' routes stay intact),
+      # and upserts DNS for verygoodadblock.org only.
+      - name: Deploy verygoodadblock to production
+        working-directory: ${{ env.STACKS_DIR }}
+        run: ./buddy deploy production --site verygoodadblock --yes
