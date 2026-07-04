@@ -45,9 +45,9 @@
         </div>
 
         <div class="hero-visual">
-          <figure class="hero-device">
-            <img src="/marketing/popup-preview.png" width="390" height="682" loading="eager" decoding="async" alt="The Very Good AdBlock toolbar popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours.">
-          </figure>
+          <!-- The real popup component, inlined at build time from
+               pages/partials/popup-preview.html (generated off the shipping popup). -->
+          <div class="hero-device" id="popup-preview" role="img" aria-label="The Very Good AdBlock toolbar popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours."></div>
         </div>
       </section>
 

@@ -765,26 +765,41 @@ h1 {
   filter: blur(52px);
 }
 
-/* Real screenshot of the shipping popup (scripts/generate-marketing-preview.ts),
-   floated in a clean device frame. Not a div mockup. */
+/* The real popup component (build-time inlined from the shipping popup), floated
+   in a clean device frame. Not a screenshot, not a hand-built mockup: the same
+   markup and styles the extension ships, rendered live. */
 .hero-device {
   position: relative;
   margin: 0;
-  width: min(330px, 92%);
+  width: min(384px, 96%);
+  max-height: min(70vh, 588px);
   border-radius: 24px;
   overflow: hidden;
-  background: #0a1613;
+  /* Mirror the popup's own body backdrop so it reads as the real surface. */
+  background:
+    radial-gradient(circle at 12% -8%, rgba(86, 212, 255, 0.28), transparent 28rem),
+    radial-gradient(circle at 110% 24%, rgba(23, 201, 100, 0.26), transparent 24rem),
+    linear-gradient(145deg, #07110f 0%, #0d1618 58%, #14201d 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
     0 50px 100px -24px rgba(0, 0, 0, 0.72),
     0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  /* Fade the cropped bottom edge so it reads as "more below", not a hard cut. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
 }
 
-.hero-device img {
-  display: block;
+/* Neutralize the popup's window-level sizing (it renders as a full window in the
+   extension) so it lays out as a contained card here. */
+.hero-device .popup-shell {
   width: 100%;
-  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.hero-device .popup-frame {
+  min-height: 0;
 }
 
 .feature-grid article,

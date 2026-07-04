@@ -35,7 +35,31 @@ async function buildPages(): Promise<void> {
   await sanitizeHtml('popup.html', ['popup.js'])
   await sanitizeHtml('options.html', ['options.js'])
   await sanitizeHtml('marketing.html', [])
+  await injectPopupPreview()
   await removeStxChunks()
+}
+
+/**
+ * Inline the real popup component into the marketing hero, replacing the
+ * `#popup-preview` placeholder with the generated static markup
+ * (pages/partials/popup-preview.html). Runs after sanitizeHtml so the injected
+ * markup is not stripped. Regenerate the partial with `bun run preview:marketing`.
+ */
+async function injectPopupPreview(): Promise<void> {
+  const file = `${outdir}/marketing.html`
+  const partial = 'pages/partials/popup-preview.html'
+  if (!(await Bun.file(partial).exists()))
+    throw new Error(`${partial} is missing. Run \`bun run preview:marketing\` to generate it.`)
+
+  const frame = (await Bun.file(partial).text()).replace(/^<!--[\s\S]*?-->\s*/, '').trim()
+  const placeholder = /<div class="hero-device" id="popup-preview"[^>]*><\/div>/
+  const html = await Bun.file(file).text()
+  if (!placeholder.test(html))
+    throw new Error('marketing.html has no #popup-preview placeholder to inject the popup into.')
+
+  const label = 'The Very Good AdBlock popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours.'
+  const replacement = `<div class="hero-device" role="img" aria-label="${label}"><div class="popup-preview popup-shell" aria-hidden="true">${frame}</div></div>`
+  await Bun.write(file, html.replace(placeholder, replacement))
 }
 
 async function sanitizeHtml(filename: string, scriptNames: string[]): Promise<void> {
