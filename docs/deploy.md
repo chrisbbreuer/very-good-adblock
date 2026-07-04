@@ -23,6 +23,11 @@ reloads the rpx gateway from the **full** site model (so other sites' routes are
 never dropped), and upserts DNS for `verygoodadblock.org` only. Other sites on
 the box (stacksjs.com, docs, blog) are left untouched.
 
+A manual deploy also records a GitHub **Deployment** against this repo (buddy
+derives the repo/commit from the deployed site's git worktree), so terminal
+deploys show up in the [Deployments](https://github.com/chrisbbreuer/very-good-adblock/deployments)
+tab just like CI ones. Set `TS_CLOUD_GITHUB_DEPLOYMENTS=0` to skip it.
+
 ## Deploy automatically (self-hosted runner)
 
 [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) redeploys on
