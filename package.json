@@ -63,7 +63,7 @@
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
     "@gorhill/ubo-core": "^0.1.30",
-    "@stacksjs/bunpress": "^0.1.10",
+    "@stacksjs/bunpress": "^0.1.11",
     "@types/chrome": "^0.2.2",
     "adblockpluscore": "^0.11.1",
     "better-dx": "^0.2.15",
