@@ -34,7 +34,7 @@ async function buildPages(): Promise<void> {
 
   await sanitizeHtml('popup.html', ['popup.js'])
   await sanitizeHtml('options.html', ['options.js'])
-  await sanitizeHtml('marketing.html', [])
+  await sanitizeHtml('marketing.html', ['marketing.js'])
   await injectPopupPreview()
   await removeStxChunks()
 }
@@ -99,6 +99,7 @@ async function buildScripts(): Promise<void> {
     buildScript('src/content/popup-guard.ts', 'popup-guard.js'),
     buildScript('src/ui/popup.ts', 'popup.js'),
     buildScript('src/ui/options.ts', 'options.js'),
+    buildScript('src/ui/marketing.ts', 'marketing.js'),
   ])
 }
 

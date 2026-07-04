@@ -12,6 +12,7 @@ async function main(): Promise<void> {
 
   await Bun.write(`${siteOut}/index.html`, await rewriteMarketingHtml())
   await Bun.write(`${siteOut}/styles.css`, await Bun.file('./dist/styles.css').arrayBuffer())
+  await Bun.write(`${siteOut}/marketing.js`, await Bun.file('./dist/marketing.js').arrayBuffer())
   await Bun.$`cp -R ./dist/icons/. ${siteOut}/icons/`
   await Bun.$`cp -R ${docsOut}/. ${siteOut}/docs/`
 

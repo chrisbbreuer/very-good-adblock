@@ -157,6 +157,19 @@
           </div>
         </div>
       </section>
+
+      <section id="subscribe" class="subscribe-band">
+        <div class="subscribe-inner">
+          <h2>Know the moment it hits the stores.</h2>
+          <p>One email when Very Good AdBlock lands on the Chrome Web Store and Firefox Add-ons. No spam, unsubscribe anytime.</p>
+          <form class="subscribe-form" id="subscribe-form" action="https://stacksjs.com/api/email/subscribe" method="POST">
+            <input type="email" id="subscribe-email" name="email" placeholder="you@example.com" autocomplete="email" aria-label="Email address" required>
+            <input type="hidden" name="source" value="verygoodadblock">
+            <button class="primary-link" type="submit">Notify me</button>
+          </form>
+          <p class="subscribe-status" id="subscribe-status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
     </main>
 
     <footer class="marketing-footer">
@@ -166,5 +179,6 @@
       <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
       <a href="https://bsky.app/profile/stacksjs.com" target="_blank" rel="noopener">Bluesky</a>
     </footer>
+    <script type="module" src="/marketing.js"></script>
   </body>
 </html>
