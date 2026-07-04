@@ -5,6 +5,9 @@ const config: BunPressOptions = {
   docsDir: './docs',
   outDir: './dist/docs',
   theme: 'vitepress',
+  // The docs theme only styles `html.dark`; force it so headings and code render
+  // correctly regardless of the visitor's OS preference (was breaking in light mode).
+  darkMode: 'dark',
 
   markdown: {
     title: 'Very Good AdBlock Docs',
