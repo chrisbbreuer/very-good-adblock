@@ -33,6 +33,42 @@ Speed here is an architecture decision, not a micro-optimization pass:
 
 The takeaway: every response the extension touches is cleaned in a fraction of a millisecond, and the per-page work (cosmetic resolution, allowlist checks) is measured in nanoseconds. The network blocking itself costs no JavaScript at all.
 
+### Native DNR vs. the JavaScript matching-engine model
+
+This is a comparison of **blocking models, not products**. There are two ways an ad blocker can decide whether to block a request, and they cost very differently:
+
+- **The JavaScript matching-engine model.** The blocker keeps the parsed filter list in memory and runs a JavaScript `match()` on every request. This is what `@gorhill/ubo-core`, `adblockpluscore`'s `Matcher`, and `@ghostery/adblocker` implement — and it's still what ships today wherever the browser doesn't offer a native path, most notably **uBlock Origin on Firefox**, which keeps the blocking `webRequest` API.
+- **The native declarativeNetRequest model.** The blocker registers its rules with the browser and the browser's own network stack does the matching — **zero per-request JavaScript**. This is what Very Good AdBlock does, and what Chrome's Manifest V3 mandates.
+
+The benchmark measures the **per-request cost of each model**. It is *not* a claim that any competitor's product is slow: every one of these projects also has a native build — **uBO Lite**, **ABP MV3** (its `adblockpluscore` ships a `lib/dnr/` rule generator), and **Ghostery MV3** all use `declarativeNetRequest`, and **Brave** builds [adblock-rust](https://github.com/brave/adblock-rust) into the browser core because it *is* the browser. Where any of them runs natively, its per-request JavaScript cost collapses to ~0 too — exactly like ours. What the table shows is the tax the JavaScript model pays that the native model simply doesn't.
+
+The same `bun run bench` runs the comparison. Every engine is fed the **exact filter lists this extension pins** (EasyList + AdGuard, ~54k lines) and the same 12,000-request corpus; all four agree on ~4,795 blocks, so it's the same job measured four ways.
+
+**Per-request matching cost** — the JavaScript spent per request under each model. Under native DNR this runs in the browser, not the extension:
+
+| Model / engine | JS per request | Throughput |
+|---|---:|---:|
+| JS engine — Adblock Plus (`adblockpluscore`) | ~2.4 µs | ~410K/s |
+| JS engine — Ghostery (`@ghostery/adblocker`) | ~3.4 µs | ~300K/s |
+| JS engine — uBlock Origin (`@gorhill/ubo-core`) | ~0.83 µs | ~1.2M/s |
+| **Native DNR — Very Good AdBlock** | **0 (in browser)** | **native** |
+| └ *JS host-set reference (if we matched in JS)* | *~0.64 µs* | *~1.6M/s* |
+
+Under the native model the matching happens in the browser's own network stack, so no extension JavaScript runs on the request hot path — the same holds for uBO Lite, ABP MV3, and Ghostery MV3 when they run natively. The italic reference row shows what our host set *would* cost if we matched it in JavaScript instead; it never runs in production.
+
+**List ingest (one-time, at startup)** — turning filter lists into a ready-to-block state:
+
+| Model / engine | Ingest time | What it builds |
+|---|---:|---|
+| JS engine — Adblock Plus | ~48 ms | in-memory `Matcher` |
+| JS engine — Ghostery | ~60 ms | in-memory engine |
+| JS engine — uBlock Origin | ~68 ms | in-memory engine |
+| **Native DNR — Very Good AdBlock** | **~3 ms** | declarativeNetRequest rules the browser enforces |
+
+These builds are *not* identical work, and the table says so: the JavaScript engines parse the full raw list into in-process match structures, while Very Good AdBlock parses raw lists offline at build time (`bun run update:filters`) and at runtime only compiles the reduced host list into DNR rules. The point isn't that our parser is faster — it's that the expensive matching structure lives in the browser, not in the extension (as it also does for the competitors' native builds).
+
+> **Method & honesty notes.** These are matching-engine microbenchmarks comparing *models*, not a blocking-quality or product comparison. The JavaScript engines support filter syntax (path/regex/type modifiers, exceptions) that our host-based DNR ruleset intentionally reduces to hostname blocking, so this measures *runtime cost of the model*, not coverage. Engines are the real upstream packages fed identical lists; the corpus's blocked requests are drawn from the same lists so every engine has genuine matching work. The filter lists are fetched once into `bench/fixtures/` (git-ignored — they're GPL) and cached. Run `bun run bench --no-compare` for just the hot paths.
+
 ## Features
 
 - Cross-browser Manifest V3 build (Chrome and Firefox) from one codebase, with per-target manifests generated at build time.
@@ -70,7 +106,7 @@ This emits a Firefox-flavored build (an event-page `background`, `browser_specif
 ```bash
 bun run build            # build the Chrome extension into dist/
 bun run build:firefox    # build the Firefox extension into dist-firefox/
-bun run bench            # run the hot-path benchmarks
+bun run bench            # hot-path benchmarks + head-to-head vs uBO/ABP/Ghostery
 bun run test             # unit tests
 bun run smoke:chrome     # headless Bun WebView smoke test
 bun run site:build       # build the marketing site + docs into dist/site
