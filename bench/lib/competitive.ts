@@ -33,7 +33,7 @@ import type { BenchRequest } from './harness'
  * native matcher decides; here we just pay for it in JS so it can be timed
  * against the competitor engines.
  */
-function createHostSetMatcher(hostSet: Set<string>): (r: BenchRequest) => boolean {
+export function createHostSetMatcher(hostSet: Set<string>): (r: BenchRequest) => boolean {
   return (r) => {
     let host = hostnameFromUrl(r.url)
     if (!host) return false

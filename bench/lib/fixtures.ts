@@ -82,15 +82,21 @@ export async function loadFilterLists(): Promise<FilterListBundle> {
 }
 
 /**
- * The set of hostnames the extension blocks via declarativeNetRequest: the
- * generated host list plus the curated seed domains. This is exactly what the
- * browser's native matcher enforces, and what our JS reference matcher walks.
+ * The set of hostnames the extension blocks *by hostname* via
+ * declarativeNetRequest: the generated host list plus the host-only curated
+ * seeds. This is what our JS reference matcher walks, so it must mirror the
+ * hostname-blocking subset exactly — only pure `||host^` seeds count. Curated
+ * seeds that are path-scoped (`||youtube.com/api/stats/ads^`,
+ * `|https://www.youtube.com/pagead/`, `twitch.tv/ads`) block a specific path,
+ * not the whole host, so folding their hostname in would over-block domains
+ * like youtube.com/twitter.com/twitch.tv that DNR (and the competitor engines)
+ * leave alone. Those path rules aren't hostname blocking and are left out.
  */
 export function loadBlockedHostSet(): Set<string> {
   const set = new Set<string>(generatedNetworkHosts.hosts.map(h => h.toLowerCase()))
   for (const seed of curatedRuleSeeds) {
-    // Curated filters are `||host^` or `|https://host/path` — pull the host out.
-    const m = seed.urlFilter.match(/^(?:\|\||\|https?:\/\/)([a-z0-9.-]+)/i)
+    // Only pure host blocks: `||host^` with nothing after the separator.
+    const m = seed.urlFilter.match(/^\|\|([a-z0-9.-]+)\^$/i)
     if (m) set.add(m[1].toLowerCase())
   }
   return set
