@@ -56,13 +56,13 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "bun-plugin-stx": "^0.2.72"
+    "bun-plugin-stx": "^0.2.77"
   },
   "devDependencies": {
     "@stacksjs/bunpress": "^0.1.10",
-    "@types/chrome": "^0.1.4",
+    "@types/chrome": "^0.2.2",
     "better-dx": "^0.2.15",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "web-ext": "^10.4.0"
   },
   "git-hooks": {
