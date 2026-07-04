@@ -618,9 +618,9 @@ h1 {
 .marketing-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 82% 6%, rgba(23, 201, 100, 0.16), transparent 44%),
-    radial-gradient(circle at 4% 96%, rgba(23, 201, 100, 0.08), transparent 42%),
-    linear-gradient(165deg, #060f0d 0%, #08130f 55%, #0a1613 100%);
+    radial-gradient(80% 55% at 88% -4%, rgba(23, 201, 100, 0.24), transparent 58%),
+    radial-gradient(60% 45% at 0% 108%, rgba(23, 201, 100, 0.1), transparent 55%),
+    linear-gradient(168deg, #050d0b 0%, #07110e 52%, #0a1613 100%);
 }
 
 .marketing-shell a {
@@ -705,17 +705,19 @@ h1 {
   border: 1px solid rgba(184, 255, 211, 0.74);
   color: #03110b;
   background: linear-gradient(180deg, #b9ffd1 0%, #78f1a7 100%);
-  box-shadow: 0 18px 42px rgba(23, 201, 100, 0.32);
+  box-shadow: 0 8px 20px -6px rgba(23, 201, 100, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .marketing-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.82fr);
-  gap: 40px;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.78fr);
+  gap: 52px;
   align-items: center;
-  min-height: calc(100vh - 150px);
-  padding: 40px 0 48px;
+  /* No tall min-height: the product card sets the row height and the copy
+     centers against it, so there is no floating void above the headline. */
+  min-height: 540px;
+  padding: 36px 0 56px;
 }
 
 .hero-copy {
@@ -725,9 +727,9 @@ h1 {
 }
 
 .hero-copy h1 {
-  font-size: clamp(40px, 6vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
+  font-size: clamp(38px, 5.2vw, 66px);
+  line-height: 1.03;
+  letter-spacing: -0.025em;
   font-weight: 800;
 }
 
@@ -752,14 +754,15 @@ h1 {
   min-height: 420px;
 }
 
+/* A soft green spotlight shaped to the card, so it reads as a deliberate glow
+   rather than a flat void behind the product shot. */
 .hero-visual::before {
   content: "";
   position: absolute;
-  width: 78%;
-  aspect-ratio: 1;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(23, 201, 100, 0.34), transparent 68%);
-  filter: blur(40px);
+  inset: -6% -4%;
+  border-radius: 44px;
+  background: radial-gradient(58% 56% at 52% 42%, rgba(23, 201, 100, 0.4), transparent 72%);
+  filter: blur(52px);
 }
 
 /* Real screenshot of the shipping popup (scripts/generate-marketing-preview.ts),
@@ -767,15 +770,15 @@ h1 {
 .hero-device {
   position: relative;
   margin: 0;
-  width: min(348px, 86%);
-  border-radius: 22px;
+  width: min(330px, 92%);
+  border-radius: 24px;
   overflow: hidden;
   background: #0a1613;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    0 44px 96px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 50px 100px -24px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
 .hero-device img {
