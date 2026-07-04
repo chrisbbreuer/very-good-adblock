@@ -17,16 +17,18 @@
   </head>
   <body class="marketing-shell">
     <header class="marketing-nav" aria-label="Primary navigation">
-      <a class="brand-lockup" href="#top" aria-label="Very Good AdBlock home">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span>Very Good AdBlock</span>
-      </a>
-      <nav>
-        <a href="#features">Features</a>
-        <a href="#stats">Stats</a>
-        <a href="#privacy">Privacy</a>
-      </nav>
-      <a class="nav-action" href="docs/">Read docs</a>
+      <div class="marketing-nav-inner">
+        <a class="brand-lockup" href="#top" aria-label="Very Good AdBlock home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Very Good AdBlock</span>
+        </a>
+        <nav>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#privacy">Privacy</a>
+        </nav>
+        <a class="nav-action" href="docs/">Read docs</a>
+      </div>
     </header>
 
     <main id="top">
@@ -40,7 +42,7 @@
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install">Install locally</a>
-            <a class="secondary-link" href="#features">How it works</a>
+            <a class="secondary-link" href="#how">How it works</a>
           </div>
         </div>
 
@@ -53,7 +55,6 @@
 
       <section id="features" class="marketing-band">
         <div class="section-kicker">
-          <p class="eyebrow">Coverage</p>
           <h2>Protection at the source, not fragile page rewrites.</h2>
         </div>
         <div class="feature-grid">
@@ -80,9 +81,29 @@
         </div>
       </section>
 
+      <section id="how" class="how-band">
+        <h2>Running in about a minute.</h2>
+        <ol class="how-steps">
+          <li>
+            <span class="how-num">1</span>
+            <h3>Install</h3>
+            <p>Load it into Chrome or Firefox. One codebase, a browser-specific build, no account.</p>
+          </li>
+          <li>
+            <span class="how-num">2</span>
+            <h3>Pin it</h3>
+            <p>The toolbar icon shows exactly what got blocked on the page in front of you.</p>
+          </li>
+          <li>
+            <span class="how-num">3</span>
+            <h3>Browse</h3>
+            <p>Ads, pop-ups, and video interruptions are gone before the page can render them.</p>
+          </li>
+        </ol>
+      </section>
+
       <section id="stats" class="stats-showcase">
         <div>
-          <p class="eyebrow">Receipts</p>
           <h2>Local stats make the blocking visible.</h2>
           <p>
             Lifetime blocks, a daily history, estimated bandwidth saved, and estimated video minutes recovered.
@@ -111,7 +132,6 @@
 
       <section id="privacy" class="privacy-band">
         <div class="privacy-copy">
-          <p class="eyebrow">Privacy</p>
           <h2>No hidden telemetry. No remote rule surprises.</h2>
           <p>
             Rules ship with each release and update from a pinned public list. Your site choices become local rules,
@@ -123,6 +143,16 @@
           <div><span></span>Site-specific cosmetic hiding, kill switch included</div>
           <div><span></span>Local and sync storage split</div>
           <div><span></span>Exportable stats and reset controls</div>
+        </div>
+      </section>
+      <section class="cta-band">
+        <div class="cta-inner">
+          <h2>Browse like the ads were never there.</h2>
+          <p>Chrome and Firefox, one codebase. No account, no telemetry, no bloat.</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="docs/guide/install">Install locally</a>
+            <a class="secondary-link" href="docs/">Read docs</a>
+          </div>
         </div>
       </section>
     </main>

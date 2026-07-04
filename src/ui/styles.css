@@ -628,27 +628,34 @@ h1 {
   text-decoration: none;
 }
 
-.marketing-nav,
 .marketing-hero,
 .marketing-band,
+.how-band,
 .stats-showcase,
 .privacy-band,
+.cta-band,
+.marketing-nav-inner,
 .marketing-footer {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
 }
 
+/* The bar spans the full viewport (background + hairline edge to edge); only the
+   inner row is constrained, so there is no floating box with visible side seams. */
 .marketing-nav {
   position: sticky;
   top: 0;
   z-index: 5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(4, 16, 14, 0.86);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.marketing-nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 74px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(4, 16, 14, 0.9);
-  backdrop-filter: blur(22px) saturate(145%);
 }
 
 .brand-lockup,
@@ -814,6 +821,109 @@ h1 {
 .stats-showcase,
 .privacy-band {
   padding: 76px 0;
+}
+
+/* How it works: a 3-step timeline (accent top-rule + number), deliberately not
+   another boxed card grid so the page's section layouts stay varied. */
+.how-band {
+  padding: 20px 0 68px;
+}
+
+.how-band > h2 {
+  font-size: clamp(27px, 3.4vw, 40px);
+  letter-spacing: -0.02em;
+  line-height: 1.06;
+  margin: 0 0 40px;
+  max-width: 16ch;
+}
+
+.how-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.how-steps li {
+  padding-top: 22px;
+  border-top: 2px solid rgba(23, 201, 100, 0.34);
+}
+
+.how-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 800;
+  color: #03110b;
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+}
+
+.how-steps h3 {
+  margin: 16px 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.how-steps p {
+  margin: 0;
+  color: rgba(243, 251, 248, 0.72);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* Closing call to action: one green-lit panel, centered, primary CTA repeated. */
+.cta-band {
+  padding: 16px 0 84px;
+}
+
+.cta-inner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(124, 255, 173, 0.22);
+  border-radius: var(--radius-panel);
+  padding: 56px 40px;
+  text-align: center;
+  background:
+    radial-gradient(72% 130% at 50% -12%, rgba(23, 201, 100, 0.24), transparent 70%),
+    linear-gradient(180deg, rgba(13, 34, 27, 0.82), rgba(7, 17, 15, 0.66));
+}
+
+.cta-inner h2 {
+  font-size: clamp(28px, 3.8vw, 46px);
+  letter-spacing: -0.02em;
+  line-height: 1.03;
+  margin: 0 auto;
+  max-width: 17ch;
+}
+
+.cta-inner p {
+  margin: 18px auto 30px;
+  max-width: 46ch;
+  color: rgba(243, 251, 248, 0.76);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.cta-inner .hero-actions {
+  justify-content: center;
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .how-steps {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .cta-inner {
+    padding: 40px 22px;
+  }
 }
 
 .section-kicker {
