@@ -14,6 +14,12 @@ async function main(): Promise<void> {
   await Bun.write(`${siteOut}/styles.css`, await Bun.file('./dist/styles.css').arrayBuffer())
   await Bun.$`cp -R ./dist/icons/. ${siteOut}/icons/`
   await Bun.$`cp -R ${docsOut}/. ${siteOut}/docs/`
+  // Marketing assets (the hero popup screenshot), copied from public/ into dist/
+  // by the extension build's copyPublic().
+  if (existsSync('./dist/marketing')) {
+    await Bun.$`mkdir -p ${siteOut}/marketing`
+    await Bun.$`cp -R ./dist/marketing/. ${siteOut}/marketing/`
+  }
 
   console.log(`Built Very Good AdBlock site into ${siteOut}`)
 }
