@@ -755,18 +755,33 @@ h1 {
 .hero-visual::before {
   content: "";
   position: absolute;
-  width: 66%;
+  width: 78%;
   aspect-ratio: 1;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(23, 201, 100, 0.42), transparent 66%);
-  filter: blur(34px);
+  background: radial-gradient(circle, rgba(23, 201, 100, 0.34), transparent 68%);
+  filter: blur(40px);
 }
 
-.hero-shield {
+/* Real screenshot of the shipping popup (scripts/generate-marketing-preview.ts),
+   floated in a clean device frame. Not a div mockup. */
+.hero-device {
   position: relative;
-  width: min(340px, 74%);
+  margin: 0;
+  width: min(348px, 86%);
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0a1613;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 44px 96px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hero-device img {
+  display: block;
+  width: 100%;
   height: auto;
-  filter: drop-shadow(0 26px 56px rgba(23, 201, 100, 0.3));
 }
 
 .feature-grid article,

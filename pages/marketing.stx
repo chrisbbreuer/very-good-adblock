@@ -44,24 +44,10 @@
           </div>
         </div>
 
-        <div class="hero-visual" aria-hidden="true">
-          <svg class="hero-shield" viewBox="0 0 128 128" fill="none" role="img" aria-label="Very Good AdBlock">
-            <defs>
-              <linearGradient id="heroShield" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#7dffb4"></stop>
-                <stop offset=".52" stop-color="#1ed878"></stop>
-                <stop offset="1" stop-color="#33c6ff"></stop>
-              </linearGradient>
-              <linearGradient id="heroGloss" x1="38" y1="18" x2="70" y2="78" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#ffffff" stop-opacity=".42"></stop>
-                <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
-              </linearGradient>
-            </defs>
-            <path fill="url(#heroShield)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"></path>
-            <path fill="url(#heroGloss)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"></path>
-            <path fill="none" stroke="#053b28" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"></path>
-            <path fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" d="m43 63 14 15 31-36"></path>
-          </svg>
+        <div class="hero-visual">
+          <figure class="hero-device">
+            <img src="/marketing/popup-preview.png" width="390" height="682" loading="eager" decoding="async" alt="The Very Good AdBlock toolbar popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours.">
+          </figure>
         </div>
       </section>
 
