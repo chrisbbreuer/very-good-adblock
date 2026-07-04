@@ -5,6 +5,9 @@ const config: BunPressOptions = {
   docsDir: './docs',
   outDir: './dist/docs',
   theme: 'vitepress',
+  // The docs are served under /docs; prefix all root-relative internal links so
+  // sidebar/nav links resolve (were pointing at /guide/... instead of /docs/guide/...).
+  basePath: '/docs',
   // The docs theme only styles `html.dark`; force it so headings and code render
   // correctly regardless of the visitor's OS preference (was breaking in light mode).
   darkMode: 'dark',

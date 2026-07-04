@@ -19,9 +19,9 @@ async function main(): Promise<void> {
 }
 
 async function rewriteMarketingHtml(): Promise<string> {
-  return (await Bun.file('./dist/marketing.html').text())
-    .replaceAll('href="docs/guide/install"', 'href="docs/guide/install.html"')
-    .replaceAll('href="docs/guide/usage"', 'href="docs/guide/usage.html"')
+  // Marketing links use clean, extensionless docs URLs (docs/guide/install),
+  // which resolve to <path>/index.html via the directory-style docs build.
+  return Bun.file('./dist/marketing.html').text()
 }
 
 async function ensureExists(path: string, message: string): Promise<void> {
