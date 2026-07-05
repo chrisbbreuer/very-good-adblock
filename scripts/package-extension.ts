@@ -7,8 +7,8 @@ const archive = target === 'firefox'
   : `very-good-adblock-${packageJson.version}.zip`
 
 await Bun.$`rm -f ${archive}`
-// marketing.html is built into dist for the site; it is not part of the
-// extension, so keep it out of the store package.
-await Bun.$`cd ${dist} && zip -qr ../${archive} . -x marketing.html`
+// marketing.html/marketing.js are built into dist for the site; they are not
+// part of the extension, so keep them out of the store package.
+await Bun.$`cd ${dist} && zip -qr ../${archive} . -x marketing.html -x marketing.js`
 
 console.log(`Created ${archive}`)

@@ -19,8 +19,8 @@ in sync with `src/shared/constants.ts` (name/description) and `package.json`.
 >
 > What it does
 > - Network blocking. Stops 14,000+ ad, tracker, and annoyance hosts before the
-> request completes, using bundled declarativeNetRequest rules that refresh from
-> a pinned public filter list.
+> request completes, using bundled declarativeNetRequest rules that refresh daily
+> from a public host list generated from pinned filter-list revisions.
 > - YouTube and Twitch. Strips video ads out of YouTube's player response so the
 > real video starts immediately, skips anything that slips through, and detects
 > Twitch stream ads. The player itself is never touched.

@@ -15,7 +15,7 @@ Speed here is an architecture decision, not a micro-optimization pass:
 - **Network blocking runs in the browser, not in JavaScript.** MV3 `declarativeNetRequest` hands the rules to the browser's native network stack (C++), so ad and tracker requests are matched and cancelled with **zero per-request JavaScript**. There is no background page waking up to inspect every request the way an MV2 `webRequest` blocker does. This is the lowest-overhead blocking model a modern extension can use.
 - **Ads are pruned once, at the source.** For YouTube and X, the ad instructions are deleted from the JSON response before the page ever schedules or renders them — a single pass over the payload, no polling, no `MutationObserver` hammering the DOM waiting for an ad to appear.
 - **The content script stays cheap.** Cosmetic hiding uses a small, site-specific selector set behind throttled observers; the player region is never touched.
-- **Nothing phones home.** No analytics, no telemetry, no remote config fetches on the hot path — the only network call the extension makes is a once-a-day filter-list refresh.
+- **Nothing phones home.** No analytics, no telemetry, no remote config fetches on the hot path — the only network call the extension makes is the filter-list refresh (scheduled daily, plus once on install/startup).
 
 ### Benchmarks
 
