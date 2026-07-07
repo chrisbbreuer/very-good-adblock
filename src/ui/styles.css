@@ -1,17 +1,17 @@
 :root {
   color-scheme: dark light;
-  --bg: #08110f;
+  --bg: #080f16;
   --panel: rgba(236, 255, 246, 0.1);
   --panel-strong: rgba(236, 255, 246, 0.16);
-  --panel-deep: rgba(5, 17, 14, 0.52);
+  --panel-deep: rgba(5, 14, 22, 0.52);
   --hairline: rgba(236, 255, 246, 0.06);
   --text: #f3fbf8;
   --muted: rgba(243, 251, 248, 0.68);
   --line: rgba(226, 255, 239, 0.16);
-  /* Single locked accent (green). --accent-soft is only a mint highlight for the
-     one green gradient; --accent-2 stays as ambient background wash, never UI. */
-  --accent: #17c964;
-  --accent-soft: #7dffb4;
+  /* Single locked accent (blue). --accent-soft is only a lighter tint for the
+     one blue gradient; --accent-2 stays as ambient background wash, never UI. */
+  --accent: #2f81f7;
+  --accent-soft: #7db4ff;
   --accent-2: #56d4ff;
   --danger: #ff5c7a;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
@@ -32,8 +32,8 @@ body {
   margin: 0;
   background:
     radial-gradient(circle at 12% -8%, rgba(86, 212, 255, 0.28), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(23, 201, 100, 0.26), transparent 24rem),
-    linear-gradient(145deg, #07110f 0%, #0d1618 58%, #14201d 100%);
+    radial-gradient(circle at 110% 24%, rgba(47, 129, 247, 0.26), transparent 24rem),
+    linear-gradient(145deg, #070f16 0%, #0d151c 58%, #141e26 100%);
   color: var(--text);
 }
 
@@ -93,8 +93,8 @@ button {
   border-radius: var(--radius-panel);
   background:
     radial-gradient(circle at 12% 0%, rgba(86, 212, 255, 0.16), transparent 16rem),
-    radial-gradient(circle at 100% 8%, rgba(23, 201, 100, 0.22), transparent 18rem),
-    rgba(5, 17, 14, 0.72);
+    radial-gradient(circle at 100% 8%, rgba(47, 129, 247, 0.22), transparent 18rem),
+    rgba(5, 14, 22, 0.72);
 }
 
 .popup-hero,
@@ -144,13 +144,13 @@ h1 {
   height: 48px;
   border-radius: var(--radius-pill);
   color: var(--accent);
-  background: rgba(23, 201, 100, 0.14);
-  border-color: rgba(23, 201, 100, 0.34);
+  background: rgba(47, 129, 247, 0.14);
+  border-color: rgba(47, 129, 247, 0.34);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .power-button:hover {
-  background: rgba(23, 201, 100, 0.22);
+  background: rgba(47, 129, 247, 0.22);
   transform: translateY(-1px);
 }
 
@@ -212,8 +212,8 @@ h1 {
 }
 
 .metric-card.primary {
-  border-color: rgba(23, 201, 100, 0.34);
-  background: linear-gradient(150deg, rgba(23, 201, 100, 0.32), rgba(23, 201, 100, 0.08));
+  border-color: rgba(47, 129, 247, 0.34);
+  background: linear-gradient(150deg, rgba(47, 129, 247, 0.32), rgba(47, 129, 247, 0.08));
 }
 
 .metric-card strong {
@@ -288,7 +288,7 @@ h1 {
   border: 1px solid rgba(226, 255, 239, 0.22);
   border-radius: 9px;
   color: #f8fffb;
-  background: rgba(4, 14, 12, 0.97);
+  background: rgba(4, 12, 20, 0.97);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
   font-size: 11px;
   font-weight: 700;
@@ -420,12 +420,12 @@ h1 {
 }
 
 .chip-button.accent {
-  border-color: rgba(23, 201, 100, 0.42);
-  color: #d7ffe8;
+  border-color: rgba(47, 129, 247, 0.42);
+  color: #d7e9ff;
 }
 
 .chip-button.accent:hover {
-  background: rgba(23, 201, 100, 0.16);
+  background: rgba(47, 129, 247, 0.16);
 }
 
 .ghost-button {
@@ -618,9 +618,9 @@ h1 {
 .marketing-shell {
   min-height: 100vh;
   background:
-    radial-gradient(80% 55% at 88% -4%, rgba(23, 201, 100, 0.24), transparent 58%),
-    radial-gradient(60% 45% at 0% 108%, rgba(23, 201, 100, 0.1), transparent 55%),
-    linear-gradient(168deg, #050d0b 0%, #07110e 52%, #0a1613 100%);
+    radial-gradient(80% 55% at 88% -4%, rgba(47, 129, 247, 0.24), transparent 58%),
+    radial-gradient(60% 45% at 0% 108%, rgba(47, 129, 247, 0.1), transparent 55%),
+    linear-gradient(168deg, #050c14 0%, #070f16 52%, #0a141f 100%);
 }
 
 .marketing-shell a {
@@ -647,7 +647,7 @@ h1 {
   top: 0;
   z-index: 5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(4, 16, 14, 0.86);
+  background: rgba(4, 14, 22, 0.86);
   backdrop-filter: blur(22px) saturate(145%);
 }
 
@@ -709,10 +709,10 @@ h1 {
 }
 
 .marketing-shell .primary-link {
-  border: 1px solid rgba(184, 255, 211, 0.74);
-  color: #03110b;
-  background: linear-gradient(180deg, #b9ffd1 0%, #78f1a7 100%);
-  box-shadow: 0 8px 20px -6px rgba(23, 201, 100, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(188, 216, 255, 0.74);
+  color: #04101f;
+  background: linear-gradient(180deg, #bcd8ff 0%, #4f97ff 100%);
+  box-shadow: 0 8px 20px -6px rgba(47, 129, 247, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
@@ -761,14 +761,14 @@ h1 {
   min-height: 420px;
 }
 
-/* A soft green spotlight shaped to the card, so it reads as a deliberate glow
+/* A soft blue spotlight shaped to the card, so it reads as a deliberate glow
    rather than a flat void behind the product shot. */
 .hero-visual::before {
   content: "";
   position: absolute;
   inset: -6% -4%;
   border-radius: 44px;
-  background: radial-gradient(58% 56% at 52% 42%, rgba(23, 201, 100, 0.4), transparent 72%);
+  background: radial-gradient(58% 56% at 52% 42%, rgba(47, 129, 247, 0.4), transparent 72%);
   filter: blur(52px);
 }
 
@@ -785,8 +785,8 @@ h1 {
   /* Mirror the popup's own body backdrop so it reads as the real surface. */
   background:
     radial-gradient(circle at 12% -8%, rgba(86, 212, 255, 0.28), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(23, 201, 100, 0.26), transparent 24rem),
-    linear-gradient(145deg, #07110f 0%, #0d1618 58%, #14201d 100%);
+    radial-gradient(circle at 110% 24%, rgba(47, 129, 247, 0.26), transparent 24rem),
+    linear-gradient(145deg, #070f16 0%, #0d151c 58%, #141e26 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
     0 50px 100px -24px rgba(0, 0, 0, 0.72),
@@ -848,7 +848,7 @@ h1 {
 
 .how-steps li {
   padding-top: 22px;
-  border-top: 2px solid rgba(23, 201, 100, 0.34);
+  border-top: 2px solid rgba(47, 129, 247, 0.34);
 }
 
 .how-num {
@@ -860,7 +860,7 @@ h1 {
   border-radius: var(--radius-pill);
   font-size: 14px;
   font-weight: 800;
-  color: #03110b;
+  color: #04101f;
   background: linear-gradient(180deg, var(--accent-soft), var(--accent));
 }
 
@@ -877,7 +877,7 @@ h1 {
   line-height: 1.55;
 }
 
-/* Closing call to action: one green-lit panel, centered, primary CTA repeated. */
+/* Closing call to action: one blue-lit panel, centered, primary CTA repeated. */
 .cta-band {
   padding: 16px 0 84px;
 }
@@ -885,13 +885,13 @@ h1 {
 .cta-inner {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(124, 255, 173, 0.22);
+  border: 1px solid rgba(125, 180, 255, 0.22);
   border-radius: var(--radius-panel);
   padding: 56px 40px;
   text-align: center;
   background:
-    radial-gradient(72% 130% at 50% -12%, rgba(23, 201, 100, 0.24), transparent 70%),
-    linear-gradient(180deg, rgba(13, 34, 27, 0.82), rgba(7, 17, 15, 0.66));
+    radial-gradient(72% 130% at 50% -12%, rgba(47, 129, 247, 0.24), transparent 70%),
+    linear-gradient(180deg, rgba(13, 27, 44, 0.82), rgba(7, 15, 23, 0.66));
 }
 
 .cta-badge {
@@ -900,8 +900,8 @@ h1 {
   margin-bottom: 18px;
   padding: 6px 14px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(124, 255, 173, 0.3);
-  background: rgba(23, 201, 100, 0.12);
+  border: 1px solid rgba(125, 180, 255, 0.3);
+  background: rgba(47, 129, 247, 0.12);
   color: var(--accent-soft);
   font-size: 12px;
   font-weight: 800;
@@ -994,7 +994,7 @@ h1 {
 .subscribe-form input[type="email"]:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(23, 201, 100, 0.22);
+  box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.22);
 }
 
 .subscribe-form button {
@@ -1063,8 +1063,8 @@ h1 {
   width: 40px;
   height: 40px;
   border-radius: 11px;
-  background: rgba(23, 201, 100, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(23, 201, 100, 0.28);
+  background: rgba(47, 129, 247, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(47, 129, 247, 0.28);
 }
 
 .feature-icon::after {
@@ -1156,8 +1156,8 @@ h1 {
   width: 13px;
   height: 13px;
   border-radius: 999px;
-  background: #7cffad;
-  box-shadow: 0 0 0 6px rgba(124, 255, 173, 0.12);
+  background: #7db4ff;
+  box-shadow: 0 0 0 6px rgba(125, 180, 255, 0.12);
 }
 
 .marketing-footer {
@@ -1208,8 +1208,8 @@ h1 {
 
   .marketing-shell {
     background:
-      radial-gradient(circle at 82% 8%, rgba(23, 201, 100, 0.16), transparent 46%),
-      linear-gradient(165deg, #060f0d 0%, #08130f 60%, #0a1613 100%);
+      radial-gradient(circle at 82% 8%, rgba(47, 129, 247, 0.16), transparent 46%),
+      linear-gradient(165deg, #060d14 0%, #080f16 60%, #0a141f 100%);
   }
 
   .marketing-nav nav {
