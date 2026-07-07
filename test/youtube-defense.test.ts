@@ -39,17 +39,30 @@ describe('YouTube video-ad defenses', () => {
     })
   }, 30_000)
 
-  it('dismisses the anti-adblock enforcement popup and resumes playback', async () => {
+  it('closes and removes the anti-adblock enforcement popup so the scroll lock releases', async () => {
     await withYouTubePage(antiAdblockFixture(), async (view) => {
-      await waitFor(view, `getComputedStyle(document.querySelector('ytd-enforcement-message-view-model')).display === 'none'`, 'enforcement card hidden')
+      // The dialog must be CLOSED (via its close()), not merely hidden: while it
+      // stays open, YouTube's overlay manager keeps snapping scroll back and the
+      // page judders up and down without ever scrolling.
+      await waitFor(view, `window.__dialogClosed === true`, 'dialog close() called')
+      await waitFor(view, `document.querySelector('ytd-enforcement-message-view-model') === null`, 'enforcement popup removed')
+      await waitFor(view, `document.querySelector('tp-yt-iron-overlay-backdrop') === null`, 'backdrop removed')
       await waitFor(view, `document.getElementById('main-video').paused === false`, 'playback resumed')
 
-      const backdropHidden = await view.evaluate<boolean>(`getComputedStyle(document.querySelector('tp-yt-iron-overlay-backdrop')).display === 'none'`)
-      expect(backdropHidden).toBe(true)
+      expect(await view.evaluate<string>(`document.documentElement.style.overflow`)).toBe('auto')
 
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'event flush')
       const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
       expect(new Set(events.map(event => event.source)).has('youtube')).toBe(true)
+    })
+  }, 30_000)
+
+  it('leaves a leftover skip button alone once the player is out of ad state', async () => {
+    await withYouTubePage(staleSkipFixture(), async (view) => {
+      // The button is visible and matches the skip selectors, but the player is
+      // not in `ad-showing` — the poll must not keep clicking the player.
+      await Bun.sleep(1_200)
+      expect(await view.evaluate<boolean>(`window.__skipClicked === true`)).toBe(false)
     })
   }, 30_000)
 })
@@ -149,8 +162,20 @@ function antiAdblockFixture(): string {
         const v = document.getElementById('main-video');
         Object.defineProperty(v, 'paused', { configurable: true, writable: true, value: true });
         v.play = () => { v.paused = false; return Promise.resolve(); };
+        window.__dialogClosed = false;
+        document.querySelector('tp-yt-paper-dialog').close = () => { window.__dialogClosed = true; };
       })();
     </script>
+  </ytd-app>`
+}
+
+function staleSkipFixture(): string {
+  return `<ytd-app>
+    <div id="movie_player" class="html5-video-player">
+      <video id="main-video"></video>
+      <button class="ytp-skip-ad-button" onclick="window.__skipClicked = true">Skip</button>
+    </div>
+    <script>window.__skipClicked = false;</script>
   </ytd-app>`
 }
 

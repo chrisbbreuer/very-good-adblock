@@ -272,27 +272,51 @@ function fastForwardYouTubeAd(): void {
 
 /**
  * When YouTube shows its "ad blockers violate Terms" enforcement modal it also
- * dims and scroll-locks the page and pauses the video. The cosmetic stylesheet
- * hides the modal card; here we clear the shared backdrop, restore scrolling,
- * and resume playback — only when the enforcement message is actually present,
- * so ordinary dialogs and menus are untouched.
+ * dims the page, pauses the video, and engages its overlay scroll lock. The
+ * cosmetic stylesheet hides the modal card, but hiding is not enough: while the
+ * dialog is still OPEN, YouTube's overlay manager keeps fighting the user's
+ * scrolling (the page snaps back on every attempt, so it judders up and down
+ * and cannot be scrolled), and the dialog's own Dismiss button is invisible so
+ * the user cannot end it either. So close the dialog for real and drop it from
+ * the DOM — which releases the scroll lock and lets the `:has()` rule stop
+ * hiding `ytd-popup-container`, where every ordinary YouTube menu renders —
+ * then clear the backdrop, restore scrolling, and resume playback. All of it
+ * only when the enforcement message is actually present, so ordinary dialogs
+ * and menus are untouched.
  */
 function dismissYouTubeAntiAdblock(): void {
   const message = document.querySelector('ytd-enforcement-message-view-model, ytd-enforcement-message-renderer')
-  if (!message || antiAdblockSeen.has(message)) return
-  antiAdblockSeen.add(message)
+  if (!message) return
 
-  for (const backdrop of document.querySelectorAll('tp-yt-iron-overlay-backdrop')) {
-    if (backdrop instanceof HTMLElement) backdrop.style.setProperty('display', 'none', 'important')
+  if (!antiAdblockSeen.has(message)) {
+    antiAdblockSeen.add(message)
+    queueEvent('youtube', 'other')
   }
+
+  const dialog = message.closest('tp-yt-paper-dialog')
+  if (dialog) {
+    const close = (dialog as Element & { close?: unknown }).close
+    if (typeof close === 'function') {
+      try {
+        (close as (this: Element) => void).call(dialog)
+      }
+      catch {
+        // The detach below still forces the overlay manager to let go.
+      }
+    }
+    dialog.remove()
+  }
+  else {
+    message.remove()
+  }
+
+  for (const backdrop of document.querySelectorAll('tp-yt-iron-overlay-backdrop')) backdrop.remove()
 
   document.documentElement.style.setProperty('overflow', 'auto', 'important')
   document.body?.style.setProperty('overflow', 'auto', 'important')
 
   const video = document.querySelector('.html5-video-player video')
   if (video instanceof HTMLVideoElement && video.paused) void video.play().catch(() => {})
-
-  queueEvent('youtube', 'other')
 }
 
 type SelectorRoot = Document | Element
@@ -337,12 +361,17 @@ function restoreConsentScroll(): void {
 
 /**
  * Click the Skip button whenever it is visible in the player. We click on every
- * poll tick it is present (harmless once the ad is gone) so a click that lands
- * before YouTube wires the handler still gets retried, and count each button
- * once. Scans the whole document, not just mutation roots, since the button
- * often becomes visible without a childList mutation.
+ * poll tick it is present so a click that lands before YouTube wires the
+ * handler still gets retried, and count each button once. Scans the whole
+ * document, not just mutation roots, since the button often becomes visible
+ * without a childList mutation. Only while a player is actually in an ad:
+ * YouTube keeps skip buttons in the DOM after the ad ends, and a leftover that
+ * still passes the visibility check would otherwise be re-clicked forever,
+ * poking the player every poll tick.
  */
 function clickYouTubeSkip(): void {
+  if (!document.querySelector('.html5-video-player.ad-showing, .html5-video-player.ad-interrupting')) return
+
   for (const button of document.querySelectorAll(youtubeSkipSelectors)) {
     if (!(button instanceof HTMLElement) || !isVisible(button)) continue
     button.click()
