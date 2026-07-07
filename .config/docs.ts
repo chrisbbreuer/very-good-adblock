@@ -32,26 +32,26 @@ const config: BunPressOptions = {
     syntaxHighlightTheme: 'github-dark',
     css: `
       :root {
-        --bp-c-brand-1: #147c4f;
-        --bp-c-brand-2: #199861;
-        --bp-c-brand-3: #0f6842;
-        --bp-c-brand-soft: rgba(20, 124, 79, 0.14);
+        --bp-c-brand-1: #1f6feb;
+        --bp-c-brand-2: #2f81f7;
+        --bp-c-brand-3: #1a5fd0;
+        --bp-c-brand-soft: rgba(47, 129, 247, 0.14);
       }
 
       html.dark {
-        --bp-c-bg: #07110f;
-        --bp-c-bg-alt: #0b1715;
-        --bp-c-bg-elv: #101f1d;
-        --bp-c-bg-soft: #11231f;
+        --bp-c-bg: #070f16;
+        --bp-c-bg-alt: #0b161d;
+        --bp-c-bg-elv: #101d26;
+        --bp-c-bg-soft: #111f2b;
         --bp-c-divider: rgba(219, 255, 236, 0.13);
         --bp-c-border: rgba(219, 255, 236, 0.2);
         --bp-c-text-1: #f3fbf8;
         --bp-c-text-2: rgba(243, 251, 248, 0.78);
         --bp-c-text-3: rgba(243, 251, 248, 0.58);
-        --bp-c-brand-1: #8dffb8;
+        --bp-c-brand-1: #8db4ff;
         --bp-c-brand-2: #56d4ff;
-        --bp-c-brand-3: #37d987;
-        --bp-c-brand-soft: rgba(124, 255, 173, 0.16);
+        --bp-c-brand-3: #4f97ff;
+        --bp-c-brand-soft: rgba(125, 180, 255, 0.16);
       }
 
       .BPNav {
@@ -63,10 +63,10 @@ const config: BunPressOptions = {
         width: 26px;
         height: 26px;
         margin-right: 10px;
-        border: 1px solid rgba(152, 255, 193, 0.42);
+        border: 1px solid rgba(125, 180, 255, 0.42);
         border-radius: 8px;
-        background: linear-gradient(145deg, rgba(152, 255, 193, 0.96), rgba(88, 220, 255, 0.86));
-        box-shadow: inset 0 0 0 7px rgba(6, 18, 15, 0.3);
+        background: linear-gradient(145deg, rgba(125, 180, 255, 0.96), rgba(88, 220, 255, 0.86));
+        box-shadow: inset 0 0 0 7px rgba(6, 15, 24, 0.3);
         content: "";
         vertical-align: -7px;
       }
@@ -74,7 +74,7 @@ const config: BunPressOptions = {
       .BPHome {
         background:
           radial-gradient(circle at 78% 16%, rgba(86, 212, 255, 0.16), transparent 26%),
-          linear-gradient(145deg, #07110f 0%, #0b1715 54%, #171021 100%);
+          linear-gradient(145deg, #070f16 0%, #0b161d 54%, #171021 100%);
       }
 
       .BPHomeHero {
@@ -88,7 +88,7 @@ const config: BunPressOptions = {
 
       .BPButton-brand,
       .BPButton-brand:hover {
-        color: #03110b;
+        color: #04101f;
       }
 
       .BPFeatures {
