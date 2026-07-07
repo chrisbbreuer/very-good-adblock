@@ -108,7 +108,13 @@ async function buildScript(entrypoint: string, filename: string): Promise<void> 
     entrypoints: [entrypoint],
     outdir,
     target: 'browser',
-    format: 'esm',
+    // IIFE, never 'esm': these files load as CLASSIC scripts (content scripts,
+    // plain <script> tags), where esm output's top-level `var`s become window
+    // globals. In MAIN-world scripts the minified single-letter names then
+    // collide with the page's own minified globals — YouTube overwrote ours
+    // (killing the ad pruner with "F is not a function") and ours overwrote
+    // YouTube's, corrupting page behavior on every site the guard runs on.
+    format: 'iife',
     splitting: false,
     minify: true,
     naming: {
