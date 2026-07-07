@@ -122,12 +122,12 @@ function frameCss(): string {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #f3fbf8;
       background:
-        radial-gradient(circle at 84% 8%, rgba(23,201,100,.22), transparent 46%),
-        radial-gradient(circle at 6% 96%, rgba(23,201,100,.12), transparent 44%),
+        radial-gradient(circle at 84% 8%, rgba(47,129,247,.22), transparent 46%),
+        radial-gradient(circle at 6% 96%, rgba(47,129,247,.12), transparent 44%),
         linear-gradient(165deg, #060f0d 0%, #08130f 58%, #0a1613 100%);
     }
     .frame-copy { flex: 0 0 46%; padding: 0 40px 0 88px; }
-    .frame-logo { width: 56px; height: 56px; margin-bottom: 28px; filter: drop-shadow(0 14px 30px rgba(23,201,100,.32)); }
+    .frame-logo { width: 56px; height: 56px; margin-bottom: 28px; filter: drop-shadow(0 14px 30px rgba(47,129,247,.32)); }
     .frame-copy h1 { margin: 0; font-size: 56px; line-height: 1.03; letter-spacing: -.02em; font-weight: 800; max-width: 12ch; }
     .frame-copy p { margin: 22px 0 0; font-size: 21px; line-height: 1.5; color: rgba(243,251,248,.72); max-width: 34ch; }
     .frame-wordmark { margin-top: 40px; font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(243,251,248,.5); }
