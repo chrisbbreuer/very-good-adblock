@@ -96,10 +96,10 @@ function framePage(index: number): string {
     <div class="frame-copy">
       <svg class="frame-logo" viewBox="0 0 128 128" fill="none" aria-hidden="true">
         <defs>
-          <linearGradient id="s" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#7dffb4"/><stop offset=".52" stop-color="#1ed878"/><stop offset="1" stop-color="#33c6ff"/></linearGradient>
+          <linearGradient id="s" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#7db4ff"/><stop offset=".52" stop-color="#2f81f7"/><stop offset="1" stop-color="#33c6ff"/></linearGradient>
         </defs>
         <path fill="url(#s)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"/>
-        <path fill="none" stroke="#053b28" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"/>
+        <path fill="none" stroke="#04223b" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"/>
         <path fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" d="m43 63 14 15 31-36"/>
       </svg>
       <h1>${caption.title}</h1>
