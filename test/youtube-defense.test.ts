@@ -11,21 +11,23 @@ beforeAll(async () => {
 })
 
 describe('YouTube video-ad defenses', () => {
-  it('speeds up a non-skippable video ad without seeking, then restores the rate', async () => {
+  it('mutes, speeds, and seeks a non-skippable video ad to its end, then restores the player', async () => {
     await withYouTubePage(fastForwardFixture(), async (view) => {
-      // The ad is sped up via playbackRate — NOT seeked to the end, which can
-      // stall the player and freeze the ad.
+      // While the ad runs it is muted and sped up, and — once the duration is
+      // known — seeked straight to its end so the pod advances immediately.
       await waitFor(view, `document.getElementById('ad-video').playbackRate === 16`, 'ad sped up')
-      expect(await view.evaluate<number>(`document.getElementById('ad-video').currentTime`)).toBe(0)
+      await waitFor(view, `document.getElementById('ad-video').muted === true`, 'ad muted')
+      await waitFor(view, `document.getElementById('ad-video').currentTime === 30`, 'ad seeked to end')
 
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'event flush')
       const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
       const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
       expect(videoSecondsSaved).toBeGreaterThanOrEqual(1)
 
-      // When the ad ends, the viewer's original speed is restored for the real video.
+      // When the ad ends, the viewer's speed and sound come back.
       await view.evaluate(`document.getElementById('movie_player').classList.remove('ad-showing')`)
       await waitFor(view, `document.getElementById('ad-video').playbackRate === 1`, 'rate restored')
+      await waitFor(view, `document.getElementById('ad-video').muted === false`, 'sound restored')
     })
   }, 30_000)
 

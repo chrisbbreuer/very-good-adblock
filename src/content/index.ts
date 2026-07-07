@@ -27,6 +27,7 @@ let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
 let youtubeAdTimer: number | undefined
 let adRestoreRate: number | undefined
+let adRestoreMuted: boolean | undefined
 let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
@@ -233,11 +234,14 @@ function handleYouTubeAds(): void {
 }
 
 /**
- * Non-skippable pre/mid-rolls have no Skip button, so when the player is
- * `ad-showing` we speed the ad video up so it finishes fast. We deliberately do
- * NOT seek to the end — seeking can stall YouTube and leave the ad frozen. The
- * pre-ad playback rate is captured and restored once the ad ends, so the real
- * video keeps the viewer's chosen speed.
+ * Ads that survive the source pruning (server-decided pods, stitched streams)
+ * are ended instantly: seek the ad video to its end, which completes the ad
+ * and advances the pod — verified against live ad pods, where fast-forwarding
+ * alone crawls because the stream cannot buffer at 16x for a 90s+ ad. Until
+ * the ad's duration is known (metadata still loading) the video is muted and
+ * sped to 16x so not even a moment of the ad is heard. The viewer's rate and
+ * mute state are captured and restored once the ad ends. Runs on every poll
+ * tick, so each new ad in a pod is seeked as soon as it becomes seekable.
  */
 function fastForwardYouTubeAd(): void {
   const player = document.querySelector('.html5-video-player')
@@ -247,26 +251,33 @@ function fastForwardYouTubeAd(): void {
   const adShowing = player?.classList.contains('ad-showing') ?? false
 
   if (adShowing) {
-    if (adRestoreRate === undefined && video.playbackRate < adFastForwardRate) {
+    if (adRestoreRate === undefined) {
       adRestoreRate = video.playbackRate
+      adRestoreMuted = video.muted
       queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
     }
     try {
+      video.muted = true
       if (video.playbackRate < adFastForwardRate) video.playbackRate = adFastForwardRate
+      if (Number.isFinite(video.duration) && video.duration > 0 && video.duration - video.currentTime > 0.3) {
+        video.currentTime = video.duration
+      }
     }
     catch {
       // Player rejected the change; leave the ad to the Skip button.
     }
   }
   else if (adRestoreRate !== undefined) {
-    // Ad ended — restore the viewer's chosen speed for the real video.
+    // Ad ended — restore the viewer's chosen speed and sound for the real video.
     try {
       video.playbackRate = adRestoreRate
+      if (adRestoreMuted !== undefined) video.muted = adRestoreMuted
     }
     catch {
       // Ignore; YouTube manages the player state from here.
     }
     adRestoreRate = undefined
+    adRestoreMuted = undefined
   }
 }
 
