@@ -16,3 +16,5 @@ bench/fixtures
 .zed
 .cursor
 /pantry
+
+.env
