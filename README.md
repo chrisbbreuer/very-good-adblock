@@ -4,6 +4,26 @@ A fast, open-source Manifest V3 ad blocker for Chrome and Firefox. It removes ad
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-17c964)](./LICENSE) [![Built with Bun](https://img.shields.io/badge/built%20with-Bun-14151a)](https://bun.sh) [![Manifest V3](https://img.shields.io/badge/Manifest-V3-17c964)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 
+<p align="center">
+  <img src="docs/public/screenshots/popup.png" width="860" alt="The Very Good AdBlock popup: 47 ads blocked on the current page, 8.4 GB of data saved, 20 hours of video time recovered, a 24-hour activity chart, and per-site controls.">
+</p>
+
+## Features
+
+- Cross-browser Manifest V3 build (Chrome and Firefox) from one codebase, with per-target manifests generated at build time.
+- MV3 `declarativeNetRequest` blocking with bundled static rules (14,000+) plus dynamic local rules for per-site allowlisting.
+- Pinned generated host rules from EasyList and AdGuard filter-list revisions, refreshed daily as dynamic rules between releases.
+- YouTube ad removal at the source (player/browse/Shorts responses), skip assist, non-skippable fast-forward, and anti-adblock pop-up dismissal.
+- X promoted-tweet removal at the source, and Twitch video-ad marker detection for saved-time stats.
+- Pop-up and pop-under defusing, plus opt-in cookie-consent hiding.
+- Local-first stats for blocked ads, estimated data saved, and estimated video time saved, with compact Chrome cloud sync for fresh installs.
+- One-click reporting: if an ad slips through, the popup files a fully pre-filled GitHub issue with diagnostics and a page screenshot attached.
+- Premium, minimal STX popup and dashboard UI, with external scripts for MV3 CSP safety.
+
+<p align="center">
+  <img src="docs/public/screenshots/dashboard.png" width="860" alt="The Very Good AdBlock dashboard: 52,914 lifetime blocks, a 60-day history chart, and protection toggles for cosmetic hiding, cookie banners, pop-up blocking, and YouTube/Twitch helpers.">
+</p>
+
 ## Why
 
 Very Good AdBlock exists because waiting for an ad to interrupt you before it gets blocked is backwards. Pop-ups, intrusive placements, and video ads should be gone *before* the page can show them, with a blocker that stays fast, small, and modern instead of shipping a background page that churns on every request.
@@ -68,17 +88,6 @@ Under the native model the matching happens in the browser's own network stack, 
 These builds are *not* identical work, and the table says so: the JavaScript engines parse the full raw list into in-process match structures, while Very Good AdBlock parses raw lists offline at build time (`bun run update:filters`) and at runtime only compiles the reduced host list into DNR rules. The point isn't that our parser is faster — it's that the expensive matching structure lives in the browser, not in the extension (as it also does for the competitors' native builds).
 
 > **Method & honesty notes.** These are matching-engine microbenchmarks comparing *models*, not a blocking-quality or product comparison. The JavaScript engines support filter syntax (path/regex/type modifiers, exceptions) that our host-based DNR ruleset intentionally reduces to hostname blocking, so this measures *runtime cost of the model*, not coverage. Engines are the real upstream packages fed identical lists; the corpus's blocked requests are drawn from the same lists so every engine has genuine matching work. The filter lists are fetched once into `bench/fixtures/` (git-ignored — they're GPL) and cached. Run `bun run bench --no-compare` for just the hot paths.
-
-## Features
-
-- Cross-browser Manifest V3 build (Chrome and Firefox) from one codebase, with per-target manifests generated at build time.
-- MV3 `declarativeNetRequest` blocking with bundled static rules (14,000+) plus dynamic local rules for per-site allowlisting.
-- Pinned generated host rules from EasyList and AdGuard filter-list revisions, refreshed daily as dynamic rules between releases.
-- YouTube ad removal at the source (player/browse/Shorts responses), skip assist, non-skippable fast-forward, and anti-adblock pop-up dismissal.
-- X promoted-tweet removal at the source, and Twitch video-ad marker detection for saved-time stats.
-- Local-first stats for blocked ads, estimated data saved, and estimated video time saved, with compact Chrome cloud sync for fresh installs.
-- Premium, minimal STX popup and dashboard UI, with external scripts for MV3 CSP safety.
-- Bun WebView smoke coverage for UI rendering, screenshots, video helpers, and overflow checks.
 
 ## Cosmetic filtering
 

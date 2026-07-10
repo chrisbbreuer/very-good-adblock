@@ -24,6 +24,10 @@ features:
     details: Detailed history stays on the device. Cloud sync carries only compact counters and settings through Chrome storage.
 ---
 
+<p align="center">
+  <img src="./screenshots/popup.png" alt="The Very Good AdBlock popup: 47 ads blocked on the current page, 8.4 GB of data saved, 20 hours of video time recovered, a 24-hour activity chart, and per-site controls." width="760">
+</p>
+
 ## Why It Exists
 
 Very Good AdBlock exists because I was tired of running into new popups, intrusive placements, and obstructive ads that were not caught yet. I do not want to wait until an ad interrupts me to deal with it. I want those distractions gone immediately, using a blocker that stays performant, minimal, and modern.

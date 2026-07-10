@@ -7,6 +7,10 @@ description: Use the minimal popup and dashboard to manage protection, stats, an
 
 The popup is designed for quick, lightweight decisions while browsing. The dashboard is for deeper history, settings, diagnostics, and reset/export controls.
 
+<p align="center">
+  <img src="../../screenshots/dashboard.png" alt="The Very Good AdBlock dashboard: 52,914 lifetime blocks, a 60-day history chart, and protection toggles for cosmetic hiding, cookie banners, pop-up blocking, and YouTube/Twitch helpers." width="760">
+</p>
+
 ## Popup
 
 Use the popup to:
