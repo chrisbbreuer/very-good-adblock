@@ -41,6 +41,7 @@
     "package:firefox": "bun run build:firefox && bun run validate:extension:firefox && bun --bun scripts/package-extension.ts --target=firefox",
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
+    "deploy": "bun node_modules/@stacksjs/buddy/dist/cli.js deploy",
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun scripts/generate-marketing-preview.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
@@ -58,7 +59,10 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "bun-plugin-stx": "^0.2.77"
+    "@stacksjs/defaults": "^0.70.64",
+    "@stacksjs/ts-cloud": "^0.7.12",
+    "bun-plugin-stx": "^0.2.77",
+    "stacks": "^0.70.64"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
