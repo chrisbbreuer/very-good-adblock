@@ -84,6 +84,12 @@ These builds are *not* identical work, and the table says so: the JavaScript eng
 
 Cosmetic filtering hides first-party ad placements that survive network blocking (YouTube feed/masthead/display ads, Twitch display banners, X promoted entries). It ships on by default behind site-specific selectors, global and per-site kill switches, a narrow default set with an opt-in aggressive tier, and per-page diagnostics. The player region is never hidden, so skip automation and playback are untouched. See [`docs/architecture/cosmetic-filtering.md`](./docs/architecture/cosmetic-filtering.md).
 
+## Reporting an ad that got through
+
+If an ad, pop-up, or interruption slips past, filing a report takes one click: open the extension popup and press **"Saw an ad slip through?"** (or **Report an ad** on the dashboard). It opens a fully pre-filled GitHub issue and copies a screenshot of the page to your clipboard so you can paste it in.
+
+The report auto-collects the diagnostics needed to fix it — extension version, browser, the page (with query string and fragment stripped so no session tokens leak), protection state, on-page block counts, and filter-source revisions. No browsing history is included. Prefer to file by hand? Use the [🚨 An ad got through](https://github.com/chrisbbreuer/very-good-adblock/issues/new?labels=ad-reached-user&template=ad-reached-user.md) issue template.
+
 ## Setup
 
 ```bash

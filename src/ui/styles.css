@@ -533,6 +533,71 @@ h1 {
   border-bottom: 0;
 }
 
+.report-button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 12px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  color: var(--text);
+  background: var(--panel-strong);
+  transition: background 140ms ease, border-color 140ms ease, var(--press);
+}
+
+.report-button:hover {
+  background: rgba(255, 176, 92, 0.14);
+  border-color: rgba(255, 176, 92, 0.42);
+}
+
+.report-button:active {
+  transform: translateY(1px);
+}
+
+.report-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.report-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-inner);
+  font-size: 15px;
+  color: #ffb05c;
+  background: rgba(255, 176, 92, 0.14);
+  border: 1px solid rgba(255, 176, 92, 0.34);
+}
+
+.report-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.report-text strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.report-text small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.report-arrow {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 15px;
+}
+
 .status-message {
   margin: 14px 2px 0;
   font-size: 12px;

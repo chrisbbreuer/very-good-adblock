@@ -2,6 +2,7 @@ import { siteMatches } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState } from '../shared/types'
 import { byId, renderBars, sendMessage } from './dom'
+import { reportAdThatGotThrough } from './report'
 
 const elements = {
   root: document.querySelector<HTMLElement>('.popup-frame')!,
@@ -27,6 +28,8 @@ const elements = {
   topCategories: byId('top-categories'),
   status: byId('status-message'),
   openOptions: byId<HTMLButtonElement>('open-options'),
+  reportAd: byId<HTMLButtonElement>('report-ad'),
+  reportHint: byId('report-hint'),
 }
 
 let state: DashboardState | undefined
@@ -72,6 +75,24 @@ elements.siteToggle.addEventListener('click', async () => {
 
 elements.openOptions.addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
+})
+
+elements.reportAd.addEventListener('click', async () => {
+  if (!state || elements.reportAd.disabled) return
+  elements.reportAd.disabled = true
+  const original = elements.reportHint.textContent
+  elements.reportHint.textContent = 'Opening a pre-filled report…'
+  try {
+    await reportAdThatGotThrough(state)
+  }
+  catch (error) {
+    elements.reportHint.textContent = error instanceof Error ? error.message : 'Could not open the report.'
+    elements.reportAd.disabled = false
+    return
+  }
+  // The new tab takes focus and the popup closes; restore state in case it stays open.
+  elements.reportHint.textContent = original
+  elements.reportAd.disabled = false
 })
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-pause]')) {

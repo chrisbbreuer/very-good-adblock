@@ -19,6 +19,13 @@ export const filterRefreshAlarm = 'very-good-adblock-filter-refresh'
 export const resumeAlarm = 'very-good-adblock-resume-protection'
 export const filterRefreshUrl = 'https://raw.githubusercontent.com/chrisbbreuer/very-good-adblock/main/rules/generated/network-hosts.json'
 
+// GitHub project links, used by the one-click "report an ad that got through"
+// flow so users can file a fully pre-filled issue straight from the popup.
+export const repositoryUrl = 'https://github.com/chrisbbreuer/very-good-adblock'
+export const issuesUrl: string = `${repositoryUrl}/issues`
+export const newIssueUrl: string = `${issuesUrl}/new`
+export const adReportLabel = 'ad-reached-user'
+
 export const protectedHosts = {
   youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],
   twitch: ['twitch.tv', 'www.twitch.tv', 'm.twitch.tv'],

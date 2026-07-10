@@ -2,6 +2,7 @@ import { normalizeHostname } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState } from '../shared/types'
 import { byId, downloadJson, renderBars, sendMessage } from './dom'
+import { reportAdThatGotThrough } from './report'
 
 const elements = {
   blocked: byId('dashboard-blocked'),
@@ -30,6 +31,7 @@ const elements = {
   blockedSites: byId('blocked-sites'),
   diagnostics: byId('diagnostics'),
   status: byId('options-status'),
+  reportAd: byId<HTMLButtonElement>('report-ad'),
   updateFilters: byId<HTMLButtonElement>('update-filters'),
   exportData: byId<HTMLButtonElement>('export-data'),
   resetStats: byId<HTMLButtonElement>('reset-stats'),
@@ -78,6 +80,24 @@ elements.blockForm.addEventListener('submit', async (event) => {
   state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { blockedSites } })
   elements.blockHost.value = ''
   render(state)
+})
+
+elements.reportAd.addEventListener('click', async () => {
+  if (!state || elements.reportAd.disabled) return
+  elements.reportAd.disabled = true
+  const original = elements.reportAd.textContent
+  elements.reportAd.textContent = 'Opening…'
+  try {
+    await reportAdThatGotThrough(state)
+    elements.status.textContent = 'Opened a pre-filled GitHub issue in a new tab. A page screenshot was copied to your clipboard — paste it into the issue if it helps.'
+  }
+  catch (error) {
+    elements.status.textContent = error instanceof Error ? error.message : 'Could not open the report.'
+  }
+  finally {
+    elements.reportAd.textContent = original
+    elements.reportAd.disabled = false
+  }
 })
 
 elements.exportData.addEventListener('click', async () => {

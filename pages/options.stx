@@ -14,6 +14,7 @@
           <h1>Protection dashboard</h1>
         </div>
         <div class="header-actions">
+          <button id="report-ad" class="soft-button" type="button">Report an ad</button>
           <button id="update-filters" class="soft-button" type="button">Update filters</button>
           <button id="export-data" class="soft-button" type="button">Export</button>
           <button id="reset-stats" class="danger-button" type="button">Reset</button>
