@@ -1,6 +1,6 @@
 # Very Good AdBlock
 
-A fast, open-source Manifest V3 ad blocker for Chrome and Firefox. It removes ads, pop-ups, and YouTube and Twitch interruptions **at the source**, then stays out of the way. No account, no telemetry, no bloat. Built with Bun, TypeScript, and STX.
+A fast, open-source Manifest V3 ad blocker for Chrome and Firefox. It removes ads, pop-ups, and YouTube and Twitch interruptions **at the source**, then stays out of the way. No account, no telemetry, no bloat.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-17c964)](./LICENSE) [![Built with Bun](https://img.shields.io/badge/built%20with-Bun-14151a)](https://bun.sh) [![Manifest V3](https://img.shields.io/badge/Manifest-V3-17c964)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 
