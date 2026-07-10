@@ -2,7 +2,6 @@
 # so we skip the full app preloader (auto-imports of routes/models/functions) —
 # buddy just loads config/cloud.ts and hands off to ts-cloud.
 preload = [
-  "./scripts/debug-exit-preload.ts",
   "@stacksjs/env/plugin.js",
 ]
 
