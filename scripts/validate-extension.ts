@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
-import type { BuildManifestResult } from '../src/manifest'
+import type { GeneratedManifest as BuildManifestResult } from '@stacksjs/browser-extension'
 
 const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
 const dist = target === 'firefox' ? 'dist-firefox' : 'dist'

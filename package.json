@@ -29,9 +29,9 @@
     "bun"
   ],
   "scripts": {
-    "build": "bun --bun scripts/build-extension.ts",
-    "build:chrome": "bun --bun scripts/build-extension.ts --target=chrome",
-    "build:firefox": "bun --bun scripts/build-extension.ts --target=firefox",
+    "build": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target chrome",
+    "build:chrome": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target chrome",
+    "build:firefox": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target firefox",
     "cache:youtube-fixture": "bun --bun scripts/cache-youtube-fixture.ts",
     "icons": "bun --bun scripts/generate-icons.ts",
     "docs:build": "bunpress build",
@@ -59,10 +59,10 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/defaults": "^0.70.67",
+    "@stacksjs/defaults": "^0.70.68",
     "@stacksjs/ts-cloud": "^0.7.12",
     "bun-plugin-stx": "^0.2.77",
-    "stacks": "^0.70.67"
+    "stacks": "^0.70.68"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",

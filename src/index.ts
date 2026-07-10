@@ -1,4 +1,3 @@
-export * from './manifest'
 export * from './rules/dynamic-rules'
 export * from './rules/static-rules'
 export * from './shared/domain'
