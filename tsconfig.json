@@ -1,12 +1,19 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["esnext", "dom", "dom.iterable"],
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable"
+    ],
     "moduleDetection": "force",
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "types": ["bun", "chrome"],
+    "types": [
+      "bun",
+      "chrome"
+    ],
     "allowImportingTsExtensions": true,
     "strict": true,
     "strictNullChecks": true,
@@ -21,5 +28,10 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
   },
-  "include": ["scripts/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "scripts/**/*.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "bench/vendor.d.ts"
+  ]
 }

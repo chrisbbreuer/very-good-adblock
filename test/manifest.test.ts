@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'bun:test'
-import { buildManifest } from '../src/manifest'
+import { generateManifest } from '@stacksjs/browser-extension'
+import config from '../config/extension'
 import { extensionGeckoId } from '../src/shared/constants'
 
+// Manifest generation moved to @stacksjs/browser-extension during the
+// consolidation; these assertions now drive the framework's generateManifest
+// with this extension's own config/extension.ts (the built manifest.json was
+// verified byte-identical to the old hand-rolled buildManifest output).
 describe('manifest', () => {
   it('defaults to a Chrome service-worker manifest', () => {
-    const manifest = buildManifest({ version: '1.2.3' })
+    const manifest = generateManifest(config, { version: '1.2.3' })
 
     expect(manifest.background).toEqual({ service_worker: 'background.js', type: 'module' })
     expect(manifest.minimum_chrome_version).toBe('111')
@@ -12,7 +17,7 @@ describe('manifest', () => {
   })
 
   it('builds a Firefox event-page manifest with gecko settings', () => {
-    const manifest = buildManifest({ version: '1.2.3', target: 'firefox' })
+    const manifest = generateManifest(config, { version: '1.2.3', target: 'firefox' })
 
     expect(manifest.background).toEqual({ scripts: ['background.js'], type: 'module' })
     expect(manifest.minimum_chrome_version).toBeUndefined()
@@ -26,8 +31,8 @@ describe('manifest', () => {
   })
 
   it('keeps content scripts, permissions, and rulesets identical across targets', () => {
-    const chrome = buildManifest({ version: '1.2.3', target: 'chrome' })
-    const firefox = buildManifest({ version: '1.2.3', target: 'firefox' })
+    const chrome = generateManifest(config, { version: '1.2.3', target: 'chrome' })
+    const firefox = generateManifest(config, { version: '1.2.3', target: 'firefox' })
 
     expect(firefox.content_scripts).toEqual(chrome.content_scripts)
     expect(firefox.permissions).toEqual(chrome.permissions)

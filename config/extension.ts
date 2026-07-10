@@ -1,3 +1,4 @@
+import type { ExtensionConfig } from '@stacksjs/browser-extension'
 import { defineExtension } from '@stacksjs/browser-extension'
 
 /**
@@ -11,7 +12,9 @@ import { defineExtension } from '@stacksjs/browser-extension'
  * `extension:package`). The one app-specific step — inlining the popup preview
  * into the marketing hero — stays as a `postBuild` hook.
  */
-export default defineExtension({
+// Explicitly typed so the default export is inferrable under
+// `isolatedDeclarations` (the test suite imports this config directly).
+const extension: ExtensionConfig = defineExtension({
   name: 'Very Good AdBlock',
   description: 'Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. Fast, private, no telemetry.',
   geckoId: 'extension@verygoodadblock.org',
@@ -76,3 +79,5 @@ export default defineExtension({
     },
   },
 })
+
+export default extension

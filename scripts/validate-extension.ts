@@ -30,7 +30,7 @@ for (const icon of Object.values(icons)) requiredFiles.add(icon)
 for (const resource of manifest.declarative_net_request?.rule_resources ?? []) requiredFiles.add(resource.path)
 for (const script of manifest.content_scripts ?? []) {
   for (const js of script.js ?? []) requiredFiles.add(js)
-  for (const css of script.css ?? []) requiredFiles.add(css)
+  for (const css of (script as { css?: string[] }).css ?? []) requiredFiles.add(css)
 }
 
 const webAccessible = new Set<string>()
