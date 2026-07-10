@@ -59,10 +59,10 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/defaults": "^0.70.72",
+    "@stacksjs/defaults": "^0.70.73",
     "@stacksjs/ts-cloud": "^0.7.12",
     "bun-plugin-stx": "^0.2.77",
-    "stacks": "^0.70.72"
+    "stacks": "^0.70.73"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
