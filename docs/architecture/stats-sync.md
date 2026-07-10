@@ -31,7 +31,9 @@ Compact cloud data is stored in `chrome.storage.sync`:
 
 - Settings.
 - Lifetime totals.
-- Last 60 daily buckets.
-- Top 20 site rollups.
+- Last 30 daily buckets.
+- Top 15 site rollups.
+
+These limits keep the snapshot under `chrome.storage.sync`'s 8 KB per-item quota; if it still runs over, the oldest daily buckets are dropped first, then trailing site rollups, until it fits.
 
 On startup or install, Very Good AdBlock hydrates local dashboard data from the cloud snapshot. Merge logic uses the highest observed values for counters so the same synced stats do not get counted twice.

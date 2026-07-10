@@ -114,7 +114,7 @@ const config: BunPressOptions = {
       { text: 'Install', link: '/guide/install' },
       { text: 'Architecture', link: '/architecture/' },
       { text: 'Development', link: '/development/' },
-      { text: 'GitHub', link: 'https://github.com/chrisbbreuer/adblock' },
+      { text: 'GitHub', link: 'https://github.com/chrisbbreuer/very-good-adblock' },
     ],
     sidebar: {
       '/': [

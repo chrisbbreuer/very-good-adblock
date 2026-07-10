@@ -14,7 +14,7 @@ bun run build           # Chrome, output to dist/
 bun run build:firefox   # Firefox, output to dist-firefox/
 ```
 
-Both targets share one codebase; `src/manifest.ts` generates the browser-specific `manifest.json` (service worker vs. event page, `browser_specific_settings.gecko`, etc.) at build time. See [Install](/guide/install) for loading and packaging each target.
+Both targets share one codebase. The build is declared in `config/extension.ts` and driven by `@stacksjs/browser-extension`, which derives the browser-specific `manifest.json` (service worker vs. event page, `browser_specific_settings.gecko`, etc.), bundles the content/background/page scripts, and packages the store zips at build time. See [Install](/guide/install) for loading and packaging each target.
 
 ## Docs
 

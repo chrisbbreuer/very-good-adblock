@@ -18,6 +18,10 @@ Use the popup to:
   plus hidden placements), updating live while the popup is open.
 - View lifetime blocked count and estimated data and video time saved.
 - Scan the last 24 hours and top blocked categories.
+- Report an ad that slipped through in one click. **"Saw an ad slip through?"**
+  opens a fully pre-filled GitHub issue (extension version, browser, page, and
+  block counts auto-attached, with no browsing history) and copies a screenshot
+  of the page to your clipboard to paste in.
 
 ## Dashboard
 
@@ -29,6 +33,8 @@ Use the options dashboard to:
 - Update the network filter list on demand ("Update filters").
 - Export or reset local stats.
 - Inspect filter and cloud-sync diagnostics.
+- Report an ad that slipped through ("Report an ad") — same pre-filled GitHub
+  issue as the popup.
 
 ## Stats
 
