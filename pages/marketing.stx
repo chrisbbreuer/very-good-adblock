@@ -3,16 +3,22 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a fast Chrome MV3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta name="description" content="Very Good AdBlock is a fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
     <meta name="theme-color" content="#080f16">
+    <link rel="canonical" href="https://verygoodadblock.org/">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Very Good AdBlock">
-    <meta property="og:description" content="A fast Chrome MV3 ad blocker that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
-    <meta property="og:image" content="icons/icon-128.png">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/">
+    <meta property="og:title" content="Very Good AdBlock — fast, private ad blocker for Chrome & Firefox">
+    <meta property="og:description" content="A fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
     <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Very Good AdBlock — fast, private ad blocker for Chrome & Firefox">
+    <meta name="twitter:description" content="Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta name="twitter:image" content="https://verygoodadblock.org/icons/icon-128.png">
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-    <title>Very Good AdBlock - fast, private Chrome ad blocker</title>
+    <title>Very Good AdBlock — fast, private ad blocker for Chrome &amp; Firefox</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="marketing-shell">
@@ -35,14 +41,14 @@
     <main id="top">
       <section class="marketing-hero">
         <div class="hero-copy">
-          <p class="eyebrow">Chrome MV3 ad blocker</p>
+          <p class="eyebrow">Chrome &amp; Firefox · Manifest V3</p>
           <h1>Ads gone before the page loads.</h1>
           <p class="hero-lede">
             Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at the source,
             then stays out of the way. No telemetry, no bloat.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="docs/guide/install">Install locally</a>
+            <a class="primary-link" href="docs/guide/install/">Install locally</a>
             <a class="secondary-link" href="#how">How it works</a>
           </div>
         </div>
@@ -152,7 +158,7 @@
           <h2>Browse like the ads were never there.</h2>
           <p>MIT licensed, Chrome and Firefox from one codebase, with no account and no telemetry. Read the code, file an issue, or send a pull request.</p>
           <div class="hero-actions">
-            <a class="primary-link" href="docs/guide/install">Install locally</a>
+            <a class="primary-link" href="docs/guide/install/">Install locally</a>
             <a class="secondary-link" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">View source</a>
           </div>
         </div>
@@ -175,7 +181,7 @@
     <footer class="marketing-footer">
       <span>Very Good AdBlock</span>
       <a href="docs/">Docs</a>
-      <a href="docs/guide/usage">Usage</a>
+      <a href="docs/guide/usage/">Usage</a>
       <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
       <a href="https://bsky.app/profile/stacksjs.com" target="_blank" rel="noopener">Bluesky</a>
     </footer>
