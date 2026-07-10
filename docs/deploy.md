@@ -3,57 +3,55 @@
 `https://verygoodadblock.org` is the marketing page (`pages/marketing.stx`) plus
 the BunPress docs, assembled by `bun run site:build` into `dist/site/`.
 
-It is served in **server mode** from a Hetzner box via
-[`ts-cloud`](https://github.com/stacksjs/ts-cloud) and the rpx gateway. The site
-is defined in the sibling `stacks` repo at `config/cloud.ts` (the
-`verygoodadblock` / `verygoodadblockWww` entries, with `root: '../adblock/dist/site'`).
-The alternate domain `very-good-adblock.org` is a 301 redirect to the canonical host.
+It is served in **server mode** from a shared stacks box via
+[`ts-cloud`](https://github.com/stacksjs/ts-cloud) and the rpx gateway. Deploying
+attaches to the existing `stacks-production-app`, adds an **additive** rpx site
+for `verygoodadblock.org` (plus its DNS), and never touches the box lifecycle or
+the other tenants on it. The alternate domain `very-good-adblock.org` is a 301
+redirect to the canonical host.
 
-## Deploy manually
-
-From the `stacks` checkout, with your Hetzner token available:
-
-```sh
-HCLOUD_TOKEN=<your-token> ./buddy deploy production --site verygoodadblock --yes
-```
-
-`buddy deploy` wraps `ts-cloud`. The `--site verygoodadblock` filter makes it a
-surgical single-site deploy: it builds and ships only `../adblock/dist/site`,
-reloads the rpx gateway from the **full** site model (so other sites' routes are
-never dropped), and upserts DNS for `verygoodadblock.org` only. Other sites on
-the box (stacksjs.com, docs, blog) are left untouched.
-
-A manual deploy also records a GitHub **Deployment** against this repo (buddy
-derives the repo/commit from the deployed site's git worktree), so terminal
-deploys show up in the [Deployments](https://github.com/chrisbbreuer/very-good-adblock/deployments)
-tab just like CI ones. Set `TS_CLOUD_GITHUB_DEPLOYMENTS=0` to skip it.
-
-## Deploy automatically (self-hosted runner)
+## Deploy automatically (GitHub Actions)
 
 [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) redeploys on
-every push to `main` that touches the site sources (or on manual
-`workflow_dispatch`). It runs on a **self-hosted** runner so the Hetzner
-credentials never leave the machine — both repos are public, so no production
-secret is stored in GitHub Actions.
+**every push to `main`** (and on manual `workflow_dispatch`). It runs on a
+GitHub-hosted `ubuntu-latest` runner: it installs deps, adds the deploy SSH key,
+builds the static site, and runs
+
+```sh
+bun node_modules/@stacksjs/buddy/dist/cli.js deploy --prod --yes
+```
+
+The credentials come from repository **secrets**, so nothing sensitive lives in
+the workflow file:
+
+- `HCLOUD_TOKEN` — Hetzner API token ts-cloud uses to reach the box.
+- `DEPLOY_SSH_KEY` — SSH key ts-cloud uses to `scp`/`ssh` the built site over.
+- `PORKBUN_API_KEY` / `PORKBUN_SECRET_KEY` — DNS provider credentials for
+  upserting the `verygoodadblock.org` records.
 
 Each run is recorded as a GitHub **Deployment** against the `production`
 environment (`https://verygoodadblock.org`), visible under the repo's
-[Deployments](https://github.com/chrisbbreuer/very-good-adblock/deployments).
+[Deployments](https://github.com/chrisbbreuer/very-good-adblock/deployments) and
+Actions tabs.
 
-### Runner prerequisites
+## Deploy manually
 
-Register a self-hosted runner under **Settings → Actions → Runners**, on the
-machine that has:
+Trigger the same workflow without pushing a commit:
 
-- `HCLOUD_TOKEN` in the runner's environment (buddy/ts-cloud reads `process.env`).
-  Set it in the runner's `.env`, its service environment, or the shell that
-  launches `./run.sh`.
-- SSH access to the production box (the key ts-cloud uses to `scp`/`ssh`).
-- Local sibling checkouts of `adblock` and `stacks`. The workflow defaults to
-  `/Users/chris/Code/adblock` and `/Users/chris/Code/stacks`; override with the
-  repo variables `ADBLOCK_DIR` / `STACKS_DIR` if your layout differs.
+```sh
+gh workflow run "Deploy site"
+```
 
-The workflow fast-forwards the local `adblock` checkout to the pushed commit
-before deploying, then runs the single-site `buddy deploy` above. Until a runner
-is registered, `deploy.yml` runs queue rather than fail — deploy manually in the
-meantime.
+Or, from a local checkout with the same environment variables exported
+(`HCLOUD_TOKEN`, `DEPLOY_SSH_KEY` on disk, `PORKBUN_API_KEY`,
+`PORKBUN_SECRET_KEY`), run the build and the same deploy command the workflow
+uses:
+
+```sh
+bun run site:build
+bun node_modules/@stacksjs/buddy/dist/cli.js deploy --prod --yes
+```
+
+`buddy deploy` wraps `ts-cloud`: it ships only `dist/site`, reloads the rpx
+gateway from the **full** site model (so other sites' routes are never dropped),
+and upserts DNS for `verygoodadblock.org` only.
