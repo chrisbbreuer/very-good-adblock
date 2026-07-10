@@ -45,22 +45,20 @@ jobs:
           bun run package
           bun run package:firefox
 
-      - name: Checksums
-        run: sha256sum very-good-adblock-*.zip > checksums.txt
-
       # Creates (or updates) the GitHub Release for the tag and uploads the
-      # extension zips + checksums as assets. The release body is extracted from
-      # CHANGELOG.md, which `buddy release` (logsmith) already generated,
-      # version-stamped, and committed alongside this tag — so nothing is
-      # regenerated here.
+      # extension zips as assets. The action generates and attaches a
+      # checksums.txt (sha256) over the assets itself. The release body is
+      # extracted from CHANGELOG.md, which `buddy release` (logsmith) already
+      # generated, version-stamped, and committed alongside this tag — so
+      # nothing is regenerated here.
       - name: Create GitHub Release
         uses: home-lang/pantry/packages/action@main
         with:
           install: 'false'
           release: 'true'
           release-changelog: CHANGELOG.md
+          release-checksums: 'true'
           release-files: |
             very-good-adblock-*.zip
-            checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
