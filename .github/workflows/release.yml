@@ -1,0 +1,66 @@
+name: Release
+
+# Cut a GitHub Release with the packaged Chrome + Firefox extensions attached.
+# Triggered by a version tag — `buddy release` bumps package.json, writes the
+# changelog (logsmith), commits, tags `v*` and pushes, which fires this workflow.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Provides the bun runtime (install: false ⇒ pantry sets up bun without
+      # running a project `pantry install`; we use `bun install` for node deps).
+      - name: Setup Pantry
+        uses: home-lang/pantry/packages/action@main
+        with:
+          install: 'false'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Builds and zips both targets to the repo root:
+      #   very-good-adblock-<version>.zip and very-good-adblock-<version>-firefox.zip
+      - name: Package extensions (Chrome + Firefox)
+        run: |
+          bun run package
+          bun run package:firefox
+
+      - name: Checksums
+        run: sha256sum very-good-adblock-*.zip > checksums.txt
+
+      # Creates (or updates) the GitHub Release for the tag and uploads the
+      # extension zips + checksums as assets. The release body is extracted from
+      # CHANGELOG.md, which `buddy release` (logsmith) already generated,
+      # version-stamped, and committed alongside this tag — so nothing is
+      # regenerated here.
+      - name: Create GitHub Release
+        uses: home-lang/pantry/packages/action@main
+        with:
+          install: 'false'
+          release: 'true'
+          release-changelog: CHANGELOG.md
+          release-files: |
+            very-good-adblock-*.zip
+            checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

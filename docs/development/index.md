@@ -34,3 +34,20 @@ bun run validate:rules
 ```
 
 Filter sources are pinned and attributed in the repository.
+
+## Releasing
+
+Releases are cut with the Stacks CLI, which wraps [`bumpx`](https://github.com/stacksjs/bumpx) (version bump) and [`logsmith`](https://github.com/stacksjs/logsmith) (changelog):
+
+```bash
+bun run release            # interactive: pick the bump
+bun run release --bump patch   # non-interactive
+```
+
+`buddy release` bumps `package.json`, regenerates and version-stamps `CHANGELOG.md`, commits both, then tags `v<version>` and pushes. The pushed tag triggers [`.github/workflows/release.yml`](../../.github/workflows/release.yml), which:
+
+1. Sets up the toolchain via the [pantry](https://github.com/pantry-pm/pantry) action.
+2. Builds and packages both targets (`bun run package` + `bun run package:firefox`).
+3. Creates a GitHub Release for the tag — release notes extracted from the committed `CHANGELOG.md` — with the Chrome and Firefox zips and a `checksums.txt` attached for download.
+
+No secrets are needed beyond the automatic `GITHUB_TOKEN`.

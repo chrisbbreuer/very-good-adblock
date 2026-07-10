@@ -42,6 +42,8 @@
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
     "deploy": "bun node_modules/@stacksjs/buddy/dist/cli.js deploy",
+    "release": "bun node_modules/@stacksjs/buddy/dist/cli.js release",
+    "changelog": "bun node_modules/@stacksjs/buddy/dist/cli.js changelog",
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun scripts/generate-marketing-preview.ts",
     "smoke:chrome": "bun run build && bun --bun scripts/smoke-extension.ts",
