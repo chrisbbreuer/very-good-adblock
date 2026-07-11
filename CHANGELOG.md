@@ -1,5 +1,27 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.1.0...v0.1.1)
+
+## ✨ Features
+
+- **site**: theme-matched hero preview, GitHub logo button, red text selection ([066d1be](https://github.com/chrisbbreuer/very-good-adblock/commit/066d1be)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **brand**: make the extension popup/dashboard follow system light/dark too ([c770a71](https://github.com/chrisbbreuer/very-good-adblock/commit/c770a71)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **brand**: recolor marketing site + docs to red with light/dark themes ([ceace06](https://github.com/chrisbbreuer/very-good-adblock/commit/ceace06)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **brand**: keep the chart tooltip legible in light mode ([2f35e22](https://github.com/chrisbbreuer/very-good-adblock/commit/2f35e22)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **brand**: white badge text, warm-red screenshot frame, on-brand shots ([aa7356a](https://github.com/chrisbbreuer/very-good-adblock/commit/aa7356a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **smoke**: give the youtube fixture an ad-showing player so skip automation engages ([85404af](https://github.com/chrisbbreuer/very-good-adblock/commit/85404af)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 💚 Continuous Integration
+
+- **release**: add bumpx+logsmith release script (release / release:patch) ([0b48ea7](https://github.com/chrisbbreuer/very-good-adblock/commit/0b48ea7)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 ## v0.1.0
 
 Initial release.

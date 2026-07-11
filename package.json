@@ -1,7 +1,7 @@
 {
   "name": "very-good-adblock",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
