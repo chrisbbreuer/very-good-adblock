@@ -56,6 +56,11 @@ const config: BunPressOptions = {
         --bp-c-brand-soft: rgba(239, 68, 68, 0.16);
       }
 
+      ::selection {
+        background: rgba(239, 68, 68, 0.9);
+        color: #fff;
+      }
+
       .BPNavBarTitle::before {
         display: inline-block;
         width: 26px;

@@ -100,6 +100,17 @@ body {
   color: var(--text);
 }
 
+/* Brand-red text selection instead of the browser's default blue. */
+::selection {
+  background: rgba(var(--accent-rgb), 0.9);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(var(--accent-rgb), 0.9);
+  color: #fff;
+}
+
 button,
 input {
   font: inherit;
@@ -835,7 +846,15 @@ h1 {
   background: var(--panel-strong);
 }
 
-.theme-toggle {
+/* Right-side nav cluster: GitHub, theme toggle, and Read docs sit together. */
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle,
+.nav-icon {
   display: inline-grid;
   place-items: center;
   width: 40px;
@@ -847,23 +866,38 @@ h1 {
   transition: background 140ms ease, border-color 140ms ease, var(--press);
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.nav-icon:hover {
   background: rgba(var(--accent-rgb), 0.14);
   border-color: rgba(var(--accent-rgb), 0.34);
+  color: var(--accent);
 }
 
-.theme-toggle:active {
+.theme-toggle:active,
+.nav-icon:active {
   transform: translateY(1px);
 }
 
-.theme-icon {
+.theme-icon,
+.nav-icon svg {
   width: 18px;
   height: 18px;
 }
 
-/* Show the sun in dark mode (tap → go light); the moon in light mode. */
+/* Show the sun in dark mode (tap → go light); the moon in light mode — mirroring
+   the same theme resolution as the palette (OS preference + data-theme override). */
 .theme-icon-moon {
   display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  html.marketing:not([data-theme="dark"]) .theme-icon-sun {
+    display: none;
+  }
+
+  html.marketing:not([data-theme="dark"]) .theme-icon-moon {
+    display: block;
+  }
 }
 
 :root[data-theme="light"] .theme-icon-sun {
@@ -948,27 +982,10 @@ h1 {
   max-height: min(70vh, 588px);
   border-radius: 24px;
   overflow: hidden;
-  /* The hero shows the real extension popup, which is a dark surface. Pin the
-     dark palette here so the mockup stays dark even when the page is in light
-     mode — it reads as a product screenshot, not a themed panel. */
-  --panel: rgba(255, 244, 244, 0.08);
-  --panel-strong: rgba(255, 244, 244, 0.14);
-  --panel-deep: rgba(22, 8, 9, 0.52);
-  --hairline: rgba(255, 244, 244, 0.06);
-  --text: #fbf3f3;
-  --muted: rgba(251, 243, 243, 0.68);
-  --line: rgba(255, 236, 236, 0.16);
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
-  --panel-bg:
-    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.16), transparent 16rem),
-    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.2), transparent 18rem),
-    rgba(22, 8, 9, 0.72);
-  /* Mirror the popup's own body backdrop so it reads as the real surface. */
-  background:
-    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.28), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.26), transparent 24rem),
-    linear-gradient(145deg, #150c0d 0%, #1b1113 58%, #241619 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Follows the page theme — light popup in light mode, dark in dark — by
+     inheriting the page tokens and mirroring the popup's own body backdrop. */
+  background: var(--app-bg);
+  border: 1px solid var(--line);
   box-shadow:
     0 50px 100px -24px rgba(0, 0, 0, 0.72),
     0 0 0 1px rgba(255, 255, 255, 0.04),
