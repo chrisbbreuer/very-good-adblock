@@ -364,7 +364,7 @@ async function updateBadge(tabId?: number): Promise<void> {
   const site = hostname ? local.sites[hostname] : undefined
   const badgeTarget = tabId === undefined ? {} : { tabId }
 
-  await chrome.action.setBadgeBackgroundColor({ ...badgeTarget, color: pageBlocked ? '#2f81f7' : '#51615c' })
+  await chrome.action.setBadgeBackgroundColor({ ...badgeTarget, color: pageBlocked ? '#ef4444' : '#51615c' })
   await chrome.action.setBadgeText({ ...badgeTarget, text: pageBlocked ? compactBadge(pageBlocked) : '' })
   await chrome.action.setTitle({
     ...badgeTarget,

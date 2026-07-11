@@ -8,6 +8,38 @@ const form = document.getElementById('subscribe-form') as HTMLFormElement | null
 const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null
 const status = document.getElementById('subscribe-status')
 
+// Light/dark theme. With no saved choice the CSS `prefers-color-scheme` media
+// query drives it (no flash, follows the OS live); a saved choice pins an
+// explicit `data-theme` override. The inline head script that would set this
+// pre-paint is stripped from the built page by the CSP sanitizer, so re-apply
+// any saved choice here.
+function currentTheme(): 'light' | 'dark' {
+  const explicit = document.documentElement.dataset.theme
+  if (explicit === 'light' || explicit === 'dark') return explicit
+  return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
+try {
+  const saved = localStorage.getItem('vga-theme')
+  if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved
+}
+catch {
+  // Storage unavailable — fall back to the system preference via CSS.
+}
+
+const themeToggle = document.getElementById('theme-toggle')
+themeToggle?.addEventListener('click', () => {
+  const next = currentTheme() === 'light' ? 'dark' : 'light'
+  document.documentElement.dataset.theme = next
+  try {
+    localStorage.setItem('vga-theme', next)
+  }
+  catch {
+    // Private mode / storage disabled — the toggle still works for this session.
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#fbf1f1' : '#100a0b')
+})
+
 function setStatus(message: string, kind: 'ok' | 'error' | 'pending'): void {
   if (!status) return
   status.textContent = message

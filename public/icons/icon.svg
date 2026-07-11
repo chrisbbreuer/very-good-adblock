@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
   <defs>
     <linearGradient id="shield" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7db4ff"/>
-      <stop offset=".52" stop-color="#2f81f7"/>
-      <stop offset="1" stop-color="#33c6ff"/>
+      <stop stop-color="#ff9a9a"/>
+      <stop offset=".52" stop-color="#ef4444"/>
+      <stop offset="1" stop-color="#ff7a4d"/>
     </linearGradient>
     <linearGradient id="gloss" x1="38" y1="18" x2="70" y2="78" gradientUnits="userSpaceOnUse">
       <stop stop-color="#ffffff" stop-opacity=".42"/>
@@ -12,6 +12,6 @@
   </defs>
   <path fill="url(#shield)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"/>
   <path fill="url(#gloss)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"/>
-  <path fill="none" stroke="#04223b" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"/>
+  <path fill="none" stroke="#3a0d0f" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"/>
   <path fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" d="m43 63 14 15 31-36"/>
 </svg>

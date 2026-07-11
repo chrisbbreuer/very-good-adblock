@@ -1,20 +1,34 @@
 :root {
   color-scheme: dark light;
-  --bg: #080f16;
-  --panel: rgba(236, 255, 246, 0.1);
-  --panel-strong: rgba(236, 255, 246, 0.16);
-  --panel-deep: rgba(5, 14, 22, 0.52);
-  --hairline: rgba(236, 255, 246, 0.06);
-  --text: #f3fbf8;
-  --muted: rgba(243, 251, 248, 0.68);
-  --line: rgba(226, 255, 239, 0.16);
-  /* Single locked accent (blue). --accent-soft is only a lighter tint for the
-     one blue gradient; --accent-2 stays as ambient background wash, never UI. */
-  --accent: #2f81f7;
-  --accent-soft: #7db4ff;
-  --accent-2: #56d4ff;
+  /* ── Dark theme (default) ── */
+  --bg: #100a0b;
+  --panel: rgba(255, 244, 244, 0.08);
+  --panel-strong: rgba(255, 244, 244, 0.14);
+  --panel-deep: rgba(22, 8, 9, 0.52);
+  --hairline: rgba(255, 244, 244, 0.06);
+  --text: #fbf3f3;
+  --muted: rgba(251, 243, 243, 0.68);
+  --line: rgba(255, 236, 236, 0.16);
+  /* Locked red accent. --accent-rgb feeds the translucent washes; --accent-soft
+     is a lighter tint for gradients; --wash-rgb is the warm ambient background
+     glow (never UI). */
+  --accent: #ef4444;
+  --accent-soft: #ff9a9a;
+  --accent-2: #ff7a4d;
+  --accent-rgb: 239, 68, 68;
+  --wash-rgb: 255, 122, 77;
   --danger: #ff5c7a;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  --nav-bg: rgba(22, 8, 9, 0.86);
+  /* Themeable surface backgrounds (overridden wholesale in light mode). */
+  --app-bg:
+    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.26), transparent 28rem),
+    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.24), transparent 24rem),
+    linear-gradient(145deg, #150c0d 0%, #1b1113 58%, #241619 100%);
+  --panel-bg:
+    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.16), transparent 16rem),
+    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.2), transparent 18rem),
+    rgba(22, 8, 9, 0.72);
   /* One radius scale: panels > cards > inner controls > pills. */
   --radius-panel: 16px;
   --radius-card: 14px;
@@ -24,16 +38,62 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+/* ── Light theme ── Scoped to the marketing site (html.marketing); the extension
+   UI stays dark-only. Dark is the default (:root above). Marketing flips to light
+   when the OS prefers light (no JS, no flash) OR when its toggle stamps
+   data-theme="light" on <html>; an explicit data-theme="dark" always wins back.
+   The two light blocks below are intentional mirrors — keep them in sync. */
+@media (prefers-color-scheme: light) {
+  html.marketing:not([data-theme="dark"]) {
+    --bg: #fbf1f1;
+    --panel: rgba(120, 20, 24, 0.05);
+    --panel-strong: rgba(120, 20, 24, 0.09);
+    --panel-deep: rgba(255, 255, 255, 0.7);
+    --hairline: rgba(80, 12, 16, 0.08);
+    --text: #241012;
+    --muted: rgba(36, 16, 18, 0.66);
+    --line: rgba(120, 20, 24, 0.16);
+    --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
+    --nav-bg: rgba(255, 255, 255, 0.82);
+    --app-bg:
+      radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
+      radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
+      linear-gradient(145deg, #fff6f6 0%, #ffeff0 58%, #ffe7e9 100%);
+    --panel-bg:
+      radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.1), transparent 16rem),
+      radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.1), transparent 18rem),
+      rgba(255, 255, 255, 0.82);
+  }
+}
+
+html.marketing[data-theme="light"] {
+  --bg: #fbf1f1;
+  --panel: rgba(120, 20, 24, 0.05);
+  --panel-strong: rgba(120, 20, 24, 0.09);
+  --panel-deep: rgba(255, 255, 255, 0.7);
+  --hairline: rgba(80, 12, 16, 0.08);
+  --text: #241012;
+  --muted: rgba(36, 16, 18, 0.66);
+  --line: rgba(120, 20, 24, 0.16);
+  --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --app-bg:
+    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
+    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
+    linear-gradient(145deg, #fff6f6 0%, #ffeff0 58%, #ffe7e9 100%);
+  --panel-bg:
+    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.1), transparent 16rem),
+    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.1), transparent 18rem),
+    rgba(255, 255, 255, 0.82);
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 12% -8%, rgba(86, 212, 255, 0.28), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(47, 129, 247, 0.26), transparent 24rem),
-    linear-gradient(145deg, #070f16 0%, #0d151c 58%, #141e26 100%);
+  background: var(--app-bg);
   color: var(--text);
 }
 
@@ -91,10 +151,7 @@ button {
 
 .glass-panel {
   border-radius: var(--radius-panel);
-  background:
-    radial-gradient(circle at 12% 0%, rgba(86, 212, 255, 0.16), transparent 16rem),
-    radial-gradient(circle at 100% 8%, rgba(47, 129, 247, 0.22), transparent 18rem),
-    rgba(5, 14, 22, 0.72);
+  background: var(--panel-bg);
 }
 
 .popup-hero,
@@ -144,13 +201,13 @@ h1 {
   height: 48px;
   border-radius: var(--radius-pill);
   color: var(--accent);
-  background: rgba(47, 129, 247, 0.14);
-  border-color: rgba(47, 129, 247, 0.34);
+  background: rgba(var(--accent-rgb), 0.14);
+  border-color: rgba(var(--accent-rgb), 0.34);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .power-button:hover {
-  background: rgba(47, 129, 247, 0.22);
+  background: rgba(var(--accent-rgb), 0.22);
   transform: translateY(-1px);
 }
 
@@ -208,12 +265,12 @@ h1 {
 
 .metric-card {
   min-height: 80px;
-  background: linear-gradient(150deg, rgba(236, 255, 246, 0.1), rgba(236, 255, 246, 0.045));
+  background: linear-gradient(150deg, rgba(255, 244, 244, 0.1), rgba(255, 244, 244, 0.045));
 }
 
 .metric-card.primary {
-  border-color: rgba(47, 129, 247, 0.34);
-  background: linear-gradient(150deg, rgba(47, 129, 247, 0.32), rgba(47, 129, 247, 0.08));
+  border-color: rgba(var(--accent-rgb), 0.34);
+  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.32), rgba(var(--accent-rgb), 0.08));
 }
 
 .metric-card strong {
@@ -285,7 +342,7 @@ h1 {
   z-index: 2147483000;
   max-width: 240px;
   padding: 6px 9px;
-  border: 1px solid rgba(226, 255, 239, 0.22);
+  border: 1px solid rgba(255, 236, 236, 0.22);
   border-radius: 9px;
   color: #f8fffb;
   background: rgba(4, 12, 20, 0.97);
@@ -340,7 +397,7 @@ h1 {
 }
 
 .soft-button:hover {
-  background: rgba(236, 255, 246, 0.22);
+  background: rgba(255, 244, 244, 0.22);
 }
 
 .danger-button {
@@ -420,12 +477,12 @@ h1 {
 }
 
 .chip-button.accent {
-  border-color: rgba(47, 129, 247, 0.42);
-  color: #d7e9ff;
+  border-color: rgba(var(--accent-rgb), 0.42);
+  color: #ffe0e0;
 }
 
 .chip-button.accent:hover {
-  background: rgba(47, 129, 247, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
 }
 
 .ghost-button {
@@ -683,9 +740,9 @@ h1 {
 .marketing-shell {
   min-height: 100vh;
   background:
-    radial-gradient(80% 55% at 88% -4%, rgba(47, 129, 247, 0.24), transparent 58%),
-    radial-gradient(60% 45% at 0% 108%, rgba(47, 129, 247, 0.1), transparent 55%),
-    linear-gradient(168deg, #050c14 0%, #070f16 52%, #0a141f 100%);
+    radial-gradient(80% 55% at 88% -4%, rgba(var(--accent-rgb), 0.24), transparent 58%),
+    radial-gradient(60% 45% at 0% 108%, rgba(var(--accent-rgb), 0.1), transparent 55%),
+    var(--app-bg);
 }
 
 .marketing-shell a {
@@ -711,8 +768,8 @@ h1 {
   position: sticky;
   top: 0;
   z-index: 5;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(4, 14, 22, 0.86);
+  border-bottom: 1px solid var(--line);
+  background: var(--nav-bg);
   backdrop-filter: blur(22px) saturate(145%);
 }
 
@@ -746,12 +803,12 @@ h1 {
 
 .marketing-nav nav {
   gap: 22px;
-  color: rgba(243, 251, 248, 0.8);
+  color: var(--muted);
   font-size: 14px;
 }
 
 .marketing-nav a:hover {
-  color: #fff;
+  color: var(--text);
 }
 
 .nav-action,
@@ -768,16 +825,55 @@ h1 {
 
 .nav-action,
 .secondary-link {
-  border: 1px solid rgba(226, 255, 239, 0.24);
-  color: #f8fffb;
-  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel-strong);
+}
+
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel-strong);
+  transition: background 140ms ease, border-color 140ms ease, var(--press);
+}
+
+.theme-toggle:hover {
+  background: rgba(var(--accent-rgb), 0.14);
+  border-color: rgba(var(--accent-rgb), 0.34);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.theme-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Show the sun in dark mode (tap → go light); the moon in light mode. */
+.theme-icon-moon {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon-sun {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon-moon {
+  display: block;
 }
 
 .marketing-shell .primary-link {
-  border: 1px solid rgba(188, 216, 255, 0.74);
+  border: 1px solid rgba(var(--accent-rgb), 0.74);
   color: #04101f;
-  background: linear-gradient(180deg, #bcd8ff 0%, #4f97ff 100%);
-  box-shadow: 0 8px 20px -6px rgba(47, 129, 247, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #ffc9c9 0%, #f2555a 100%);
+  box-shadow: 0 8px 20px -6px rgba(var(--accent-rgb), 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
@@ -833,7 +929,7 @@ h1 {
   position: absolute;
   inset: -6% -4%;
   border-radius: 44px;
-  background: radial-gradient(58% 56% at 52% 42%, rgba(47, 129, 247, 0.4), transparent 72%);
+  background: radial-gradient(58% 56% at 52% 42%, rgba(var(--accent-rgb), 0.4), transparent 72%);
   filter: blur(52px);
 }
 
@@ -847,11 +943,26 @@ h1 {
   max-height: min(70vh, 588px);
   border-radius: 24px;
   overflow: hidden;
+  /* The hero shows the real extension popup, which is a dark surface. Pin the
+     dark palette here so the mockup stays dark even when the page is in light
+     mode — it reads as a product screenshot, not a themed panel. */
+  --panel: rgba(255, 244, 244, 0.08);
+  --panel-strong: rgba(255, 244, 244, 0.14);
+  --panel-deep: rgba(22, 8, 9, 0.52);
+  --hairline: rgba(255, 244, 244, 0.06);
+  --text: #fbf3f3;
+  --muted: rgba(251, 243, 243, 0.68);
+  --line: rgba(255, 236, 236, 0.16);
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  --panel-bg:
+    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.16), transparent 16rem),
+    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.2), transparent 18rem),
+    rgba(22, 8, 9, 0.72);
   /* Mirror the popup's own body backdrop so it reads as the real surface. */
   background:
-    radial-gradient(circle at 12% -8%, rgba(86, 212, 255, 0.28), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(47, 129, 247, 0.26), transparent 24rem),
-    linear-gradient(145deg, #070f16 0%, #0d151c 58%, #141e26 100%);
+    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.28), transparent 28rem),
+    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.26), transparent 24rem),
+    linear-gradient(145deg, #150c0d 0%, #1b1113 58%, #241619 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
     0 50px 100px -24px rgba(0, 0, 0, 0.72),
@@ -913,7 +1024,7 @@ h1 {
 
 .how-steps li {
   padding-top: 22px;
-  border-top: 2px solid rgba(47, 129, 247, 0.34);
+  border-top: 2px solid rgba(var(--accent-rgb), 0.34);
 }
 
 .how-num {
@@ -950,13 +1061,13 @@ h1 {
 .cta-inner {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(125, 180, 255, 0.22);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: var(--radius-panel);
   padding: 56px 40px;
   text-align: center;
   background:
-    radial-gradient(72% 130% at 50% -12%, rgba(47, 129, 247, 0.24), transparent 70%),
-    linear-gradient(180deg, rgba(13, 27, 44, 0.82), rgba(7, 15, 23, 0.66));
+    radial-gradient(72% 130% at 50% -12%, rgba(var(--accent-rgb), 0.24), transparent 70%),
+    var(--panel-bg);
 }
 
 .cta-badge {
@@ -965,8 +1076,8 @@ h1 {
   margin-bottom: 18px;
   padding: 6px 14px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(125, 180, 255, 0.3);
-  background: rgba(47, 129, 247, 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.12);
   color: var(--accent-soft);
   font-size: 12px;
   font-weight: 800;
@@ -1059,7 +1170,7 @@ h1 {
 .subscribe-form input[type="email"]:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.22);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.22);
 }
 
 .subscribe-form button {
@@ -1128,8 +1239,8 @@ h1 {
   width: 40px;
   height: 40px;
   border-radius: 11px;
-  background: rgba(47, 129, 247, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(47, 129, 247, 0.28);
+  background: rgba(var(--accent-rgb), 0.14);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.28);
 }
 
 .feature-icon::after {
@@ -1221,8 +1332,8 @@ h1 {
   width: 13px;
   height: 13px;
   border-radius: 999px;
-  background: #7db4ff;
-  box-shadow: 0 0 0 6px rgba(125, 180, 255, 0.12);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.12);
 }
 
 .marketing-footer {
@@ -1273,8 +1384,8 @@ h1 {
 
   .marketing-shell {
     background:
-      radial-gradient(circle at 82% 8%, rgba(47, 129, 247, 0.16), transparent 46%),
-      linear-gradient(165deg, #060d14 0%, #080f16 60%, #0a141f 100%);
+      radial-gradient(circle at 82% 8%, rgba(var(--accent-rgb), 0.16), transparent 46%),
+      var(--app-bg);
   }
 
   .marketing-nav nav {

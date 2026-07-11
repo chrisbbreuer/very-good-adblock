@@ -1,11 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="marketing">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Very Good AdBlock is a fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
-    <meta name="theme-color" content="#080f16">
+    <meta name="theme-color" content="#100a0b">
     <link rel="canonical" href="https://verygoodadblock.org/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Very Good AdBlock">
     <meta property="og:url" content="https://verygoodadblock.org/">
@@ -34,6 +45,15 @@
           <a href="#privacy">Privacy</a>
           <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
         </nav>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle light/dark">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
         <a class="nav-action" href="docs/">Read docs</a>
       </div>
     </header>

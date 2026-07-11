@@ -96,7 +96,7 @@ function framePage(index: number): string {
     <div class="frame-copy">
       <svg class="frame-logo" viewBox="0 0 128 128" fill="none" aria-hidden="true">
         <defs>
-          <linearGradient id="s" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#7db4ff"/><stop offset=".52" stop-color="#2f81f7"/><stop offset="1" stop-color="#33c6ff"/></linearGradient>
+          <linearGradient id="s" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#ff9a9a"/><stop offset=".52" stop-color="#ef4444"/><stop offset="1" stop-color="#ff7a4d"/></linearGradient>
         </defs>
         <path fill="url(#s)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"/>
         <path fill="none" stroke="#04223b" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" d="m43 66 14 15 31-36"/>
@@ -122,12 +122,12 @@ function frameCss(): string {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #f3fbf8;
       background:
-        radial-gradient(circle at 84% 8%, rgba(47,129,247,.22), transparent 46%),
-        radial-gradient(circle at 6% 96%, rgba(47,129,247,.12), transparent 44%),
+        radial-gradient(circle at 84% 8%, rgba(239,68,68,.22), transparent 46%),
+        radial-gradient(circle at 6% 96%, rgba(239,68,68,.12), transparent 44%),
         linear-gradient(165deg, #060f0d 0%, #08130f 58%, #0a1613 100%);
     }
     .frame-copy { flex: 0 0 46%; padding: 0 40px 0 88px; }
-    .frame-logo { width: 56px; height: 56px; margin-bottom: 28px; filter: drop-shadow(0 14px 30px rgba(47,129,247,.32)); }
+    .frame-logo { width: 56px; height: 56px; margin-bottom: 28px; filter: drop-shadow(0 14px 30px rgba(239,68,68,.32)); }
     .frame-copy h1 { margin: 0; font-size: 56px; line-height: 1.03; letter-spacing: -.02em; font-weight: 800; max-width: 12ch; }
     .frame-copy p { margin: 22px 0 0; font-size: 21px; line-height: 1.5; color: rgba(243,251,248,.72); max-width: 34ch; }
     .frame-wordmark { margin-top: 40px; font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(243,251,248,.5); }
