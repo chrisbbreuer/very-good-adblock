@@ -1650,7 +1650,21 @@ h1 {
 }
 
 .other-features {
-  padding: 20px 0 12px;
+  margin-top: 8px;
+  padding: 56px 0 20px;
+  border-top: 1px solid var(--line);
+}
+
+/* "The other layers" is a sub-section header, not a hero-scale one — smaller
+   type, the link centered against it, and clear space before the card grid. */
+.other-features .section-kicker {
+  align-items: center;
+  margin-bottom: 26px;
+}
+
+.other-features .section-kicker h2 {
+  font-size: clamp(24px, 3.2vw, 34px);
+  line-height: 1.1;
 }
 
 .browsers-band {
