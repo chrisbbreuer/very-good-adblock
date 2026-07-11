@@ -176,7 +176,6 @@
         </div>
       </section>
 
-      @include('subscribe')
     </main>
 
     @include('footer')

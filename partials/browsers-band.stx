@@ -2,7 +2,7 @@
   <div class="browsers-copy">
     <p class="eyebrow">Get it</p>
     <h2>Runs on Chrome and Firefox.</h2>
-    <p>One codebase, a browser-specific Manifest V3 build. Load it today, or grab it from the stores the moment it lands.</p>
+    <p>One codebase, a browser-specific Manifest V3 build. Add it to your browser and browse like the ads were never there.</p>
   </div>
   <div class="browser-buttons">
     <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
