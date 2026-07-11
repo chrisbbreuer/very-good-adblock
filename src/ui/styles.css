@@ -345,10 +345,12 @@ h1 {
   z-index: 2147483000;
   max-width: 240px;
   padding: 6px 9px;
-  border: 1px solid rgba(255, 236, 236, 0.22);
+  border: 1px solid rgba(255, 236, 236, 0.16);
   border-radius: 9px;
-  color: var(--text);
-  background: rgba(4, 12, 20, 0.97);
+  /* A contrast chip: always dark with light text, so it stays legible over both
+     the light and dark chart surfaces (var(--text) would go dark in light mode). */
+  color: #fbf3f3;
+  background: rgba(24, 15, 17, 0.97);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
   font-size: 11px;
   font-weight: 700;
