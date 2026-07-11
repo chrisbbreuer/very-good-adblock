@@ -365,6 +365,9 @@ async function updateBadge(tabId?: number): Promise<void> {
   const badgeTarget = tabId === undefined ? {} : { tabId }
 
   await chrome.action.setBadgeBackgroundColor({ ...badgeTarget, color: pageBlocked ? '#ef4444' : '#51615c' })
+  // Force white badge text so the count stays legible on the red/grey fill —
+  // Chrome's auto-contrast otherwise picks a dark colour on the bright red.
+  await chrome.action.setBadgeTextColor?.({ ...badgeTarget, color: '#ffffff' })
   await chrome.action.setBadgeText({ ...badgeTarget, text: pageBlocked ? compactBadge(pageBlocked) : '' })
   await chrome.action.setTitle({
     ...badgeTarget,
