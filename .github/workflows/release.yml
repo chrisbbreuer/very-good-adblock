@@ -46,17 +46,16 @@ jobs:
           bun run package:firefox
 
       # Creates (or updates) the GitHub Release for the tag and uploads the
-      # extension zips as assets. The action generates and attaches a
-      # checksums.txt (sha256) over the assets itself. The release body is
-      # extracted from CHANGELOG.md, which `buddy release` (logsmith) already
-      # generated, version-stamped, and committed alongside this tag — so
-      # nothing is regenerated here.
+      # extension zips as assets. `release-changelog: auto` has the action
+      # generate this release's notes from git history with logsmith (previous
+      # tag → this tag), and it also generates and attaches a checksums.txt
+      # (sha256) over the assets — no committed CHANGELOG.md or extra step needed.
       - name: Create GitHub Release
         uses: home-lang/pantry/packages/action@main
         with:
           install: 'false'
           release: 'true'
-          release-changelog: CHANGELOG.md
+          release-changelog: auto
           release-checksums: 'true'
           release-files: |
             very-good-adblock-*.zip
