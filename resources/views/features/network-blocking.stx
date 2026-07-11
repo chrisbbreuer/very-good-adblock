@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" class="marketing">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A Manifest V3 declarativeNetRequest ruleset stops 14,387 ad, tracker, and annoyance hosts before the request completes, with zero per-request JavaScript.">
+    <meta name="theme-color" content="#100a0b">
+    <link rel="canonical" href="https://verygoodadblock.org/features/network-blocking/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/features/network-blocking/">
+    <meta property="og:title" content="Network blocking — Very Good AdBlock">
+    <meta property="og:description" content="A Manifest V3 declarativeNetRequest ruleset stops 14,387 ad, tracker, and annoyance hosts before the request completes, with zero per-request JavaScript.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>Network blocking — Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="marketing-shell">
+    @include('nav')
+    <main id="top">
+      <section class="feature-page-hero">
+        <a class="feature-back" href="/features/">← All features</a>
+        <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+        <p class="eyebrow">Network blocking</p>
+        <h1>Requests that never leave your machine.</h1>
+        <p class="hero-lede">Very Good AdBlock ships a Manifest V3 declarativeNetRequest ruleset that the browser’s own network stack enforces. Ad, tracker, and annoyance requests are cancelled before they complete, with zero per-request JavaScript.</p>
+      </section>
+      <section class="feature-detail">
+        <div class="feature-detail-copy">
+          <span class="feature-tag">At the request</span>
+          <h2>The rules the browser enforces for you.</h2>
+          <p>Declarative rules live inside the browser, not in a script that has to wake up on every request. That is what keeps blocking fast and private: there is no per-request JavaScript, and no list of what you loaded ever leaves the device.</p>
+          <ul class="feature-list">
+            <li><strong>14,387 bundled host rules</strong> compiled from pinned EasyList and AdGuard revisions, plus curated seeds, and shipped inside every release.</li>
+            <li><strong>Refreshed daily</strong> as dynamic rules from a public host list, so blocking stays current between store updates.</li>
+            <li><strong>Ad-SDK loaders neutered,</strong> not hard-blocked: gpt.js and adsbygoogle.js are redirected to inert stubs so pages that await them keep working instead of hanging.</li>
+          </ul>
+          <a class="feature-doc-link" href="/docs/architecture/">Read the blocking model →</a>
+        </div>
+        <figure class="feature-detail-media">
+          <img src="/screenshots/popup.png" alt="The Very Good AdBlock popup showing 47 items blocked on the current page and a 24-hour activity chart." width="1280" height="800" loading="lazy">
+        </figure>
+      </section>
+
+      <section class="feature-editorial">
+        <div class="feature-editorial-head">
+          <span class="feature-tag">Why declarative</span>
+          <h2>Faster and quieter than a content-script blocker.</h2>
+          <p>Older blockers run a script that inspects every request as it happens. Manifest V3 lets the ruleset do that work natively, which is why Very Good AdBlock stays out of the way on heavy pages.</p>
+        </div>
+        <div class="feature-points">
+          <div class="feature-point">
+            <h3>No per-request JavaScript</h3>
+            <p>The matching happens in the browser’s network layer. Nothing runs in the page just to decide whether a request should load.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Nothing to phone home</h3>
+            <p>Rules ship with the release and refresh from a public list built on pinned revisions. Your requests are matched locally and never reported.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Stubs over hard blocks</h3>
+            <p>Redirecting ad SDKs to inert stubs avoids the broken layouts and infinite spinners a plain block can cause on sites that wait for them.</p>
+          </div>
+        </div>
+      </section>
+      <section class="other-features" aria-label="Other features">
+        <div class="section-kicker">
+          <h2>The other layers</h2>
+          <a class="section-link" href="/features/">All features →</a>
+        </div>
+        <div class="feature-index">
+        <a class="feature-index-card" href="/features/youtube-twitch/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
+          <h2>YouTube and Twitch</h2>
+          <p>Video ads removed at the source, player untouched.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/popups/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
+          <h2>Pop-ups and pop-unders</h2>
+          <p>Click-hijack windows neutralized, real ones allowed.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/controls/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
+          <h2>Control and privacy</h2>
+          <p>Pause per site, allowlists, local-only stats.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        </div>
+      </section>
+      @include('browsers-band')
+    </main>
+    @include('footer')
+  </body>
+</html>

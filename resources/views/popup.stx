@@ -103,7 +103,7 @@
         <span class="report-icon" aria-hidden="true">⚠</span>
         <span class="report-text">
           <strong>Saw an ad slip through?</strong>
-          <small id="report-hint">Report it — opens a pre-filled GitHub issue</small>
+          <small id="report-hint">Report it, and a pre-filled GitHub issue opens</small>
         </span>
         <span class="report-arrow" aria-hidden="true">→</span>
       </button>

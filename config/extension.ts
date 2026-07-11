@@ -30,13 +30,18 @@ const extension: ExtensionConfig = defineExtension({
   ],
 
   pages: {
-    popup: { template: 'pages/popup.stx', script: 'src/ui/popup.ts' },
-    options: { template: 'pages/options.stx', script: 'src/ui/options.ts' },
-    // The marketing landing + features page are bundled alongside (reused by the
-    // site build). The features page reuses the marketing script (theme toggle).
+    popup: { template: 'resources/views/popup.stx', script: 'src/ui/popup.ts' },
+    options: { template: 'resources/views/options.stx', script: 'src/ui/options.ts' },
+    // The marketing site pages are bundled alongside (reused by the site build).
+    // Only `marketing` carries the shared script bundle (theme toggle + subscribe
+    // form); the site build injects `/marketing.js` into the other pages.
     extra: {
-      marketing: { template: 'pages/marketing.stx', script: 'src/ui/marketing.ts' },
-      features: { template: 'pages/features.stx', script: 'src/ui/marketing.ts' },
+      marketing: { template: 'resources/views/marketing.stx', script: 'resources/scripts/marketing.ts' },
+      features: 'resources/views/features.stx',
+      'feature-network-blocking': 'resources/views/features/network-blocking.stx',
+      'feature-youtube-twitch': 'resources/views/features/youtube-twitch.stx',
+      'feature-popups': 'resources/views/features/popups.stx',
+      'feature-controls': 'resources/views/features/controls.stx',
     },
   },
 
@@ -48,7 +53,7 @@ const extension: ExtensionConfig = defineExtension({
   },
 
   public: 'public',
-  assets: { 'styles.css': 'src/ui/styles.css' },
+  assets: { 'styles.css': 'resources/css/styles.css' },
 
   rules: [
     { id: 'very_good_adblock_static_rules', path: 'rules/static.json', source: 'src/rules/static-rules.ts' },
@@ -69,7 +74,7 @@ const extension: ExtensionConfig = defineExtension({
     // #popup-preview placeholder. Runs after sanitize so the markup survives.
     async postBuild({ outdir }) {
       const file = `${outdir}/marketing.html`
-      const partial = 'pages/partials/popup-preview.html'
+      const partial = 'resources/partials/popup-preview.html'
       if (!(await Bun.file(file).exists()) || !(await Bun.file(partial).exists()))
         return
       const frame = (await Bun.file(partial).text()).replace(/^<!--[\s\S]*?-->\s*/, '').trim()

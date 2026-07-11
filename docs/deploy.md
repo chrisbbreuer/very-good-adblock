@@ -1,7 +1,9 @@
 # Deploying the site
 
-`https://verygoodadblock.org` is the marketing page (`pages/marketing.stx`) plus
-the BunPress docs, assembled by `bun run site:build` into `dist/site/`.
+`https://verygoodadblock.org` is the marketing site (`resources/views/`) plus
+the BunPress docs, assembled by `bun run site:build` into `dist/site/`, with a
+small subscribe API (`app/`, `routes/api.ts`, `server/serve.ts`) served
+same-origin at `/api`.
 
 It is served in **server mode** from a shared stacks box via
 [`ts-cloud`](https://github.com/stacksjs/ts-cloud) and the rpx gateway. Deploying

@@ -33,64 +33,7 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="marketing-shell">
-    <header class="marketing-nav" aria-label="Primary navigation">
-      <div class="marketing-nav-inner">
-        <a class="brand-lockup" href="#top" aria-label="Very Good AdBlock home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>Very Good AdBlock</span>
-        </a>
-        <nav>
-          <div class="nav-item has-menu">
-            <a class="nav-link" href="features/" aria-haspopup="true" aria-expanded="false">Features</a>
-            <div class="nav-menu" role="menu" aria-label="Features">
-              <a class="nav-menu-item" href="features/#network-blocking" role="menuitem">
-                <span class="nav-menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
-                </span>
-                <span class="nav-menu-text"><strong>Network blocking</strong><small>14,000+ ad and tracker hosts stopped at the request</small></span>
-              </a>
-              <a class="nav-menu-item" href="features/#youtube-twitch" role="menuitem">
-                <span class="nav-menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg>
-                </span>
-                <span class="nav-menu-text"><strong>YouTube and Twitch</strong><small>Video ads removed at the source, player untouched</small></span>
-              </a>
-              <a class="nav-menu-item" href="features/#popups" role="menuitem">
-                <span class="nav-menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg>
-                </span>
-                <span class="nav-menu-text"><strong>Pop-ups and pop-unders</strong><small>Click-hijack windows neutralized, real ones allowed</small></span>
-              </a>
-              <a class="nav-menu-item" href="features/#controls" role="menuitem">
-                <span class="nav-menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg>
-                </span>
-                <span class="nav-menu-text"><strong>Control and privacy</strong><small>Pause per site, allowlists, local-only stats</small></span>
-              </a>
-            </div>
-          </div>
-          <a class="nav-link" href="#how">How it works</a>
-          <a class="nav-link" href="#privacy">Privacy</a>
-        </nav>
-        <div class="nav-controls">
-          <a class="nav-icon" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener" aria-label="GitHub repository" title="GitHub">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.57.1.78-.25.78-.55v-2c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.2-3.1-.13-.29-.52-1.46.1-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.5 3.17-1.18 3.17-1.18.63 1.59.24 2.76.12 3.05.75.81 1.2 1.84 1.2 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.78 1.06.78 2.14v3.17c0 .3.2.66.79.55A11.5 11.5 0 0 0 12 .5Z"/>
-            </svg>
-          </a>
-          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle light/dark">
-            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="4"></circle>
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-            </svg>
-            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </button>
-          <a class="nav-action" href="docs/">Read docs</a>
-        </div>
-      </div>
-    </header>
+    @include('nav')
 
     <main id="top">
       <section class="marketing-hero">
@@ -109,7 +52,7 @@
 
         <div class="hero-visual">
           <!-- The real popup component, inlined at build time from
-               pages/partials/popup-preview.html (generated off the shipping popup). -->
+               resources/partials/popup-preview.html (generated off the shipping popup). -->
           <div class="hero-device" id="popup-preview" role="img" aria-label="The Very Good AdBlock toolbar popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours."></div>
         </div>
       </section>
@@ -117,10 +60,10 @@
       <section id="features" class="marketing-band">
         <div class="section-kicker">
           <h2>Protection at the source, not fragile page rewrites.</h2>
-          <a class="section-link" href="features/">All features →</a>
+          <a class="section-link" href="/features/">All features →</a>
         </div>
         <div class="feature-grid">
-          <a class="feature-card" href="features/#network-blocking">
+          <a class="feature-card" href="/features/network-blocking/">
             <span class="feature-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
             </span>
@@ -128,7 +71,7 @@
             <p>Manifest V3 declarative rules stop 14,000+ ad, tracker, and annoyance hosts before the request completes.</p>
             <span class="feature-more">Learn more →</span>
           </a>
-          <a class="feature-card" href="features/#youtube-twitch">
+          <a class="feature-card" href="/features/youtube-twitch/">
             <span class="feature-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg>
             </span>
@@ -136,7 +79,7 @@
             <p>Strips video ads out of YouTube's player response, skips what slips through, and detects Twitch stream ads. The real video never breaks.</p>
             <span class="feature-more">Learn more →</span>
           </a>
-          <a class="feature-card" href="features/#popups">
+          <a class="feature-card" href="/features/popups/">
             <span class="feature-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg>
             </span>
@@ -144,7 +87,7 @@
             <p>Neutralizes the click-hijack pop-ups streaming and file-host sites open, including the ones fired from inside the player iframe.</p>
             <span class="feature-more">Learn more →</span>
           </a>
-          <a class="feature-card" href="features/#controls">
+          <a class="feature-card" href="/features/controls/">
             <span class="feature-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg>
             </span>
@@ -155,25 +98,7 @@
         </div>
       </section>
 
-      <section id="get" class="browsers-band">
-        <div class="browsers-copy">
-          <p class="eyebrow">Get it</p>
-          <h2>Runs on Chrome and Firefox.</h2>
-          <p>One codebase, a browser-specific Manifest V3 build. Load it today, or grab it from the stores the moment it lands.</p>
-        </div>
-        <div class="browser-buttons">
-          <!-- Swap these hrefs for the Chrome Web Store / Firefox AMO listing URLs
-               once the extension is published; they point at the install guide today. -->
-          <a class="browser-button" href="docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
-            <img class="browser-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="34" height="34" loading="lazy">
-            <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc</small></span>
-          </a>
-          <a class="browser-button" href="docs/guide/install/" aria-label="Get Very Good AdBlock for Firefox">
-            <img class="browser-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="34" height="34" loading="lazy">
-            <span class="browser-text"><strong>Get it for Firefox</strong><small>Firefox 140 and up</small></span>
-          </a>
-        </div>
-      </section>
+      @include('browsers-band')
 
       <section id="how" class="how-band">
         <h2>Running in about a minute.</h2>
@@ -255,7 +180,7 @@
         <div class="subscribe-inner">
           <h2>Know the moment it hits the stores.</h2>
           <p>One email when Very Good AdBlock lands on the Chrome Web Store and Firefox Add-ons. No spam, unsubscribe anytime.</p>
-          <form class="subscribe-form" id="subscribe-form" action="https://stacksjs.com/api/email/subscribe" method="POST">
+          <form class="subscribe-form" id="subscribe-form" action="/api/email/subscribe" method="POST">
             <input type="email" id="subscribe-email" name="email" placeholder="you@example.com" autocomplete="email" aria-label="Email address" required>
             <input type="hidden" name="source" value="verygoodadblock">
             <button class="primary-link" type="submit">Notify me</button>
@@ -265,13 +190,7 @@
       </section>
     </main>
 
-    <footer class="marketing-footer">
-      <span>Very Good AdBlock</span>
-      <a href="docs/">Docs</a>
-      <a href="docs/guide/usage/">Usage</a>
-      <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://bsky.app/profile/stacksjs.com" target="_blank" rel="noopener">Bluesky</a>
-    </footer>
+    @include('footer')
     <script type="module" src="/marketing.js"></script>
   </body>
 </html>

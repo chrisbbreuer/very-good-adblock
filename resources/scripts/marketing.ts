@@ -1,8 +1,8 @@
 /**
  * Marketing-page email capture. Progressive enhancement over a plain form that
- * already POSTs to the Stacks subscribe endpoint (SubscriberEmailAction → the
- * Subscriber model): intercept the submit, post via fetch, and show inline status
- * so the visitor never leaves the page. Without JS the form still submits.
+ * POSTs same-origin to /api/email/subscribe (server/api.ts → project-owned
+ * SQLite): intercept the submit, post via fetch, and show inline status so the
+ * visitor never leaves the page. Without JS the form still submits.
  */
 const form = document.getElementById('subscribe-form') as HTMLFormElement | null
 const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null
@@ -70,7 +70,7 @@ if (form && emailInput && status) {
       const data = await response.json().catch(() => ({})) as { success?: boolean, message?: string }
 
       if (data.success) {
-        setStatus(data.message === 'Already subscribed' ? 'You are already on the list.' : 'Done. Watch your inbox to confirm.', 'ok')
+        setStatus(data.message === 'Already subscribed' ? 'You are already on the list.' : 'You are on the list. We will email you when it lands.', 'ok')
         form.reset()
       }
       else {

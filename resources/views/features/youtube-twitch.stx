@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" class="marketing">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A MAIN-world script deletes ad instructions from YouTube’s player response before they schedule, skips what slips through, and detects Twitch stream ads.">
+    <meta name="theme-color" content="#100a0b">
+    <link rel="canonical" href="https://verygoodadblock.org/features/youtube-twitch/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/features/youtube-twitch/">
+    <meta property="og:title" content="YouTube and Twitch — Very Good AdBlock">
+    <meta property="og:description" content="A MAIN-world script deletes ad instructions from YouTube’s player response before they schedule, skips what slips through, and detects Twitch stream ads.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>YouTube and Twitch — Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="marketing-shell">
+    @include('nav')
+    <main id="top">
+      <section class="feature-page-hero">
+        <a class="feature-back" href="/features/">← All features</a>
+        <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
+        <p class="eyebrow">YouTube and Twitch</p>
+        <h1>The real video plays. The ads never scheduled.</h1>
+        <p class="hero-lede">A MAIN-world script deletes the ad instructions from YouTube’s player response before the page can schedule them, so the video starts immediately. The player region is never touched, so playback and controls stay intact.</p>
+      </section>
+      <section class="feature-editorial">
+        <div class="feature-editorial-head">
+          <span class="feature-tag">At the source</span>
+          <h2>Three ways it keeps video clean.</h2>
+          <p>Most of the work happens before an ad is ever scheduled. A safety net handles the rare one that slips through, and Twitch gets its own detection because its ads are stitched into the stream server-side.</p>
+        </div>
+        <div class="feature-points">
+          <div class="feature-point">
+            <h3>Removed at the source</h3>
+            <p>Strips <code>adPlacements</code>, <code>adSlots</code>, and <code>playerAds</code> from both the inline and <code>/youtubei/v1/player</code> responses. No pre-roll to skip because none is scheduled.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Skip assist as a safety net</h3>
+            <p>Clicks visible skip buttons and fast-forwards any ad that slips past the pruner, and dismisses the anti-adblock enforcement popup, restoring scroll and playback.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Twitch stream ads</h3>
+            <p>Detects the in-stream ad markers Twitch now stitches server-side to estimate saved time, and hides the ad-only feedback affordances without touching the live player.</p>
+          </div>
+        </div>
+        <a class="feature-doc-link" href="/docs/architecture/youtube-x">How the video helpers work →</a>
+      </section>
+
+      <section class="feature-detail reverse">
+        <div class="feature-detail-copy">
+          <span class="feature-tag">What it touches</span>
+          <h2>The player is never in the way.</h2>
+          <p>The helper only edits the ad instructions in the data the page receives. It does not overlay the video, swap the player, or fight the UI, so quality selection, captions, and seeking behave exactly as they should.</p>
+          <a class="feature-doc-link" href="/docs/architecture/">See the content-script model →</a>
+        </div>
+        <div class="feature-detail-media defuse-panel">
+          <div class="defuse-col">
+            <h3>Handled</h3>
+            <ul>
+              <li>Pre-roll and mid-roll video ads</li>
+              <li>The anti-adblock enforcement popup</li>
+              <li>Ads that slip past the pruner</li>
+              <li>Twitch server-stitched stream ads</li>
+            </ul>
+          </div>
+          <div class="defuse-col allow">
+            <h3>Left alone</h3>
+            <ul>
+              <li>Playback, seeking, and quality controls</li>
+              <li>Captions and the mini-player</li>
+              <li>Your subscriptions and history</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section class="other-features" aria-label="Other features">
+        <div class="section-kicker">
+          <h2>The other layers</h2>
+          <a class="section-link" href="/features/">All features →</a>
+        </div>
+        <div class="feature-index">
+        <a class="feature-index-card" href="/features/network-blocking/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+          <h2>Network blocking</h2>
+          <p>14,000+ ad and tracker hosts stopped at the request.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/popups/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
+          <h2>Pop-ups and pop-unders</h2>
+          <p>Click-hijack windows neutralized, real ones allowed.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/controls/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
+          <h2>Control and privacy</h2>
+          <p>Pause per site, allowlists, local-only stats.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        </div>
+      </section>
+      @include('browsers-band')
+    </main>
+    @include('footer')
+  </body>
+</html>

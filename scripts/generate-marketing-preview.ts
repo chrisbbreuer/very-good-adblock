@@ -1,6 +1,6 @@
 /**
  * Capture the REAL extension popup (rendered against the seeded dashboard
- * fixture) as static HTML into `pages/partials/popup-preview.html`. The marketing
+ * fixture) as static HTML into `resources/partials/popup-preview.html`. The marketing
  * build (build-extension.ts) inlines it into the hero, so the landing page shows
  * the actual popup component in code — styled by the shared styles.css, crisp at
  * any resolution, no screenshot. Regenerate after popup UI changes:
@@ -12,12 +12,12 @@ import { join, resolve } from 'node:path'
 import { dashboardState, injectShim, shimScript } from './lib/preview-fixture'
 
 const dist = resolve('dist')
-const outPath = resolve('pages/partials/popup-preview.html')
+const outPath = resolve('resources/partials/popup-preview.html')
 
 if (!existsSync(join(dist, 'popup.html')))
   throw new Error('dist/popup.html is missing. Run `bun run build` first.')
 
-await mkdir(resolve('pages/partials'), { recursive: true })
+await mkdir(resolve('resources/partials'), { recursive: true })
 
 const shim = shimScript(dashboardState())
 

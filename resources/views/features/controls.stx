@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" class="marketing">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pause protection per site, keep an allowlist and blocklist, hide cookie banners, and read local-first stats from a clean dashboard. Nothing leaves your machine.">
+    <meta name="theme-color" content="#100a0b">
+    <link rel="canonical" href="https://verygoodadblock.org/features/controls/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/features/controls/">
+    <meta property="og:title" content="Control and privacy — Very Good AdBlock">
+    <meta property="og:description" content="Pause protection per site, keep an allowlist and blocklist, hide cookie banners, and read local-first stats from a clean dashboard. Nothing leaves your machine.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>Control and privacy — Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="marketing-shell">
+    @include('nav')
+    <main id="top">
+      <section class="feature-page-hero">
+        <a class="feature-back" href="/features/">← All features</a>
+        <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
+        <p class="eyebrow">Control and privacy</p>
+        <h1>Your rules, on your machine.</h1>
+        <p class="hero-lede">Pause protection per site for 15, 30, or 60 minutes, keep an allowlist and a blocklist, and hide cookie-consent overlays with one switch. Every stat is computed and stored locally.</p>
+      </section>
+      <section class="feature-detail">
+        <figure class="feature-detail-media">
+          <img src="/screenshots/dashboard.png" alt="The Very Good AdBlock dashboard: lifetime blocks, a 60-day history chart, and protection toggles." width="1280" height="800" loading="lazy">
+        </figure>
+        <div class="feature-detail-copy">
+          <span class="feature-tag">The dashboard</span>
+          <h2>Everything in reach, nothing to configure.</h2>
+          <p>The popup shows what got blocked on the page in front of you; the dashboard keeps the history, the toggles, and the export. It follows your system theme and never asks you to make it work.</p>
+          <ul class="feature-list">
+            <li><strong>Light and dark,</strong> following your system, across the popup and dashboard.</li>
+            <li><strong>Local-first stats:</strong> blocked count, estimated data and video time saved, with a compact total that syncs only through your own browser account.</li>
+            <li><strong>One-click reporting:</strong> if an ad ever slips through, the popup files a pre-filled issue with diagnostics so it gets fixed fast.</li>
+          </ul>
+          <a class="feature-doc-link" href="/docs/guide/usage/">Read the usage guide →</a>
+        </div>
+      </section>
+
+      <section class="feature-editorial">
+        <div class="feature-editorial-head">
+          <span class="feature-tag">Privacy</span>
+          <h2>Local by default, and marked as such.</h2>
+          <p>The detailed history stays on the device. Only a compact lifetime total rides your browser’s own sync, and every estimate on the dashboard is labelled as an estimate.</p>
+        </div>
+        <div class="feature-points">
+          <div class="feature-point">
+            <h3>Pause, per site</h3>
+            <p>Give a site 15, 30, or 60 minutes off, or add it to the allowlist for good. Your choices become local rules, not a setting on a server.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Hide cookie banners</h3>
+            <p>One switch hides the consent overlays that pile up on top of ads, with a kill switch if a site needs the banner to function.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Export and reset</h3>
+            <p>Take your stats with you as JSON, or reset them. Nothing is locked away, and nothing is uploaded.</p>
+          </div>
+        </div>
+      </section>
+      <section class="other-features" aria-label="Other features">
+        <div class="section-kicker">
+          <h2>The other layers</h2>
+          <a class="section-link" href="/features/">All features →</a>
+        </div>
+        <div class="feature-index">
+        <a class="feature-index-card" href="/features/network-blocking/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+          <h2>Network blocking</h2>
+          <p>14,000+ ad and tracker hosts stopped at the request.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/youtube-twitch/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
+          <h2>YouTube and Twitch</h2>
+          <p>Video ads removed at the source, player untouched.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        <a class="feature-index-card" href="/features/popups/">
+          <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
+          <h2>Pop-ups and pop-unders</h2>
+          <p>Click-hijack windows neutralized, real ones allowed.</p>
+          <span class="feature-more">Explore →</span>
+        </a>
+        </div>
+      </section>
+      @include('browsers-band')
+    </main>
+    @include('footer')
+  </body>
+</html>
