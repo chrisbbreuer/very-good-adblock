@@ -67,6 +67,7 @@
       </section>
 
       @include('browsers-band')
+      @include('subscribe')
     </main>
 
     @include('footer')

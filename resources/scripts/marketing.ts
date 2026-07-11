@@ -70,7 +70,7 @@ if (form && emailInput && status) {
       const data = await response.json().catch(() => ({})) as { success?: boolean, message?: string }
 
       if (data.success) {
-        setStatus(data.message === 'Already subscribed' ? 'You are already on the list.' : 'You are on the list. We will email you when it lands.', 'ok')
+        setStatus(data.message === 'Already subscribed' ? 'You are already on the list.' : 'You are on the list. We will only email you when it matters.', 'ok')
         form.reset()
       }
       else {

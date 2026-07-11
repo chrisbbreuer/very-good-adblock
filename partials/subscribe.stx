@@ -1,0 +1,12 @@
+<section id="subscribe" class="subscribe-band">
+  <div class="subscribe-inner">
+    <h2>Get the occasional update.</h2>
+    <p>One short email when there is something worth knowing: new blocking, notable fixes, and big releases. No spam, unsubscribe anytime.</p>
+    <form class="subscribe-form" id="subscribe-form" action="/api/email/subscribe" method="POST">
+      <input type="email" id="subscribe-email" name="email" placeholder="you@example.com" autocomplete="email" aria-label="Email address" required>
+      <input type="hidden" name="source" value="verygoodadblock">
+      <button class="primary-link" type="submit">Subscribe</button>
+    </form>
+    <p class="subscribe-status" id="subscribe-status" role="status" aria-live="polite"></p>
+  </div>
+</section>
