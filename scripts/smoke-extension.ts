@@ -309,13 +309,20 @@ function contentFixture(body: string): string {
 }
 
 function youtubeFixture(): string {
+  // The player carries `.html5-video-player.ad-showing` so the skip automation
+  // actually engages — `clickYouTubeSkip()` only clicks while the player is in
+  // an ad, so without this class it (correctly) leaves the button alone. The
+  // player-region ad markers (`.ytp-ad-module`, `.video-ads`) and the skip
+  // button live inside it and are intentionally never hidden.
   return `
     <h1>YouTube fixture</h1>
     <div id="masthead-ad">masthead ad</div>
-    <div class="ytp-ad-module">video ad module</div>
-    <div class="video-ads">video ad</div>
     <ytd-display-ad-renderer>display ad</ytd-display-ad-renderer>
-    <button class="ytp-ad-skip-button" onclick="document.body.dataset.skipped = 'true'">Skip ad</button>
+    <div class="html5-video-player ad-showing">
+      <div class="ytp-ad-module">video ad module</div>
+      <div class="video-ads">video ad</div>
+      <button class="ytp-ad-skip-button" onclick="document.body.dataset.skipped = 'true'">Skip ad</button>
+    </div>
     <ytd-rich-grid-renderer>
       <ytd-rich-item-renderer id="feed-ad"><ytd-ad-slot-renderer>in-feed ad</ytd-ad-slot-renderer></ytd-rich-item-renderer>
       <ytd-rich-item-renderer id="feed-video"><ytd-rich-grid-media>real recommended video</ytd-rich-grid-media></ytd-rich-item-renderer>
