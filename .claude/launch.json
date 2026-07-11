@@ -7,6 +7,12 @@
       "runtimeArgs": ["dev:frontend"],
       "port": 3100,
       "autoPort": true
+    },
+    {
+      "name": "site-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8099", "--directory", "dist/site"],
+      "port": 8099
     }
   ]
 }
