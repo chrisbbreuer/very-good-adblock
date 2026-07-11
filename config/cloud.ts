@@ -51,6 +51,38 @@ export const tsCloud: TsCloudConfig = {
       pathRewriteStyle: 'directory',
     },
 
+    // Subscribe API: the app's own Stacks pieces (routes/api.ts → app/Actions →
+    // app/Models/Subscriber via the ORM) served by a lean Bun entry
+    // (server/serve.ts) run as a systemd service. rpx routes the SAME domain by
+    // longest path prefix, so `/api/*` hits this process and everything else
+    // stays static above — the marketing form posts same-origin (no CORS). Bound
+    // to loopback (HOST=127.0.0.1); rpx is the only public entry.
+    //
+    // The server needs the app source + node_modules (the ORM model), so it ships
+    // the repo (source only; heavy dirs excluded) and installs on the box via
+    // preStart. The SQLite db lives under storage/, which ts-cloud symlinks from
+    // the site's shared dir into every release (sharedPaths defaults to
+    // ['storage', '.env']), so subscribers persist across deploys; the migrations
+    // ship in database/migrations and are applied on boot. Port 3010 avoids the
+    // box's stacks apps (3000/3008).
+    api: {
+      deploy: 'server',
+      root: '.',
+      path: '/api',
+      domain: env.APP_DOMAIN || 'verygoodadblock.org',
+      start: 'bun server/serve.ts',
+      port: 3010,
+      preStart: ['bun install --frozen-lockfile'],
+      exclude: ['node_modules', '.git', 'dist', 'dist-firefox', '*.zip', 'pantry', 'bench'],
+      env: {
+        HOST: '127.0.0.1',
+        PORT: '3010',
+        APP_ENV: 'production',
+        DB_CONNECTION: 'sqlite',
+        DB_DATABASE_PATH: 'storage/subscribers.sqlite',
+      },
+    },
+
     // www → apex redirect.
     verygoodadblockWww: {
       domain: 'www.verygoodadblock.org',

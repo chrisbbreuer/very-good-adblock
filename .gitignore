@@ -5,6 +5,9 @@
 *.log
 *.tgz
 *.zip
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 coverage
 dist
 dist-firefox
