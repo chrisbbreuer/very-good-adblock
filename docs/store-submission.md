@@ -14,7 +14,7 @@ in sync with `src/shared/constants.ts` (name/description) and `package.json`.
 **Build the store artifacts** (or download them from the tagged GitHub Release — `gh release download v<version>`):
 
 ```bash
-bun run package          # → very-good-adblock-<version>.zip          (Chrome)
+bun run package          # → very-good-adblock-<version>-chrome.zip    (Chrome)
 bun run package:firefox  # → very-good-adblock-<version>-firefox.zip   (Firefox)
 bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x800)
 ```
@@ -22,7 +22,7 @@ bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x8
 **Chrome Web Store**
 
 1. [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **Add new item**.
-2. Upload `very-good-adblock-<version>.zip`. The icon (128px) comes from the manifest automatically.
+2. Upload `very-good-adblock-<version>-chrome.zip`. The icon (128px) comes from the manifest automatically.
 3. **Store listing**: paste the name, short + detailed description, and category (Productivity) from below; add the three 1280x800 screenshots.
 4. **Privacy practices**: set the single purpose, paste the permission justifications, and declare **no data collection** (see the disclosure below).
 5. **Submit for review** (typically hours to a few days). Later updates: bump the version, `bun run package`, and upload the new zip as a new package under the same item.
@@ -46,8 +46,9 @@ bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x8
 ## Detailed description
 
 > Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at
-> the source, then stays out of the way. It is a Manifest V3 extension built to be
-> fast and private: no accounts, no tracking, no data leaves your machine.
+> the source, then stays out of the way. It is a Manifest V3 extension for Chrome
+> and Firefox, built to be fast and private: no accounts, no tracking, no data
+> leaves your machine.
 >
 > What it does
 > - Network blocking. Stops 14,000+ ad, tracker, and annoyance hosts before the
@@ -60,7 +61,10 @@ bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x8
 > and file-host sites open, including the ones fired from inside a player iframe.
 > - Cookie banners. Optional one-click hiding of the common consent overlays.
 > - One-click control. Pause protection per site, keep an allowlist, and read
-> local stats (blocked count, data saved, video time) from a clean dashboard.
+> local stats (blocked count, data saved, video time) from a clean dashboard,
+> in a light or dark theme that follows your system.
+> - One-click reporting. If an ad ever slips through, report it straight from the
+> popup — it opens a pre-filled issue with diagnostics so it gets fixed fast.
 >
 > Privacy
 > - No telemetry and no analytics. Nothing about your browsing is collected or

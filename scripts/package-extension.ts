@@ -2,9 +2,9 @@ import packageJson from '../package.json'
 
 const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
 const dist = target === 'firefox' ? 'dist-firefox' : 'dist'
-const archive = target === 'firefox'
-  ? `very-good-adblock-${packageJson.version}-firefox.zip`
-  : `very-good-adblock-${packageJson.version}.zip`
+// Name every artifact with its target so the browser is obvious at a glance:
+// very-good-adblock-<version>-chrome.zip / -firefox.zip.
+const archive = `very-good-adblock-${packageJson.version}-${target}.zip`
 
 await Bun.$`rm -f ${archive}`
 // marketing.html/marketing.js are built into dist for the site; they are not

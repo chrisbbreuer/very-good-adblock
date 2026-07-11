@@ -54,4 +54,4 @@ bun run package          # Chrome zip
 bun run package:firefox  # Firefox zip
 ```
 
-Each also runs its target's `validate:extension` step first and creates a zip artifact for distribution (`very-good-adblock-<version>.zip` and `very-good-adblock-<version>-firefox.zip`).
+Each also runs its target's `validate:extension` step first and creates a zip artifact for distribution (`very-good-adblock-<version>-chrome.zip` and `very-good-adblock-<version>-firefox.zip`).
