@@ -3,6 +3,38 @@
 Copy-paste reference for the Chrome Web Store and Firefox AMO listings. Keep this
 in sync with `src/shared/constants.ts` (name/description) and `package.json`.
 
+## Publishing — step by step
+
+**One-time accounts**
+
+- **Chrome Web Store**: a developer account at the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) (one-time US$5 registration fee).
+- **Firefox AMO**: a free account at the [AMO Developer Hub](https://addons.mozilla.org/developers/).
+- The Firefox add-on id (`extension@verygoodadblock.org`) is fixed — never change it, or AMO treats it as a brand-new add-on.
+
+**Build the store artifacts** (or download them from the tagged GitHub Release — `gh release download v<version>`):
+
+```bash
+bun run package          # → very-good-adblock-<version>.zip          (Chrome)
+bun run package:firefox  # → very-good-adblock-<version>-firefox.zip   (Firefox)
+bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x800)
+```
+
+**Chrome Web Store**
+
+1. [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **Add new item**.
+2. Upload `very-good-adblock-<version>.zip`. The icon (128px) comes from the manifest automatically.
+3. **Store listing**: paste the name, short + detailed description, and category (Productivity) from below; add the three 1280x800 screenshots.
+4. **Privacy practices**: set the single purpose, paste the permission justifications, and declare **no data collection** (see the disclosure below).
+5. **Submit for review** (typically hours to a few days). Later updates: bump the version, `bun run package`, and upload the new zip as a new package under the same item.
+
+**Firefox AMO**
+
+1. [AMO Developer Hub](https://addons.mozilla.org/developers/) → **Submit a New Add-on** → *On this site*.
+2. Upload `very-good-adblock-<version>-firefox.zip`; the validator runs automatically.
+3. **Source code**: the build is minified, so AMO requires source — upload a zip of this repo and note the build command `bun run build:firefox` (Bun ≥ 1.3, output in `dist-firefox/`).
+4. Fill the listing (same copy) and add the screenshots.
+5. **Submit for review**. Keep the add-on id stable across every submission.
+
 ## Basics
 
 - **Name:** Very Good AdBlock

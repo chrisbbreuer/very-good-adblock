@@ -48,9 +48,12 @@ const server = Bun.serve({
   },
 })
 
+// The window's title bar eats ~87px of the web viewport, so size the window
+// taller than the 800px frame to capture it fully, then normalize each PNG to
+// exactly 1280x800 — the Chrome Web Store requires 1280x800 (or 640x400).
 const view = new Bun.WebView({
   width: 1280,
-  height: 800,
+  height: 887,
   backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*', '--force-device-scale-factor=1'] },
 })
 
@@ -59,8 +62,11 @@ try {
     await view.navigate(`http://127.0.0.1:${server.port}${shot.url}`)
     await settle(view)
     const png = await view.screenshot({ encoding: 'buffer' })
-    await Bun.write(join(outDir, `${shot.name}.png`), png)
-    console.log(`Wrote dist/store/${shot.name}.png`)
+    const outPath = join(outDir, `${shot.name}.png`)
+    await Bun.write(outPath, png)
+    // Force the exact store dimensions (sips is macOS-only; harmless if absent).
+    await Bun.$`sips -z 800 1280 ${outPath}`.quiet().nothrow()
+    console.log(`Wrote ${outPath} (1280x800)`)
   }
 }
 finally {
