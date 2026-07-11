@@ -2021,11 +2021,14 @@ h1 {
     font-size: 32px;
   }
 
-  .marketing-nav,
+  /* Constrain the inner rows, not `.marketing-nav` itself — the bar (background
+     + hairline) stays edge to edge; only its content row is gutter-padded. */
+  .marketing-nav-inner,
   .marketing-hero,
   .marketing-band,
   .stats-showcase,
   .privacy-band,
+  .subscribe-band,
   .marketing-footer {
     width: min(100% - 28px, 1180px);
   }
@@ -2066,9 +2069,10 @@ h1 {
     font-size: 17px;
   }
 
+  /* Copy (with the Install button) comes first on mobile; the popup sits below. */
   .hero-visual {
-    order: -1;
-    min-height: 200px;
+    order: 0;
+    min-height: auto;
   }
 
   .hero-shield {
@@ -2087,8 +2091,19 @@ h1 {
   }
 
   .feature-grid article,
-  .feature-card {
+  .feature-card,
+  .stat-wall article {
     min-height: auto;
+  }
+
+  /* Single-column stat cards read better as a centered number + label than as a
+     tall box with the text stuck in the top-left corner. */
+  .stat-wall article {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 26px 22px;
   }
 
   .marketing-footer {
