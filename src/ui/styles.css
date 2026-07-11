@@ -20,6 +20,7 @@
   --danger: #ff5c7a;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
   --nav-bg: rgba(22, 8, 9, 0.86);
+  --text-rgb: 251, 243, 243;
   /* Themeable surface backgrounds (overridden wholesale in light mode). */
   --app-bg:
     radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.26), transparent 28rem),
@@ -38,13 +39,13 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ── Light theme ── Scoped to the marketing site (html.marketing); the extension
-   UI stays dark-only. Dark is the default (:root above). Marketing flips to light
-   when the OS prefers light (no JS, no flash) OR when its toggle stamps
-   data-theme="light" on <html>; an explicit data-theme="dark" always wins back.
-   The two light blocks below are intentional mirrors — keep them in sync. */
+/* ── Light theme ── Dark is the default (:root above). The whole UI (extension
+   popup/dashboard included) flips to light when the OS prefers light — no JS, no
+   flash. The marketing site can also stamp data-theme on <html> via its toggle;
+   an explicit data-theme="dark" always wins back. The two light blocks below are
+   intentional mirrors — keep them in sync. */
 @media (prefers-color-scheme: light) {
-  html.marketing:not([data-theme="dark"]) {
+  :root:not([data-theme="dark"]) {
     --bg: #fbf1f1;
     --panel: rgba(120, 20, 24, 0.05);
     --panel-strong: rgba(120, 20, 24, 0.09);
@@ -55,6 +56,7 @@
     --line: rgba(120, 20, 24, 0.16);
     --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
     --nav-bg: rgba(255, 255, 255, 0.82);
+    --text-rgb: 36, 16, 18;
     --app-bg:
       radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
       radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
@@ -66,7 +68,7 @@
   }
 }
 
-html.marketing[data-theme="light"] {
+:root[data-theme="light"] {
   --bg: #fbf1f1;
   --panel: rgba(120, 20, 24, 0.05);
   --panel-strong: rgba(120, 20, 24, 0.09);
@@ -77,6 +79,7 @@ html.marketing[data-theme="light"] {
   --line: rgba(120, 20, 24, 0.16);
   --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
   --nav-bg: rgba(255, 255, 255, 0.82);
+  --text-rgb: 36, 16, 18;
   --app-bg:
     radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
     radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
@@ -265,7 +268,7 @@ h1 {
 
 .metric-card {
   min-height: 80px;
-  background: linear-gradient(150deg, rgba(255, 244, 244, 0.1), rgba(255, 244, 244, 0.045));
+  background: linear-gradient(150deg, rgba(var(--text-rgb), 0.06), rgba(var(--text-rgb), 0.03));
 }
 
 .metric-card.primary {
@@ -344,7 +347,7 @@ h1 {
   padding: 6px 9px;
   border: 1px solid rgba(255, 236, 236, 0.22);
   border-radius: 9px;
-  color: #f8fffb;
+  color: var(--text);
   background: rgba(4, 12, 20, 0.97);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
   font-size: 11px;
@@ -370,14 +373,14 @@ h1 {
   align-items: center;
   gap: 8px;
   margin-top: 5px;
-  color: rgba(243, 251, 248, 0.5);
+  color: rgba(var(--text-rgb), 0.5);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .timeline-footer strong {
-  color: rgba(243, 251, 248, 0.88);
+  color: rgba(var(--text-rgb), 0.88);
   font-size: 11px;
   text-transform: none;
 }
@@ -397,12 +400,12 @@ h1 {
 }
 
 .soft-button:hover {
-  background: rgba(255, 244, 244, 0.22);
+  background: rgba(var(--text-rgb), 0.12);
 }
 
 .danger-button {
   border-color: rgba(255, 92, 122, 0.42);
-  color: #ffdce4;
+  color: var(--danger);
 }
 
 .danger-button:hover {
@@ -466,7 +469,7 @@ h1 {
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(243, 251, 248, 0.82);
+  color: rgba(var(--text-rgb), 0.82);
   background: transparent;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
 }
@@ -478,7 +481,7 @@ h1 {
 
 .chip-button.accent {
   border-color: rgba(var(--accent-rgb), 0.42);
-  color: #ffe0e0;
+  color: var(--accent);
 }
 
 .chip-button.accent:hover {
@@ -490,7 +493,7 @@ h1 {
   border-radius: var(--radius-inner);
   padding: 6px 10px;
   font-size: 12px;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(var(--text-rgb), 0.72);
   background: transparent;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
 }
@@ -508,7 +511,7 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   min-height: 28px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--hairline);
   font-size: 13px;
 }
 
@@ -527,7 +530,7 @@ h1 {
   display: block;
   max-width: 205px;
   overflow: hidden;
-  color: #f8fffb;
+  color: var(--text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -535,7 +538,7 @@ h1 {
 .site-stat-caption {
   display: block;
   margin-top: 12px;
-  color: rgba(243, 251, 248, 0.5);
+  color: rgba(var(--text-rgb), 0.5);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -553,13 +556,13 @@ h1 {
   min-width: 0;
   border-radius: var(--radius-inner);
   padding: 9px 10px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--text-rgb), 0.04);
 }
 
 .site-stat-grid span {
   display: block;
   overflow: hidden;
-  color: rgba(243, 251, 248, 0.58);
+  color: rgba(var(--text-rgb), 0.58);
   font-size: 10px;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -571,7 +574,7 @@ h1 {
   display: block;
   margin-top: 5px;
   overflow: hidden;
-  color: #f8fffb;
+  color: var(--text);
   font-size: 15px;
   line-height: 1.05;
   text-overflow: ellipsis;
@@ -580,7 +583,7 @@ h1 {
 
 .site-footnote {
   margin: 8px 1px 0;
-  color: rgba(243, 251, 248, 0.58);
+  color: rgba(var(--text-rgb), 0.58);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -715,12 +718,12 @@ h1 {
   border-radius: var(--radius-inner);
   padding: 10px 12px;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--panel-strong);
   transition: border-color 140ms ease;
 }
 
 .site-form input::placeholder {
-  color: rgba(243, 251, 248, 0.42);
+  color: rgba(var(--text-rgb), 0.42);
 }
 
 .pill-list {
@@ -734,7 +737,7 @@ h1 {
   border-radius: var(--radius-pill);
   padding: 8px 11px;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--panel-strong);
 }
 
 .marketing-shell {
@@ -904,7 +907,7 @@ h1 {
 .hero-lede {
   max-width: 540px;
   margin: 22px 0 0;
-  color: rgba(243, 251, 248, 0.82);
+  color: rgba(var(--text-rgb), 0.82);
   font-size: 19px;
   line-height: 1.55;
 }
@@ -989,7 +992,7 @@ h1 {
 .stat-wall article,
 .privacy-list {
   border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--text-rgb), 0.04);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
@@ -1048,7 +1051,7 @@ h1 {
 
 .how-steps p {
   margin: 0;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(var(--text-rgb), 0.72);
   font-size: 15px;
   line-height: 1.55;
 }
@@ -1096,7 +1099,7 @@ h1 {
 .cta-inner p {
   margin: 18px auto 30px;
   max-width: 46ch;
-  color: rgba(243, 251, 248, 0.76);
+  color: rgba(var(--text-rgb), 0.76);
   font-size: 17px;
   line-height: 1.5;
 }
@@ -1139,7 +1142,7 @@ h1 {
 .subscribe-inner > p {
   margin: 14px auto 26px;
   max-width: 46ch;
-  color: rgba(243, 251, 248, 0.72);
+  color: rgba(var(--text-rgb), 0.72);
   font-size: 16px;
   line-height: 1.5;
 }
@@ -1158,13 +1161,13 @@ h1 {
   padding: 0 16px;
   border-radius: 12px;
   border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.05);
-  color: #f8fffb;
+  background: var(--panel-strong);
+  color: var(--text);
   font-size: 15px;
 }
 
 .subscribe-form input[type="email"]::placeholder {
-  color: rgba(243, 251, 248, 0.42);
+  color: rgba(var(--text-rgb), 0.42);
 }
 
 .subscribe-form input[type="email"]:focus {
@@ -1199,7 +1202,7 @@ h1 {
 }
 
 .subscribe-status[data-kind="pending"] {
-  color: rgba(243, 251, 248, 0.62);
+  color: rgba(var(--text-rgb), 0.62);
 }
 
 @media (max-width: 560px) {
@@ -1265,7 +1268,7 @@ h1 {
 .stats-showcase p,
 .privacy-band p {
   margin: 0;
-  color: rgba(243, 251, 248, 0.78);
+  color: rgba(var(--text-rgb), 0.78);
   line-height: 1.65;
 }
 
@@ -1305,7 +1308,7 @@ h1 {
 .stat-wall span {
   display: block;
   margin-top: 12px;
-  color: rgba(243, 251, 248, 0.8);
+  color: rgba(var(--text-rgb), 0.8);
 }
 
 .privacy-list {
@@ -1320,8 +1323,8 @@ h1 {
   align-items: center;
   gap: 12px;
   min-height: 52px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(243, 251, 248, 0.86);
+  border-bottom: 1px solid var(--line);
+  color: rgba(var(--text-rgb), 0.86);
 }
 
 .privacy-list div:last-child {
@@ -1339,13 +1342,13 @@ h1 {
 .marketing-footer {
   justify-content: space-between;
   min-height: 94px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(243, 251, 248, 0.64);
+  border-top: 1px solid var(--line);
+  color: rgba(var(--text-rgb), 0.64);
 }
 
 .marketing-footer span {
   margin-right: auto;
-  color: #fff;
+  color: var(--text);
   font-weight: 800;
 }
 

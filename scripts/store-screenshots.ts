@@ -70,7 +70,12 @@ finally {
 }
 
 function inject(markup: string): string {
-  return markup.replace('</head>', `${shim}</head>`)
+  // The extension UI follows the OS light/dark preference; pin it dark for the
+  // store shots so the popup matches the dark marketing frame regardless of the
+  // capture environment's color scheme.
+  return markup
+    .replace(/<html(?=[\s>])/, '<html data-theme="dark"')
+    .replace('</head>', `${shim}</head>`)
 }
 
 function htmlResponse(body: string): Response {
