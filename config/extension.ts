@@ -32,8 +32,12 @@ const extension: ExtensionConfig = defineExtension({
   pages: {
     popup: { template: 'pages/popup.stx', script: 'src/ui/popup.ts' },
     options: { template: 'pages/options.stx', script: 'src/ui/options.ts' },
-    // The marketing landing is bundled alongside (reused by the site build).
-    extra: { marketing: { template: 'pages/marketing.stx', script: 'src/ui/marketing.ts' } },
+    // The marketing landing + features page are bundled alongside (reused by the
+    // site build). The features page reuses the marketing script (theme toggle).
+    extra: {
+      marketing: { template: 'pages/marketing.stx', script: 'src/ui/marketing.ts' },
+      features: { template: 'pages/features.stx', script: 'src/ui/marketing.ts' },
+    },
   },
 
   icons: {

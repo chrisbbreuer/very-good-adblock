@@ -40,9 +40,37 @@
           <span>Very Good AdBlock</span>
         </a>
         <nav>
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
-          <a href="#privacy">Privacy</a>
+          <div class="nav-item has-menu">
+            <a class="nav-link" href="features/" aria-haspopup="true" aria-expanded="false">Features</a>
+            <div class="nav-menu" role="menu" aria-label="Features">
+              <a class="nav-menu-item" href="features/#network-blocking" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                </span>
+                <span class="nav-menu-text"><strong>Network blocking</strong><small>14,000+ ad and tracker hosts stopped at the request</small></span>
+              </a>
+              <a class="nav-menu-item" href="features/#youtube-twitch" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg>
+                </span>
+                <span class="nav-menu-text"><strong>YouTube and Twitch</strong><small>Video ads removed at the source, player untouched</small></span>
+              </a>
+              <a class="nav-menu-item" href="features/#popups" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg>
+                </span>
+                <span class="nav-menu-text"><strong>Pop-ups and pop-unders</strong><small>Click-hijack windows neutralized, real ones allowed</small></span>
+              </a>
+              <a class="nav-menu-item" href="features/#controls" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg>
+                </span>
+                <span class="nav-menu-text"><strong>Control and privacy</strong><small>Pause per site, allowlists, local-only stats</small></span>
+              </a>
+            </div>
+          </div>
+          <a class="nav-link" href="#how">How it works</a>
+          <a class="nav-link" href="#privacy">Privacy</a>
         </nav>
         <div class="nav-controls">
           <a class="nav-icon" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener" aria-label="GitHub repository" title="GitHub">
@@ -89,28 +117,61 @@
       <section id="features" class="marketing-band">
         <div class="section-kicker">
           <h2>Protection at the source, not fragile page rewrites.</h2>
+          <a class="section-link" href="features/">All features →</a>
         </div>
         <div class="feature-grid">
-          <article>
-            <span class="feature-icon" aria-hidden="true"></span>
+          <a class="feature-card" href="features/#network-blocking">
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
+            </span>
             <h3>Network blocking</h3>
             <p>Manifest V3 declarative rules stop 14,000+ ad, tracker, and annoyance hosts before the request completes.</p>
-          </article>
-          <article>
-            <span class="feature-icon" aria-hidden="true"></span>
+            <span class="feature-more">Learn more →</span>
+          </a>
+          <a class="feature-card" href="features/#youtube-twitch">
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg>
+            </span>
             <h3>YouTube and Twitch</h3>
             <p>Strips video ads out of YouTube's player response, skips what slips through, and detects Twitch stream ads. The real video never breaks.</p>
-          </article>
-          <article>
-            <span class="feature-icon" aria-hidden="true"></span>
+            <span class="feature-more">Learn more →</span>
+          </a>
+          <a class="feature-card" href="features/#popups">
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg>
+            </span>
             <h3>Pop-ups and pop-unders</h3>
             <p>Neutralizes the click-hijack pop-ups streaming and file-host sites open, including the ones fired from inside the player iframe.</p>
-          </article>
-          <article>
-            <span class="feature-icon" aria-hidden="true"></span>
-            <h3>One-click control</h3>
+            <span class="feature-more">Learn more →</span>
+          </a>
+          <a class="feature-card" href="features/#controls">
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg>
+            </span>
+            <h3>Control and privacy</h3>
             <p>Pause per site, keep an allowlist, hide cookie banners, and read local stats from a clean dashboard. Nothing leaves your machine.</p>
-          </article>
+            <span class="feature-more">Learn more →</span>
+          </a>
+        </div>
+      </section>
+
+      <section id="get" class="browsers-band">
+        <div class="browsers-copy">
+          <p class="eyebrow">Get it</p>
+          <h2>Runs on Chrome and Firefox.</h2>
+          <p>One codebase, a browser-specific Manifest V3 build. Load it today, or grab it from the stores the moment it lands.</p>
+        </div>
+        <div class="browser-buttons">
+          <!-- Swap these hrefs for the Chrome Web Store / Firefox AMO listing URLs
+               once the extension is published; they point at the install guide today. -->
+          <a class="browser-button" href="docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
+            <img class="browser-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="34" height="34" loading="lazy">
+            <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc</small></span>
+          </a>
+          <a class="browser-button" href="docs/guide/install/" aria-label="Get Very Good AdBlock for Firefox">
+            <img class="browser-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="34" height="34" loading="lazy">
+            <span class="browser-text"><strong>Get it for Firefox</strong><small>Firefox 140 and up</small></span>
+          </a>
         </div>
       </section>
 

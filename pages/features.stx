@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" class="marketing">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="How Very Good AdBlock blocks ads: Manifest V3 network rules, source-level YouTube and Twitch ad removal, pop-up defusing, and one-click local controls. Chrome and Firefox, no telemetry.">
+    <meta name="theme-color" content="#100a0b">
+    <link rel="canonical" href="https://verygoodadblock.org/features/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/features/">
+    <meta property="og:title" content="Features — Very Good AdBlock">
+    <meta property="og:description" content="Network blocking, YouTube and Twitch ad removal at the source, pop-up defusing, and one-click local controls. Chrome and Firefox, no telemetry.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>Features — Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="marketing-shell">
+    <header class="marketing-nav" aria-label="Primary navigation">
+      <div class="marketing-nav-inner">
+        <a class="brand-lockup" href="/" aria-label="Very Good AdBlock home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Very Good AdBlock</span>
+        </a>
+        <nav>
+          <div class="nav-item has-menu">
+            <a class="nav-link" href="#top" aria-haspopup="true" aria-expanded="false">Features</a>
+            <div class="nav-menu" role="menu" aria-label="Features">
+              <a class="nav-menu-item" href="#network-blocking" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+                <span class="nav-menu-text"><strong>Network blocking</strong><small>14,000+ ad and tracker hosts stopped at the request</small></span>
+              </a>
+              <a class="nav-menu-item" href="#youtube-twitch" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
+                <span class="nav-menu-text"><strong>YouTube and Twitch</strong><small>Video ads removed at the source, player untouched</small></span>
+              </a>
+              <a class="nav-menu-item" href="#popups" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
+                <span class="nav-menu-text"><strong>Pop-ups and pop-unders</strong><small>Click-hijack windows neutralized, real ones allowed</small></span>
+              </a>
+              <a class="nav-menu-item" href="#controls" role="menuitem">
+                <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
+                <span class="nav-menu-text"><strong>Control and privacy</strong><small>Pause per site, allowlists, local-only stats</small></span>
+              </a>
+            </div>
+          </div>
+          <a class="nav-link" href="/#how">How it works</a>
+          <a class="nav-link" href="/#privacy">Privacy</a>
+        </nav>
+        <div class="nav-controls">
+          <a class="nav-icon" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener" aria-label="GitHub repository" title="GitHub">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.57.1.78-.25.78-.55v-2c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.2-3.1-.13-.29-.52-1.46.1-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.5 3.17-1.18 3.17-1.18.63 1.59.24 2.76.12 3.05.75.81 1.2 1.84 1.2 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.78 1.06.78 2.14v3.17c0 .3.2.66.79.55A11.5 11.5 0 0 0 12 .5Z"/></svg>
+          </a>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle light/dark">
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+          <a class="nav-action" href="/docs/">Read docs</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="features-hero">
+        <p class="eyebrow">Features</p>
+        <h1>Everything it blocks, and exactly how.</h1>
+        <p class="hero-lede">Four layers of protection, each built to stop ads at the source instead of patching the page after they load. Jump to the one you care about.</p>
+        <nav class="features-jump" aria-label="Jump to a feature">
+          <a href="#network-blocking">Network blocking</a>
+          <a href="#youtube-twitch">YouTube and Twitch</a>
+          <a href="#popups">Pop-ups and pop-unders</a>
+          <a href="#controls">Control and privacy</a>
+        </nav>
+      </section>
+
+      <section id="network-blocking" class="feature-detail">
+        <div class="feature-detail-copy">
+          <span class="feature-tag">Network blocking</span>
+          <h2>Requests that never leave your machine.</h2>
+          <p>Very Good AdBlock ships a Manifest V3 <code>declarativeNetRequest</code> ruleset that the browser's own network stack enforces. Ad, tracker, and annoyance requests are cancelled before they complete, with zero per-request JavaScript.</p>
+          <ul class="feature-list">
+            <li><strong>14,387 bundled host rules</strong> compiled from pinned EasyList and AdGuard revisions, plus curated seeds.</li>
+            <li><strong>Refreshed daily</strong> as dynamic rules from a public host list, so blocking stays current between releases.</li>
+            <li><strong>Ad-SDK loaders neutered,</strong> not hard-blocked: gpt.js and adsbygoogle.js are redirected to inert stubs so pages that await them keep working.</li>
+          </ul>
+          <a class="feature-doc-link" href="/docs/architecture/">Read the blocking model →</a>
+        </div>
+        <figure class="feature-detail-media">
+          <img src="/screenshots/popup.png" alt="The Very Good AdBlock popup showing 47 items blocked on the current page and a 24-hour activity chart." width="1280" height="800" loading="lazy">
+        </figure>
+      </section>
+
+      <section id="youtube-twitch" class="feature-editorial">
+        <div class="feature-editorial-head">
+          <span class="feature-tag">YouTube and Twitch</span>
+          <h2>The real video plays. The ads never scheduled.</h2>
+          <p>A MAIN-world script deletes the ad instructions from YouTube's player response before the page can schedule them, so the video starts immediately. The player region is never touched, so playback and controls stay intact.</p>
+        </div>
+        <div class="feature-points">
+          <div class="feature-point">
+            <h3>Removed at the source</h3>
+            <p>Strips <code>adPlacements</code>, <code>adSlots</code>, and <code>playerAds</code> from both the inline and <code>/youtubei/v1/player</code> responses. No pre-roll to skip because none is scheduled.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Skip assist as a safety net</h3>
+            <p>Clicks visible skip buttons and fast-forwards any ad that slips past the pruner, and dismisses the anti-adblock enforcement popup, restoring scroll and playback.</p>
+          </div>
+          <div class="feature-point">
+            <h3>Twitch stream ads</h3>
+            <p>Detects the in-stream ad markers Twitch now stitches server-side to estimate saved time, and hides the ad-only feedback affordances without touching the live player.</p>
+          </div>
+        </div>
+        <a class="feature-doc-link" href="/docs/architecture/youtube-x">How the video helpers work →</a>
+      </section>
+
+      <section id="popups" class="feature-detail reverse">
+        <div class="feature-detail-copy">
+          <span class="feature-tag">Pop-ups and pop-unders</span>
+          <h2>Kills the hijack, keeps the login.</h2>
+          <p>A MAIN-world guard wraps <code>window.open</code> and blocks the abusive pattern streaming and file-host sites rely on, while letting the pop-ups you actually asked for through. Blocked calls get a decoy window so the page does not keep retrying.</p>
+          <a class="feature-doc-link" href="/docs/architecture/">See the content-script model →</a>
+        </div>
+        <div class="feature-detail-media defuse-panel">
+          <div class="defuse-col">
+            <h3>Defused</h3>
+            <ul>
+              <li>Cross-origin opens from clicking dead space</li>
+              <li>Windows opened without a real gesture</li>
+              <li>Pop-under floods and rapid re-opens</li>
+              <li>Windows fired from inside a player iframe</li>
+            </ul>
+          </div>
+          <div class="defuse-col allow">
+            <h3>Allowed</h3>
+            <ul>
+              <li>OAuth and single sign-on windows</li>
+              <li>Share sheets you clicked</li>
+              <li>Genuine new tabs from real links</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="controls" class="feature-detail">
+        <figure class="feature-detail-media">
+          <img src="/screenshots/dashboard.png" alt="The Very Good AdBlock dashboard: lifetime blocks, a 60-day history chart, and protection toggles." width="1280" height="800" loading="lazy">
+        </figure>
+        <div class="feature-detail-copy">
+          <span class="feature-tag">Control and privacy</span>
+          <h2>Your rules, on your machine.</h2>
+          <p>Pause protection per site for 15, 30, or 60 minutes, keep an allowlist and a blocklist, and hide cookie-consent overlays with one switch. Every stat is computed and stored locally.</p>
+          <ul class="feature-list">
+            <li><strong>Light and dark,</strong> following your system, across the popup and dashboard.</li>
+            <li><strong>Local-first stats:</strong> blocked count, estimated data and video time saved, with a compact total that syncs only through your own browser account.</li>
+            <li><strong>One-click reporting:</strong> if an ad ever slips through, the popup files a pre-filled issue with diagnostics so it gets fixed fast.</li>
+          </ul>
+          <a class="feature-doc-link" href="/docs/guide/usage/">Read the usage guide →</a>
+        </div>
+      </section>
+
+      <section id="get" class="browsers-band">
+        <div class="browsers-copy">
+          <p class="eyebrow">Get it</p>
+          <h2>Runs on Chrome and Firefox.</h2>
+          <p>One codebase, a browser-specific Manifest V3 build. Load it today, or grab it from the stores the moment it lands.</p>
+        </div>
+        <div class="browser-buttons">
+          <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
+            <img class="browser-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="34" height="34" loading="lazy">
+            <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc</small></span>
+          </a>
+          <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Firefox">
+            <img class="browser-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="34" height="34" loading="lazy">
+            <span class="browser-text"><strong>Get it for Firefox</strong><small>Firefox 140 and up</small></span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="marketing-footer">
+      <span>Very Good AdBlock</span>
+      <a href="/docs/">Docs</a>
+      <a href="/docs/guide/usage/">Usage</a>
+      <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://bsky.app/profile/stacksjs.com" target="_blank" rel="noopener">Bluesky</a>
+    </footer>
+    <script type="module" src="/features.js"></script>
+  </body>
+</html>
