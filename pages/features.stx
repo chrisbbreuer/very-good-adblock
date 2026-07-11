@@ -181,7 +181,7 @@
         <div class="browser-buttons">
           <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
             <img class="browser-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="34" height="34" loading="lazy">
-            <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc</small></span>
+            <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc, Dia</small></span>
           </a>
           <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Firefox">
             <img class="browser-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="34" height="34" loading="lazy">
