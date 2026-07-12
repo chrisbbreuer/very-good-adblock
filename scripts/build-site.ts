@@ -10,6 +10,7 @@ const FEATURE_SLUGS = ['network-blocking', 'youtube-twitch', 'popups', 'controls
 async function main(): Promise<void> {
   await ensureExists('./dist/marketing.html', 'dist/marketing.html is missing. Run bun run build first.')
   await ensureExists('./dist/features.html', 'dist/features.html is missing. Run bun run build first.')
+  await ensureExists('./dist/privacy.html', 'dist/privacy.html is missing. Run bun run build first.')
   for (const slug of FEATURE_SLUGS)
     await ensureExists(`./dist/${slug}.html`, `dist/${slug}.html is missing. Run bun run build first.`)
   await ensureExists(docsOut, 'Bunpress output is missing. Run bun run docs:build first.')
@@ -24,6 +25,11 @@ async function main(): Promise<void> {
   // Features hub + each dedicated feature page live one or two directories deep,
   // so their assets are re-rooted to absolute and the shared script is injected.
   await Bun.write(`${siteOut}/features/index.html`, siteize(await Bun.file('./dist/features.html').text()))
+
+  // Privacy policy at /privacy/ (shareable clean URL, linked from the footer).
+  await Bun.$`mkdir -p ${siteOut}/privacy`
+  await Bun.write(`${siteOut}/privacy/index.html`, siteize(await Bun.file('./dist/privacy.html').text()))
+
   for (const slug of FEATURE_SLUGS) {
     await Bun.$`mkdir -p ${siteOut}/features/${slug}`
     await Bun.write(`${siteOut}/features/${slug}/index.html`, siteize(await Bun.file(`./dist/${slug}.html`).text()))

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" class="marketing">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Very Good AdBlock privacy policy: no telemetry, no tracking, no ads, and no selling of user data. Stats stay on your device.">
+    <meta name="theme-color" content="#100a0b">
+    <link rel="canonical" href="https://verygoodadblock.org/privacy/">
+    <script>
+      // Set the theme before first paint (no flash): saved choice, else system.
+      (function () {
+        try {
+          var saved = localStorage.getItem('vga-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          document.documentElement.dataset.theme = theme
+        }
+        catch (e) {}
+      })()
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Very Good AdBlock">
+    <meta property="og:url" content="https://verygoodadblock.org/privacy/">
+    <meta property="og:title" content="Privacy Policy — Very Good AdBlock">
+    <meta property="og:description" content="No telemetry, no tracking, no selling of user data. Blocking stats stay on your device.">
+    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <title>Privacy Policy — Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="marketing-shell">
+    @include('nav')
+
+    <main id="top">
+      <article class="legal">
+        <p class="eyebrow">Privacy</p>
+        <h1>Privacy Policy</h1>
+        <p class="legal-updated">Last updated: July 12, 2026</p>
+
+        <p class="legal-lede">Very Good AdBlock is built to be private. It has no telemetry, no analytics, and no trackers, and it never sells or shares your data. This policy explains, in plain terms, exactly what the extension and this website do and do not collect.</p>
+
+        <h2>The short version</h2>
+        <ul>
+          <li>The extension sends <strong>no data about you or your browsing to us or anyone else.</strong></li>
+          <li>Your blocking stats are computed and stored <strong>on your own device.</strong> A small lifetime total can sync across your installs, but only through <strong>your own browser account</strong> (Chrome Sync), never to us.</li>
+          <li>We do not sell, rent, or transfer your data to third parties.</li>
+          <li>We do not use your data for advertising, profiling, creditworthiness, or lending.</li>
+        </ul>
+
+        <h2>What the extension stores (on your device)</h2>
+        <p>To do its job and show you what it blocked, the extension keeps the following in your browser's local and sync storage:</p>
+        <ul>
+          <li><strong>Blocking stats:</strong> counts of blocked requests, plus estimated data and video time saved. Detailed history stays in local storage on the device.</li>
+          <li><strong>Your settings and site choices:</strong> pause timers, allowlist and blocklist entries, and toggles such as cookie-banner hiding.</li>
+        </ul>
+        <p>A compact lifetime total and your settings may sync between your own devices via <code>chrome.storage.sync</code>. That data travels through <strong>your browser vendor's sync service using your own account</strong> (for example, Chrome Sync). It is never sent to Very Good AdBlock, and we have no server that receives it.</p>
+
+        <h2>Network requests the extension makes</h2>
+        <ul>
+          <li><strong>Filter list updates.</strong> About once a day the extension downloads a public list of ad and tracker hostnames (a JSON file) to keep blocking current. This is a plain download of blocking data. It sends <strong>no information about you or the pages you visit,</strong> and the response is used only to update declarative blocking rules.</li>
+          <li><strong>No other calls.</strong> The extension makes no analytics, telemetry, or "phone home" requests of any kind.</li>
+        </ul>
+
+        <h2>Reporting an ad that slipped through</h2>
+        <p>If you choose to use the built-in "report an ad" button, the extension opens a pre-filled GitHub issue so you can help us fix it. That report is <strong>created only when you ask for it,</strong> and <strong>you review and submit it yourself</strong> on GitHub. It contains:</p>
+        <ul>
+          <li>The address of the page you are reporting, with the query string and fragment removed (so tokens and search terms are not included).</li>
+          <li>Technical diagnostics: the extension version, protection state, filter revisions, blocking counts, and a short browser label.</li>
+          <li>Optionally a screenshot, only if you copied one to your clipboard and chose to paste it in.</li>
+        </ul>
+        <p>No browsing history is included, and nothing is submitted until you press submit on GitHub. Anything you post there is subject to <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>.</p>
+
+        <h2>This website</h2>
+        <p>The marketing site you are reading serves static pages and does not use advertising or third-party analytics trackers. If you enter your email in the optional updates form, we store that address to email you occasional product updates. You can unsubscribe at any time, and we do not sell or share it. The email is stored by our own service; it is not required to use the extension.</p>
+
+        <h2>What we do not collect</h2>
+        <p>Very Good AdBlock does not collect your browsing history, personal or contact information (beyond an email you choose to give the updates form), location, payment or financial data, authentication credentials, or the contents of your communications.</p>
+
+        <h2>Data sharing and sale</h2>
+        <p>We do not sell or transfer your data to third parties, we do not use it for any purpose unrelated to blocking ads, and we do not use it to determine creditworthiness or for lending. The only third parties involved are the ones described above: your own browser's sync service, the public host of the filter list, and GitHub when you choose to file a report.</p>
+
+        <h2>Changes to this policy</h2>
+        <p>If this policy changes, we will update the date at the top and publish the new version here. Material changes will be noted in the extension's release notes.</p>
+
+        <h2>Contact</h2>
+        <p>Questions about privacy? Open an issue or reach us on <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>.</p>
+      </article>
+    </main>
+
+    @include('footer')
+  </body>
+</html>

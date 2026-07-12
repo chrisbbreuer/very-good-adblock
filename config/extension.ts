@@ -38,6 +38,7 @@ const extension: ExtensionConfig = defineExtension({
     extra: {
       marketing: { template: 'resources/views/marketing.stx', script: 'resources/scripts/marketing.ts' },
       features: 'resources/views/features.stx',
+      privacy: 'resources/views/privacy.stx',
       'feature-network-blocking': 'resources/views/features/network-blocking.stx',
       'feature-youtube-twitch': 'resources/views/features/youtube-twitch.stx',
       'feature-popups': 'resources/views/features/popups.stx',
