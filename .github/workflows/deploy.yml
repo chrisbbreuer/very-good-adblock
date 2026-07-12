@@ -49,3 +49,13 @@ jobs:
           PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
           COPYFILE_DISABLE: '1'
 
+      # Sync the app-owned DNS records (config/dns.ts) to Porkbun. Additive and
+      # idempotent — see scripts/sync-dns.ts. Runs after the deploy so the box +
+      # apex A records ts-cloud manages are already in place.
+      - name: Sync DNS records
+        run: bun scripts/sync-dns.ts
+        env:
+          APP_DOMAIN: verygoodadblock.org
+          PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
+          PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
+

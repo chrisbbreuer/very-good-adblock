@@ -42,6 +42,8 @@
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
     "deploy": "bunx --bun buddy deploy",
+    "dns:sync": "bun --bun scripts/sync-dns.ts",
+    "dns:pull": "bun --bun scripts/sync-dns.ts --pull",
     "release": "bunx --bun buddy release",
     "changelog": "bunx --bun buddy changelog",
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
