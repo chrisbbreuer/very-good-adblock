@@ -1,21 +1,24 @@
 /**
- * Sync config/dns.ts records to Porkbun for verygoodadblock.org.
+ * DNS tooling for verygoodadblock.org.
  *
- * Runs on every production deploy (see .github/workflows/deploy.yml) and can be
- * run by hand with `bun run dns:sync` (needs PORKBUN_API_KEY / PORKBUN_SECRET_KEY
- * in the environment). `bun run dns:pull` lists the domain's current records
- * without writing.
+ *   bun run dns:sync   push config/dns.ts to Porkbun (deploy step; needs
+ *                      PORKBUN_API_KEY / PORKBUN_SECRET_KEY)
+ *   bun run dns:pull   read the zone's live records (public DNS, no creds) and
+ *                      print them as a config/dns.ts block to diff/paste
  *
- * SAFETY: the sync is additive and idempotent. For each record declared in
- * config/dns.ts it will:
- *   - skip it if an identical record already exists,
- *   - for single-value types (A/AAAA/CNAME) update the existing record of that
- *     name+type in place,
- *   - for multi-value types (TXT/MX) create a new record alongside the others.
- * It never deletes a record it did not create, so the apex/www A records the
- * ts-cloud deploy manages and the mail SPF/MX records are never clobbered.
+ * SAFETY (sync): the reconcile is strictly additive. For each record declared in
+ * config/dns.ts it will only ever CREATE a record that is missing; it never
+ * deletes a record and never overwrites an existing one:
+ *   - single-valued types (A/AAAA/CNAME): if a record of that name+type already
+ *     exists it is left exactly as-is (so the apex/www A that the ts-cloud deploy
+ *     manages is never clobbered, even if the value here is stale),
+ *   - multi-valued types (TXT/MX): a record is added only if an identical one is
+ *     not already present (so the google-verification TXT is added alongside the
+ *     SPF TXT, never replacing it).
+ * Nothing is ever deleted, so a deploy can only ever add a missing record.
  */
 import type { DnsConfig } from '@stacksjs/types'
+import { promises as resolver } from 'node:dns'
 import dnsConfig from '../config/dns'
 
 const API = 'https://api.porkbun.com/api/json/v3'
@@ -72,6 +75,12 @@ function desiredRecords(cfg: DnsConfig): DesiredRecord[] {
   return out
 }
 
+// Porkbun may return TXT content wrapped in quotes; compare unwrapped so a re-run
+// recognizes its own record instead of creating a duplicate.
+function unquote(s: string): string {
+  return s.replace(/^"(.*)"$/s, '$1')
+}
+
 async function porkbun(path: string, body: Record<string, unknown> = {}): Promise<any> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
@@ -84,7 +93,43 @@ async function porkbun(path: string, body: Record<string, unknown> = {}): Promis
   return json
 }
 
-async function main(): Promise<void> {
+/**
+ * Read the zone's live records over public DNS (no registrar credentials) and
+ * print them as a config/dns.ts block, so config/dns.ts can be diffed against
+ * reality and kept complete. This is the resolver-only "pull" half of the tool.
+ */
+async function pull(): Promise<void> {
+  const ok = async <T>(p: Promise<T>): Promise<T | []> => p.catch(() => [] as unknown as T)
+  const [apex, www, aaaa, txt, mx, ns] = await Promise.all([
+    ok(resolver.resolve4(DOMAIN)),
+    ok(resolver.resolve4(`www.${DOMAIN}`)),
+    ok(resolver.resolve6(DOMAIN)),
+    ok(resolver.resolveTxt(DOMAIN)),
+    ok(resolver.resolveMx(DOMAIN)),
+    ok(resolver.resolveNs(DOMAIN)),
+  ])
+
+  const lines: string[] = [`// Live records for ${DOMAIN} (pulled via public DNS):`]
+  lines.push('a: [')
+  for (const ip of apex as string[]) lines.push(`  { name: '@', address: '${ip}', ttl: 600 },`)
+  for (const ip of www as string[]) lines.push(`  { name: 'www', address: '${ip}', ttl: 600 },`)
+  lines.push('],')
+  if ((aaaa as string[]).length) {
+    lines.push('aaaa: [')
+    for (const ip of aaaa as string[]) lines.push(`  { name: '@', address: '${ip}', ttl: 600 },`)
+    lines.push('],')
+  }
+  lines.push('txt: [')
+  for (const chunks of txt as string[][]) lines.push(`  { name: '@', ttl: 'auto', content: ${JSON.stringify(chunks.join(''))} },`)
+  lines.push('],')
+  lines.push('mx: [')
+  for (const r of mx as { priority: number, exchange: string }[]) lines.push(`  { name: '@', mailServer: '${r.exchange}', ttl: 'auto', priority: ${r.priority} },`)
+  lines.push('],')
+  lines.push(`nameservers: [${(ns as string[]).map(n => `'${n}'`).join(', ')}],`)
+  console.log(lines.join('\n'))
+}
+
+async function sync(): Promise<void> {
   if (!apikey || !secretapikey) {
     // Best-effort: never fail the deploy just because DNS creds are absent.
     console.warn('[dns] PORKBUN_API_KEY / PORKBUN_SECRET_KEY not set — skipping DNS sync.')
@@ -93,27 +138,23 @@ async function main(): Promise<void> {
 
   const { records = [] } = await porkbun(`/dns/retrieve/${DOMAIN}`) as { records: PorkbunRecord[] }
 
-  if (pullOnly) {
-    console.log(`[dns] ${DOMAIN} has ${records.length} records:`)
-    for (const r of records)
-      console.log(`  ${r.type.padEnd(5)} ${r.name.padEnd(32)} ${r.content}${r.prio && r.prio !== '0' ? ` (prio ${r.prio})` : ''}`)
-    return
-  }
-
-  // Porkbun may return TXT content wrapped in quotes; compare unwrapped so a
-  // re-run recognizes its own record instead of creating a duplicate.
-  const unquote = (s: string): string => s.replace(/^"(.*)"$/s, '$1')
-
   let created = 0
-  let updated = 0
-  let unchanged = 0
+  let kept = 0
   let failed = 0
 
   for (const want of desiredRecords(dnsConfig)) {
     const sameNameType = records.filter(r => r.type === want.type && r.name === want.fqdn)
-    if (sameNameType.some(r => unquote(r.content) === unquote(want.content))) {
-      unchanged += 1
-      console.log(`[dns] ok    ${want.type} ${want.fqdn} already set`)
+
+    // Single-valued types: if any record of this name+type exists, leave it
+    // untouched (never overwrite — e.g. the apex A that ts-cloud manages).
+    // Multi-valued types: skip only if an identical record already exists.
+    const present = want.multi
+      ? sameNameType.some(r => unquote(r.content) === unquote(want.content))
+      : sameNameType.length > 0
+
+    if (present) {
+      kept += 1
+      console.log(`[dns] keep  ${want.type} ${want.fqdn}${want.multi ? ` ${want.content}` : ''}`)
       continue
     }
 
@@ -121,18 +162,9 @@ async function main(): Promise<void> {
     if (want.prio != null) payload.prio = String(want.prio)
 
     try {
-      // Single-valued types replace the existing record of that name+type in
-      // place; multi-valued types (TXT/MX) are added alongside the others.
-      if (!want.multi && sameNameType[0]) {
-        await porkbun(`/dns/edit/${DOMAIN}/${sameNameType[0].id}`, payload)
-        updated += 1
-        console.log(`[dns] edit  ${want.type} ${want.fqdn} → ${want.content}`)
-      }
-      else {
-        await porkbun(`/dns/create/${DOMAIN}`, payload)
-        created += 1
-        console.log(`[dns] add   ${want.type} ${want.fqdn} → ${want.content}`)
-      }
+      await porkbun(`/dns/create/${DOMAIN}`, payload)
+      created += 1
+      console.log(`[dns] add   ${want.type} ${want.fqdn} → ${want.content}`)
     }
     catch (err) {
       failed += 1
@@ -140,9 +172,9 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`[dns] done: ${created} created, ${updated} updated, ${unchanged} unchanged, ${failed} failed`)
+  console.log(`[dns] done: ${created} created, ${kept} kept, ${failed} failed`)
   if (failed > 0)
     process.exitCode = 1
 }
 
-await main()
+await (pullOnly ? pull() : sync())
