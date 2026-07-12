@@ -46,8 +46,18 @@
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="docs/guide/install/">Install locally</a>
-            <a class="secondary-link" href="#how">How it works</a>
+            <!-- Direct downloads off the latest GitHub release; __VGA_VERSION__ is
+                 replaced with package.json's version by config/extension.ts postBuild. -->
+            <a class="download-pill" href="https://github.com/chrisbbreuer/very-good-adblock/releases/download/v__VGA_VERSION__/very-good-adblock-__VGA_VERSION__-chrome.zip" download aria-label="Download Very Good AdBlock for Chrome">
+              <img class="download-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="20" height="20" loading="lazy">
+              <span>Chrome</span>
+            </a>
+            <a class="download-pill" href="https://github.com/chrisbbreuer/very-good-adblock/releases/download/v__VGA_VERSION__/very-good-adblock-__VGA_VERSION__-firefox.zip" download aria-label="Download Very Good AdBlock for Firefox">
+              <img class="download-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="20" height="20" loading="lazy">
+              <span>Firefox</span>
+            </a>
           </div>
+          <a class="hero-how" href="#how">How it works →</a>
         </div>
 
         <div class="hero-visual">

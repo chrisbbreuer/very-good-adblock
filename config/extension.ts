@@ -1,5 +1,6 @@
 import type { ExtensionConfig } from '@stacksjs/browser-extension'
 import { defineExtension } from '@stacksjs/browser-extension'
+import packageJson from '../package.json'
 
 /**
  * Very Good AdBlock — MV3 extension config.
@@ -75,17 +76,26 @@ const extension: ExtensionConfig = defineExtension({
     // #popup-preview placeholder. Runs after sanitize so the markup survives.
     async postBuild({ outdir }) {
       const file = `${outdir}/marketing.html`
+      if (!(await Bun.file(file).exists()))
+        return
+      let html = await Bun.file(file).text()
+
+      // Point the hero's Chrome/Firefox download buttons at the current release's
+      // assets (github.com/…/releases/download/v<version>/…-<version>-<target>.zip).
+      html = html.replaceAll('__VGA_VERSION__', packageJson.version)
+
+      // Inline the real popup component into the hero, replacing the
+      // #popup-preview placeholder. Runs after sanitize so the markup survives.
       const partial = 'resources/partials/popup-preview.html'
-      if (!(await Bun.file(file).exists()) || !(await Bun.file(partial).exists()))
-        return
-      const frame = (await Bun.file(partial).text()).replace(/^<!--[\s\S]*?-->\s*/, '').trim()
       const placeholder = /<div class="hero-device" id="popup-preview"[^>]*><\/div>/
-      const html = await Bun.file(file).text()
-      if (!placeholder.test(html))
-        return
-      const label = 'The Very Good AdBlock popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours.'
-      const replacement = `<div class="hero-device" role="img" aria-label="${label}"><div class="popup-preview popup-shell" aria-hidden="true">${frame}</div></div>`
-      await Bun.write(file, html.replace(placeholder, replacement))
+      if ((await Bun.file(partial).exists()) && placeholder.test(html)) {
+        const frame = (await Bun.file(partial).text()).replace(/^<!--[\s\S]*?-->\s*/, '').trim()
+        const label = 'The Very Good AdBlock popup: 47 ads blocked on this page, 8.4 GB of data saved, 20 hours of video time recovered, and a chart of the last 24 hours.'
+        const replacement = `<div class="hero-device" role="img" aria-label="${label}"><div class="popup-preview popup-shell" aria-hidden="true">${frame}</div></div>`
+        html = html.replace(placeholder, replacement)
+      }
+
+      await Bun.write(file, html)
     },
   },
 })

@@ -954,6 +954,51 @@ h1 {
   margin-top: 30px;
 }
 
+/* Chrome/Firefox direct-download buttons in the hero, next to Install locally. */
+.download-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 14px;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.download-pill:hover {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.download-pill:active {
+  transform: translateY(1px);
+}
+
+.download-logo {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.hero-how {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 140ms ease;
+}
+
+.hero-how:hover {
+  color: var(--accent);
+}
+
 .hero-visual {
   position: relative;
   display: grid;
