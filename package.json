@@ -55,11 +55,11 @@
     "validate:extension:firefox": "bun --bun scripts/validate-extension.ts --target=firefox",
     "validate:rules": "bun --bun scripts/validate-rules.ts",
     "test": "bun run cache:youtube-fixture && bun test ./test/*.test.ts",
-    "lint": "bunx --bun pickier . --config .config/pickier.ts",
-    "lint:fix": "bunx --bun pickier . --fix --config .config/pickier.ts",
+    "lint": "bunx --bun pickier .",
+    "lint:fix": "bunx --bun pickier . --fix",
     "typecheck": "bun --bun tsc --noEmit",
-    "format": "bunx --bun pickier . --format --config .config/pickier.ts",
-    "format:fix": "bunx --bun pickier . --format --write --config .config/pickier.ts",
+    "format": "bunx --bun pickier . --format",
+    "format:fix": "bunx --bun pickier . --format --write",
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {

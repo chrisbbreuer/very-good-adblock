@@ -24,7 +24,7 @@ bun run docs:build
 bun run docs:preview
 ```
 
-Docs are Markdown files in `docs/`, with Bunpress config in `.config/docs.ts`.
+Docs are Markdown files in `docs/`, with Bunpress config in `config/docs.ts`.
 
 ## Generated Rules
 
