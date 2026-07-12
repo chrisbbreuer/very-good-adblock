@@ -70,7 +70,11 @@ for (const [size, icon] of Object.entries(icons)) {
   if (bytes.byteLength < 100) throw new Error(`Manifest icon ${size} is unexpectedly small: ${icon}`)
 }
 
-for (const htmlFile of ['popup.html', 'options.html', 'marketing.html']) {
+// Only the genuine extension pages run under the MV3 CSP. The marketing site
+// pages (marketing/features + per-feature) are built here for the site build but
+// served on the web, where root-relative links are correct and expected — they
+// are excluded from the store package (see package-extension.ts).
+for (const htmlFile of ['popup.html', 'options.html']) {
   const html = await Bun.file(join(dist, htmlFile)).text()
   const inlineScript = /<script(?![^>]+\bsrc=)[^>]*>/i
   const inlineStyle = /<style\b/i
