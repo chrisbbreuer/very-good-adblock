@@ -6,6 +6,11 @@ const config: PickierConfig = {
     '**/node_modules/**',
     '**/dist/**',
     '**/dist-firefox/**',
+    '**/dist-safari/**',
+    // Synced Safari appex payload (build output mirrored from dist-safari).
+    // pickier ignores are literal path segments, so this keys on the
+    // case-sensitive Xcode "Resources" directory name.
+    '**/Resources/**',
     '**/build/**',
     '**/bin/**',
     '**/.git/**',

@@ -11,6 +11,7 @@
 coverage
 dist
 dist-firefox
+dist-safari
 lib-cov
 logs
 node_modules
@@ -19,5 +20,12 @@ bench/fixtures
 .zed
 .cursor
 /pantry
+
+# Safari app: synced extension payload, Xcode build products, user state
+safari/*/Resources/*
+!safari/*/Resources/.gitkeep
+safari/build
+xcuserdata
+*.xcuserstate
 
 .env
