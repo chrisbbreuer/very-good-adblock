@@ -1,9 +1,12 @@
 import packageJson from '../package.json'
 
-const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
-const dist = target === 'firefox' ? 'dist-firefox' : 'dist'
+const targetArg = Bun.argv.find(arg => arg.startsWith('--target='))?.split('=')[1]
+const target = targetArg === 'firefox' || targetArg === 'safari' ? targetArg : 'chrome'
+const dist = target === 'firefox' ? 'dist-firefox' : target === 'safari' ? 'dist-safari' : 'dist'
 // Name every artifact with its target so the browser is obvious at a glance:
-// very-good-adblock-<version>-chrome.zip / -firefox.zip.
+// very-good-adblock-<version>-chrome.zip / -firefox.zip / -safari.zip.
+// The Safari zip is the input format `xcrun safari-web-extension-converter`
+// expects, and the exact bundle `safari:sync` mirrors into the Xcode project.
 const archive = `very-good-adblock-${packageJson.version}-${target}.zip`
 
 await Bun.$`rm -f ${archive}`

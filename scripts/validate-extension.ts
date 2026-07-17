@@ -2,8 +2,9 @@ import { existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import type { GeneratedManifest as BuildManifestResult } from '@stacksjs/browser-extension'
 
-const target = Bun.argv.includes('--target=firefox') ? 'firefox' : 'chrome'
-const dist = target === 'firefox' ? 'dist-firefox' : 'dist'
+const targetArg = Bun.argv.find(arg => arg.startsWith('--target='))?.split('=')[1]
+const target = targetArg === 'firefox' || targetArg === 'safari' ? targetArg : 'chrome'
+const dist = target === 'firefox' ? 'dist-firefox' : target === 'safari' ? 'dist-safari' : 'dist'
 const manifestPath = join(dist, 'manifest.json')
 
 if (!existsSync(manifestPath)) {
@@ -54,6 +55,28 @@ if (manifest.options_page) requiredFiles.add(manifest.options_page)
 if (target === 'firefox') {
   if (!manifest.browser_specific_settings?.gecko?.id) throw new Error('Firefox manifest is missing browser_specific_settings.gecko.id')
   if (!manifest.background || !('scripts' in manifest.background)) throw new Error('Firefox manifest must use background.scripts, not a service worker')
+}
+else if (target === 'safari') {
+  // GeneratedManifest types browser_specific_settings as gecko-only; Safari
+  // replaces it wholesale, so read it as a loose record here.
+  const bss = manifest.browser_specific_settings as ({ safari?: { strict_min_version?: string } } & Record<string, unknown>) | undefined
+  const background = manifest.background as Record<string, unknown> | undefined
+  if (!bss?.safari?.strict_min_version) throw new Error('Safari manifest is missing browser_specific_settings.safari.strict_min_version')
+  if (bss && 'gecko' in bss) throw new Error('Safari manifest must not carry Firefox gecko settings')
+  if (manifest.minimum_chrome_version) throw new Error('Safari manifest must not carry minimum_chrome_version')
+  // Service worker (Safari 15.4+) without the module hint — the bundle is a classic IIFE.
+  if (!background || !('service_worker' in background)) throw new Error('Safari manifest must use background.service_worker')
+  if ('type' in background) throw new Error('Safari background must not declare type: module (IIFE bundle)')
+
+  // The Safari build rewrites promise-style chrome.* to browser.* (Safari's
+  // chrome.* is callback-flavoured). Any leftover chrome.* API access in a
+  // shipped bundle is a build-pipeline bug. `[?.]` also catches optional-
+  // chained namespaces (`chrome.alarms?.`).
+  const chromeApiLeft = /\bchrome\.(?:runtime|tabs|declarativeNetRequest|storage|action|alarms)[?.]/
+  for (const bundle of ['background.js', 'content.js', 'popup.js', 'options.js']) {
+    const code = await Bun.file(join(dist, bundle)).text()
+    if (chromeApiLeft.test(code)) throw new Error(`${bundle} still uses the chrome.* namespace — run bun run build:safari`)
+  }
 }
 else if (manifest.background && !('service_worker' in manifest.background)) {
   throw new Error('Chrome manifest must use background.service_worker')
