@@ -38,6 +38,14 @@ function browserLabel(): string {
     const name = brand ? `${brand.brand} ${brand.version}` : 'Unknown browser'
     return data.platform ? `${name} on ${data.platform}` : name
   }
+  // Safari ships no UA client hints — parse "Version/18.4 … Safari/605.x" instead.
+  const safari = /Version\/([\d.]+)\s+Safari\//.exec(navigator.userAgent)
+  if (safari) {
+    const platform = /Macintosh|Mac OS X/.test(navigator.userAgent) ? 'macOS'
+      : /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'iOS'
+        : ''
+    return platform ? `Safari ${safari[1]} on ${platform}` : `Safari ${safari[1]}`
+  }
   return navigator.userAgent
 }
 
