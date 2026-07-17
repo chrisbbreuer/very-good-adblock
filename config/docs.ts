@@ -148,6 +148,7 @@ const config: BunPressOptions = {
             { text: 'YouTube and Twitch', link: '/architecture/youtube-x' },
             { text: 'Cosmetic Filtering', link: '/architecture/cosmetic-filtering' },
             { text: 'Stats and Cloud Sync', link: '/architecture/stats-sync' },
+            { text: 'Safari', link: '/architecture/safari' },
           ],
         },
         {

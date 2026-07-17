@@ -1,6 +1,6 @@
 # Very Good AdBlock
 
-A fast, open-source Manifest V3 ad blocker for Chrome and Firefox. It removes ads, pop-ups, and YouTube and Twitch interruptions **at the source**, then stays out of the way. No account, no telemetry, no bloat.
+A fast, open-source Manifest V3 ad blocker for Chrome, Firefox, and Safari. It removes ads, pop-ups, and YouTube and Twitch interruptions **at the source**, then stays out of the way. No account, no telemetry, no bloat.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-17c964)](./LICENSE) [![Built with Bun](https://img.shields.io/badge/built%20with-Bun-14151a)](https://bun.sh) [![Manifest V3](https://img.shields.io/badge/Manifest-V3-17c964)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 
@@ -10,7 +10,7 @@ A fast, open-source Manifest V3 ad blocker for Chrome and Firefox. It removes ad
 
 ## Features
 
-- Cross-browser Manifest V3 build (Chrome and Firefox) from one codebase, with per-target manifests generated at build time.
+- Cross-browser Manifest V3 build (Chrome, Firefox, and Safari) from one codebase, with per-target manifests generated at build time.
 - MV3 `declarativeNetRequest` blocking with bundled static rules (14,000+) plus dynamic local rules for per-site allowlisting.
 - Pinned generated host rules from EasyList and AdGuard filter-list revisions, refreshed daily as dynamic rules between releases.
 - YouTube ad removal at the source (player/browse/Shorts responses), skip assist, non-skippable fast-forward, and anti-adblock pop-up dismissal.
@@ -116,11 +116,21 @@ bun run build:firefox
 
 This emits a Firefox-flavored build (an event-page `background`, `browser_specific_settings.gecko`, and no `minimum_chrome_version`) into `dist-firefox/`. Load it via `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → select `dist-firefox/manifest.json`, or run `bun run dev:firefox` to launch it with `web-ext run`.
 
+### Safari
+
+```bash
+bun run safari:app
+```
+
+This builds the Safari flavor into `dist-safari/` (a `browser.*`-namespace rewrite plus a Safari manifest with `strict_min_version` 18.4), syncs it into the checked-in Xcode project under `safari/`, and builds the macOS container app with `xcodebuild`. Launch the app once, then enable **Very Good AdBlock** in *Safari → Settings → Extensions*. Requires Safari 18.4+ and full Xcode; signing/distribution (App Store or Developer ID + notarization) is covered in [`safari/README.md`](./safari/README.md) and [`docs/architecture/safari.md`](./docs/architecture/safari.md).
+
 ## Scripts
 
 ```bash
 bun run build            # build the Chrome extension into dist/
 bun run build:firefox    # build the Firefox extension into dist-firefox/
+bun run build:safari     # build the Safari extension into dist-safari/
+bun run safari:app       # build + validate + sync + xcodebuild the Safari app
 bun run bench            # hot-path benchmarks + head-to-head vs uBO/ABP/Ghostery
 bun run test             # unit tests
 bun run smoke:chrome     # headless Bun WebView smoke test
