@@ -3,9 +3,11 @@ import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
 import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
-import { hostnameFromUrl } from '../shared/domain'
+import { addBlockedHosts, isBlockedHost } from '../rules/blocked-hosts'
+import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { formatBytes } from '../shared/metrics'
 import {
+  defaultSettings,
   getActiveTabState,
   getCloudStatsSnapshot,
   getLifetimeStats,
@@ -53,6 +55,10 @@ const networkRefreshMinIntervalMs = 1_500
 let badgePollTimer: ReturnType<typeof setTimeout> | undefined
 let badgePollTabId: number | undefined
 let badgePollTicksLeft = 0
+// Hot-path copy of the settings for the webRequest listener, which fires far
+// too often to await chrome.storage on every event. Kept in sync through the
+// storage.onChanged listener below; undefined until setup() loads them.
+let cachedSettings: ExtensionSettings | undefined
 
 chrome.runtime.onInstalled.addListener(() => {
   void setup()
@@ -113,6 +119,44 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   scheduleBadgeRefresh(tabId)
 })
 
+/**
+ * Live network-block counting for packed installs. declarativeNetRequest raises
+ * no event when it blocks a request, but the failed request still surfaces here
+ * (and wakes the worker). Chrome reports extension blocks as
+ * ERR_BLOCKED_BY_CLIENT, an error nothing else produces — blocks from other
+ * extensions are indistinguishable from ours and count too. Firefox reports DNR
+ * blocks as NS_ERROR_ABORT, which page-initiated aborts also fire (HLS seeks
+ * cancel segment fetches constantly), so there a failure only counts when it
+ * targets a host our rules actually block. Where onRuleMatchedDebug exists
+ * (unpacked installs) it stays the counter and this listener stands down, so
+ * the two never double count.
+ */
+const hasRuleMatchDebug = typeof chrome.declarativeNetRequest.onRuleMatchedDebug !== 'undefined'
+chrome.webRequest?.onErrorOccurred.addListener(onRequestError, { urls: ['http://*/*', 'https://*/*'] })
+
+function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void {
+  if (details.tabId < 0 || hasRuleMatchDebug) return
+  if (!isOurBlock(details)) return
+
+  const settings = cachedSettings ?? defaultSettings
+  if (!settings.enabled) return
+
+  const page = pageBadgeStats.get(details.tabId)
+  if (!page) return
+
+  const pageHostname = (page.url ? hostnameFromUrl(page.url) : '') || hostnameFromUrl(details.initiator ?? '')
+  if (pageHostname && siteMatches(pageHostname, settings.allowedSites)) return
+
+  page.network += 1
+  scheduleBadgeRefresh(details.tabId)
+}
+
+function isOurBlock(details: chrome.webRequest.OnErrorOccurredDetails): boolean {
+  if (details.error === 'net::ERR_BLOCKED_BY_CLIENT') return true
+  if (details.error === 'NS_ERROR_ABORT') return isBlockedHost(hostnameFromUrl(details.url))
+  return false
+}
+
 chrome.alarms?.onAlarm.addListener((alarm) => {
   if (alarm.name === filterRefreshAlarm) void refreshFilters()
   if (alarm.name === resumeAlarm) void resumeProtection()
@@ -122,7 +166,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return
 
   if (changes.settings?.newValue) {
-    void syncDynamicRules(changes.settings.newValue as ExtensionSettings)
+    cachedSettings = changes.settings.newValue as ExtensionSettings
+    void syncDynamicRules(cachedSettings)
     void updateBadge()
   }
 
@@ -135,6 +180,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 async function setup(): Promise<void> {
   await initializeStorage()
   const settings = await getSettings()
+  cachedSettings = settings
   await syncDynamicRules(settings)
   await reconcilePause(settings.resumeAt)
   await updateBadge()
@@ -193,6 +239,7 @@ async function refreshFilters(force = false): Promise<void> {
 
     const shipped = new Set(generatedNetworkHosts.hosts)
     const addRules = buildHostRefreshRules(hosts, { exclude: shipped })
+    addBlockedHosts(hosts)
 
     const existing = await chrome.declarativeNetRequest.getDynamicRules()
     const removeRuleIds = existing

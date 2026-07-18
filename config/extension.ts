@@ -62,7 +62,7 @@ const extension: ExtensionConfig = defineExtension({
   ],
 
   manifest: {
-    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'storage', 'tabs', 'alarms'],
+    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'webRequest', 'storage', 'tabs', 'alarms'],
     hostPermissions: ['http://*/*', 'https://*/*'],
     minimumChromeVersion: '111',
     firefoxMinVersion: '140.0',

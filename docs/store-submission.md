@@ -77,6 +77,7 @@ bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x8
 |---|---|
 | `declarativeNetRequest` | Block ad, tracker, and pop-up network requests using bundled rule lists. |
 | `declarativeNetRequestFeedback` | Show the number of items blocked on the current page as the toolbar badge. It only reports which of the extension's own rules matched in the active tab; it does not read browsing history. |
+| `webRequest` | Observe failed requests (the `onErrorOccurred` event only) so the per-page blocked count updates live in packed installs. The extension never reads request or response content and cannot modify requests with it. |
 | `storage` | Save your settings and local statistics, and sync compact totals across your own installs. |
 | `tabs` | Read the active tab's URL and favicon to show per-site stats and the per-site allow/pause toggle. |
 | `alarms` | Schedule the daily filter-list refresh and the timer that resumes protection after a pause. |
