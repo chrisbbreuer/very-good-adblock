@@ -32,6 +32,11 @@ let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
 let popupBlockActive = false
+// Settings load asynchronously, but the MAIN-world pop-up guard defaults to
+// blocking the moment it installs. Pop-ups defused in that gap would be lost to
+// stats, so buffer their count until start() settles the real toggle state.
+let settingsResolved = false
+let earlyPopupBlocks = 0
 
 boot()
 
@@ -72,6 +77,11 @@ function onPruneMessage(event: MessageEvent): void {
     if (popupBlockActive) {
       queueEvent('popup', 'other', count)
       scheduleEventFlush()
+    }
+    else if (!settingsResolved) {
+      // Guard already blocked it but the toggle state is still loading — hold
+      // the count and flush it in start() if pop-up blocking ends up enabled.
+      earlyPopupBlocks = Math.min(earlyPopupBlocks + count, maxPruneEventCount)
     }
     return
   }
@@ -115,6 +125,15 @@ async function start(): Promise<void> {
   // The pop-up guard runs on every site, so always tell it whether to act.
   popupBlockActive = settings.enabled && !allowed && settings.popupBlocking
   window.postMessage({ source: popupConfigMessageSource, enabled: popupBlockActive }, location.origin)
+
+  // Flush pop-up blocks the guard reported while settings were loading. When
+  // pop-up blocking ended up disabled they are discarded, matching the toggles.
+  settingsResolved = true
+  if (popupBlockActive && earlyPopupBlocks > 0) {
+    queueEvent('popup', 'other', earlyPopupBlocks)
+    scheduleEventFlush()
+  }
+  earlyPopupBlocks = 0
 
   if (!settings.enabled || allowed) return
 
