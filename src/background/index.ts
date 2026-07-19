@@ -453,8 +453,13 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return getDashboard()
     }
     case 'record-blocks': {
-      // Don't accrue stats while protection is off, so the numbers match reality.
-      if (!(await getSettings()).enabled) return true
+      // Don't accrue stats while protection is off or on allow-listed sites,
+      // so the numbers match reality. The allowlist check also keeps a page
+      // from inflating its own stats with forged postMessage reports.
+      const settings = await getSettings()
+      if (!settings.enabled) return true
+      const senderHostname = hostnameFromUrl(sender.tab?.url ?? '')
+      if (senderHostname && siteMatches(senderHostname, settings.allowedSites)) return true
       await recordBlockEvents(message.events)
       if (sender.tab?.id !== undefined) {
         incrementPageContent(sender.tab.id, message.events.reduce((total, event) => total + event.count, 0), sender.tab.url)
@@ -463,7 +468,10 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return true
     }
     case 'record-cosmetic': {
-      if (!(await getSettings()).enabled) return true
+      const settings = await getSettings()
+      if (!settings.enabled) return true
+      const senderHostname = hostnameFromUrl(sender.tab?.url ?? '')
+      if (senderHostname && siteMatches(senderHostname, settings.allowedSites)) return true
       if (sender.tab?.id !== undefined) recordCosmeticActivity(sender.tab.id, message.hits)
       return true
     }
