@@ -1,9 +1,15 @@
 import { normalizeHostname } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
-import type { DashboardState } from '../shared/types'
+import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, downloadJson, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
+import { normalizeDashboardState } from './state'
+
+/** Every worker response passes through the normalizer (see state.ts). */
+async function request(message: RuntimeMessage): Promise<DashboardState> {
+  return normalizeDashboardState(await sendMessage<DashboardState>(message))
+}
 
 const elements = {
   blocked: byId('dashboard-blocked'),
@@ -59,7 +65,7 @@ for (const [key, input] of Object.entries({
   badgeEnabled: elements.badge,
 })) {
   input.addEventListener('change', async () => {
-    state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { [key]: input.checked } })
+    state = await request({ type: 'set-settings', settings: { [key]: input.checked } })
     render(state)
   })
 }
@@ -70,7 +76,7 @@ elements.allowForm.addEventListener('submit', async (event) => {
   const hostname = normalizeHostname(elements.allowHost.value)
   if (!hostname) return
   const allowedSites = [...new Set([...state.settings.allowedSites, hostname])]
-  state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { allowedSites } })
+  state = await request({ type: 'set-settings', settings: { allowedSites } })
   elements.allowHost.value = ''
   render(state)
 })
@@ -81,7 +87,7 @@ elements.blockForm.addEventListener('submit', async (event) => {
   const hostname = normalizeHostname(elements.blockHost.value)
   if (!hostname) return
   const blockedSites = [...new Set([...state.settings.blockedSites, hostname])]
-  state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { blockedSites } })
+  state = await request({ type: 'set-settings', settings: { blockedSites } })
   elements.blockHost.value = ''
   render(state)
 })
@@ -105,12 +111,12 @@ elements.reportAd.addEventListener('click', async () => {
 })
 
 elements.exportData.addEventListener('click', async () => {
-  const data = await sendMessage<DashboardState>({ type: 'export-data' })
+  const data = await request({ type: 'export-data' })
   downloadJson(`very-good-adblock-export-${new Date().toISOString().slice(0, 10)}.json`, data)
 })
 
 elements.resetStats.addEventListener('click', async () => {
-  state = await sendMessage<DashboardState>({ type: 'reset-stats' })
+  state = await request({ type: 'reset-stats' })
   render(state)
 })
 
@@ -119,7 +125,7 @@ elements.updateFilters.addEventListener('click', async () => {
   const original = elements.updateFilters.textContent
   elements.updateFilters.textContent = 'Updating...'
   try {
-    state = await sendMessage<DashboardState>({ type: 'refresh-filters' })
+    state = await request({ type: 'refresh-filters' })
     render(state)
     elements.status.textContent = 'Filters refreshed from the maintained host list.'
   }
@@ -158,7 +164,7 @@ elements.importAllowFile.addEventListener('change', async () => {
       return
     }
     const allowedSites = [...new Set([...state.settings.allowedSites, ...hosts])]
-    state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { allowedSites } })
+    state = await request({ type: 'set-settings', settings: { allowedSites } })
     render(state)
     elements.status.textContent = `Imported ${hosts.length} site${hosts.length === 1 ? '' : 's'} into the allowlist.`
   }
@@ -169,7 +175,7 @@ elements.importAllowFile.addEventListener('change', async () => {
 
 async function refresh(): Promise<void> {
   try {
-    state = await sendMessage<DashboardState>({ type: 'get-dashboard' })
+    state = await request({ type: 'get-dashboard' })
     render(state)
   }
   catch (error) {
@@ -296,7 +302,7 @@ function renderAllowedSites(next: DashboardState): void {
       button.title = `Remove ${hostname} from the allowlist`
       button.addEventListener('click', async () => {
         const allowedSites = next.settings.allowedSites.filter(site => site !== hostname)
-        state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { allowedSites } })
+        state = await request({ type: 'set-settings', settings: { allowedSites } })
         render(state)
       })
       return button
@@ -317,7 +323,7 @@ function renderBlockedSites(next: DashboardState): void {
       button.title = `Remove ${hostname} from the blocklist`
       button.addEventListener('click', async () => {
         const blockedSites = next.settings.blockedSites.filter(site => site !== hostname)
-        state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { blockedSites } })
+        state = await request({ type: 'set-settings', settings: { blockedSites } })
         render(state)
       })
       return button

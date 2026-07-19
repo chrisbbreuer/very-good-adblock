@@ -1,9 +1,15 @@
 import { siteMatches } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
-import type { DashboardState } from '../shared/types'
+import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
+import { normalizeDashboardState } from './state'
+
+/** Every worker response passes through the normalizer (see state.ts). */
+async function request(message: RuntimeMessage): Promise<DashboardState> {
+  return normalizeDashboardState(await sendMessage<DashboardState>(message))
+}
 
 const elements = {
   root: document.querySelector<HTMLElement>('.popup-frame')!,
@@ -51,7 +57,7 @@ async function liveTick(): Promise<void> {
   if (liveTickPending) return
   liveTickPending = true
   try {
-    state = await sendMessage<DashboardState>({ type: 'get-dashboard' })
+    state = await request({ type: 'get-dashboard' })
     if (elements.root.dataset.view === 'ready') renderLive(state)
     else render(state)
   }
@@ -65,14 +71,14 @@ async function liveTick(): Promise<void> {
 
 elements.protectionToggle.addEventListener('click', async () => {
   if (!state) return
-  state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { enabled: !state.settings.enabled } })
+  state = await request({ type: 'set-settings', settings: { enabled: !state.settings.enabled } })
   render(state)
 })
 
 elements.siteToggle.addEventListener('click', async () => {
   if (!state?.activeTab) return
   const shouldAllow = !siteMatches(state.activeTab.hostname, state.settings.allowedSites)
-  state = await sendMessage<DashboardState>({ type: 'toggle-site', hostname: state.activeTab.hostname, allowed: shouldAllow })
+  state = await request({ type: 'toggle-site', hostname: state.activeTab.hostname, allowed: shouldAllow })
   render(state)
 })
 
@@ -108,19 +114,19 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-pause]'
   button.addEventListener('click', async () => {
     const minutes = Number(button.dataset.pause)
     if (!Number.isFinite(minutes)) return
-    state = await sendMessage<DashboardState>({ type: 'pause-protection', minutes })
+    state = await request({ type: 'pause-protection', minutes })
     render(state)
   })
 }
 
 elements.resumeBtn.addEventListener('click', async () => {
-  state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { enabled: true } })
+  state = await request({ type: 'set-settings', settings: { enabled: true } })
   render(state)
 })
 
 async function refresh(): Promise<void> {
   try {
-    state = await sendMessage<DashboardState>({ type: 'get-dashboard' })
+    state = await request({ type: 'get-dashboard' })
     render(state)
   }
   catch (error) {
