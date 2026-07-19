@@ -4,7 +4,10 @@ import type { ExtensionSettings } from '../shared/types'
 
 let syncQueue = Promise.resolve()
 
+// Kept in lockstep with the static host rules: subresources plus top-level
+// documents, so refreshed pop-under hosts die as whole tabs too.
 const refreshResourceTypes: chrome.declarativeNetRequest.ResourceType[] = [
+  resourceType('main_frame'),
   resourceType('script'),
   resourceType('image'),
   resourceType('xmlhttprequest'),

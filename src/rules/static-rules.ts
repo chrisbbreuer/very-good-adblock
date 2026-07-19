@@ -9,7 +9,12 @@ export interface CuratedRuleSeed {
   resourceTypes: chrome.declarativeNetRequest.ResourceType[]
 }
 
-const thirdPartyTypes: chrome.declarativeNetRequest.ResourceType[] = [
+// Host rules cover subresources AND top-level documents: pop-under scripts
+// open tracked ad hosts as whole tabs, and only a main_frame rule stops those
+// (the background closes such tabs and credits the opener with the block).
+// Path-scoped curated and redirect rules keep their own narrower type lists.
+const blockedHostTypes: chrome.declarativeNetRequest.ResourceType[] = [
+  resourceType('main_frame'),
   resourceType('script'),
   resourceType('image'),
   resourceType('xmlhttprequest'),
@@ -20,16 +25,16 @@ const thirdPartyTypes: chrome.declarativeNetRequest.ResourceType[] = [
 ]
 
 export const curatedRuleSeeds: CuratedRuleSeed[] = [
-  { id: 1, name: 'DoubleClick', category: 'script', urlFilter: '||doubleclick.net^', resourceTypes: thirdPartyTypes },
-  { id: 2, name: 'Google syndication', category: 'script', urlFilter: '||googlesyndication.com^', resourceTypes: thirdPartyTypes },
-  { id: 3, name: 'Google ad services', category: 'script', urlFilter: '||googleadservices.com^', resourceTypes: thirdPartyTypes },
-  { id: 4, name: 'Adnxs', category: 'script', urlFilter: '||adnxs.com^', resourceTypes: thirdPartyTypes },
-  { id: 5, name: 'Rubicon', category: 'script', urlFilter: '||rubiconproject.com^', resourceTypes: thirdPartyTypes },
-  { id: 6, name: 'Taboola', category: 'script', urlFilter: '||taboola.com^', resourceTypes: thirdPartyTypes },
-  { id: 7, name: 'Outbrain', category: 'script', urlFilter: '||outbrain.com^', resourceTypes: thirdPartyTypes },
-  { id: 8, name: 'PubMatic', category: 'script', urlFilter: '||pubmatic.com^', resourceTypes: thirdPartyTypes },
-  { id: 9, name: 'OpenX', category: 'script', urlFilter: '||openx.net^', resourceTypes: thirdPartyTypes },
-  { id: 10, name: 'Amazon ads', category: 'script', urlFilter: '||amazon-adsystem.com^', resourceTypes: thirdPartyTypes },
+  { id: 1, name: 'DoubleClick', category: 'script', urlFilter: '||doubleclick.net^', resourceTypes: blockedHostTypes },
+  { id: 2, name: 'Google syndication', category: 'script', urlFilter: '||googlesyndication.com^', resourceTypes: blockedHostTypes },
+  { id: 3, name: 'Google ad services', category: 'script', urlFilter: '||googleadservices.com^', resourceTypes: blockedHostTypes },
+  { id: 4, name: 'Adnxs', category: 'script', urlFilter: '||adnxs.com^', resourceTypes: blockedHostTypes },
+  { id: 5, name: 'Rubicon', category: 'script', urlFilter: '||rubiconproject.com^', resourceTypes: blockedHostTypes },
+  { id: 6, name: 'Taboola', category: 'script', urlFilter: '||taboola.com^', resourceTypes: blockedHostTypes },
+  { id: 7, name: 'Outbrain', category: 'script', urlFilter: '||outbrain.com^', resourceTypes: blockedHostTypes },
+  { id: 8, name: 'PubMatic', category: 'script', urlFilter: '||pubmatic.com^', resourceTypes: blockedHostTypes },
+  { id: 9, name: 'OpenX', category: 'script', urlFilter: '||openx.net^', resourceTypes: blockedHostTypes },
+  { id: 10, name: 'Amazon ads', category: 'script', urlFilter: '||amazon-adsystem.com^', resourceTypes: blockedHostTypes },
   { id: 11, name: 'YouTube ad stats', category: 'xhr', urlFilter: '||youtube.com/api/stats/ads^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('ping')] },
   { id: 12, name: 'YouTube page ads', category: 'xhr', urlFilter: '|https://www.youtube.com/pagead/', resourceTypes: [resourceType('xmlhttprequest'), resourceType('script'), resourceType('image')] },
   { id: 13, name: 'Twitter ads API', category: 'xhr', urlFilter: '|https://twitter.com/i/api/1.1/promoted_content/', resourceTypes: [resourceType('xmlhttprequest')] },
@@ -39,20 +44,20 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   { id: 17, name: 'Twitch ad telemetry', category: 'xhr', urlFilter: '||twitch.tv/widgets/advertising^', resourceTypes: [resourceType('xmlhttprequest'), resourceType('script')] },
   // Mainstream analytics/ad trackers that the truncated host list can miss — a
   // guaranteed floor of high-value domains, kept as a stable curated set.
-  { id: 18, name: 'Google Analytics', category: 'script', urlFilter: '||google-analytics.com^', resourceTypes: thirdPartyTypes },
-  { id: 19, name: 'Google Tag Manager', category: 'script', urlFilter: '||googletagmanager.com^', resourceTypes: thirdPartyTypes },
-  { id: 20, name: 'Google ad service', category: 'script', urlFilter: '||adservice.google.com^', resourceTypes: thirdPartyTypes },
-  { id: 21, name: 'App measurement', category: 'script', urlFilter: '||app-measurement.com^', resourceTypes: thirdPartyTypes },
-  { id: 22, name: 'ScorecardResearch', category: 'script', urlFilter: '||scorecardresearch.com^', resourceTypes: thirdPartyTypes },
-  { id: 23, name: 'Quantserve', category: 'script', urlFilter: '||quantserve.com^', resourceTypes: thirdPartyTypes },
-  { id: 24, name: 'Criteo', category: 'script', urlFilter: '||criteo.com^', resourceTypes: thirdPartyTypes },
-  { id: 25, name: 'Criteo net', category: 'script', urlFilter: '||criteo.net^', resourceTypes: thirdPartyTypes },
-  { id: 26, name: 'Casale Media', category: 'script', urlFilter: '||casalemedia.com^', resourceTypes: thirdPartyTypes },
-  { id: 27, name: 'Moat ads', category: 'script', urlFilter: '||moatads.com^', resourceTypes: thirdPartyTypes },
-  { id: 28, name: 'Adform', category: 'script', urlFilter: '||adform.net^', resourceTypes: thirdPartyTypes },
-  { id: 29, name: 'Twitter ads pixel', category: 'script', urlFilter: '||ads-twitter.com^', resourceTypes: thirdPartyTypes },
-  { id: 30, name: 'Bing ad tracker', category: 'xhr', urlFilter: '||bat.bing.com^', resourceTypes: thirdPartyTypes },
-  { id: 31, name: 'LinkedIn ads pixel', category: 'script', urlFilter: '||px.ads.linkedin.com^', resourceTypes: thirdPartyTypes },
+  { id: 18, name: 'Google Analytics', category: 'script', urlFilter: '||google-analytics.com^', resourceTypes: blockedHostTypes },
+  { id: 19, name: 'Google Tag Manager', category: 'script', urlFilter: '||googletagmanager.com^', resourceTypes: blockedHostTypes },
+  { id: 20, name: 'Google ad service', category: 'script', urlFilter: '||adservice.google.com^', resourceTypes: blockedHostTypes },
+  { id: 21, name: 'App measurement', category: 'script', urlFilter: '||app-measurement.com^', resourceTypes: blockedHostTypes },
+  { id: 22, name: 'ScorecardResearch', category: 'script', urlFilter: '||scorecardresearch.com^', resourceTypes: blockedHostTypes },
+  { id: 23, name: 'Quantserve', category: 'script', urlFilter: '||quantserve.com^', resourceTypes: blockedHostTypes },
+  { id: 24, name: 'Criteo', category: 'script', urlFilter: '||criteo.com^', resourceTypes: blockedHostTypes },
+  { id: 25, name: 'Criteo net', category: 'script', urlFilter: '||criteo.net^', resourceTypes: blockedHostTypes },
+  { id: 26, name: 'Casale Media', category: 'script', urlFilter: '||casalemedia.com^', resourceTypes: blockedHostTypes },
+  { id: 27, name: 'Moat ads', category: 'script', urlFilter: '||moatads.com^', resourceTypes: blockedHostTypes },
+  { id: 28, name: 'Adform', category: 'script', urlFilter: '||adform.net^', resourceTypes: blockedHostTypes },
+  { id: 29, name: 'Twitter ads pixel', category: 'script', urlFilter: '||ads-twitter.com^', resourceTypes: blockedHostTypes },
+  { id: 30, name: 'Bing ad tracker', category: 'xhr', urlFilter: '||bat.bing.com^', resourceTypes: blockedHostTypes },
+  { id: 31, name: 'LinkedIn ads pixel', category: 'script', urlFilter: '||px.ads.linkedin.com^', resourceTypes: blockedHostTypes },
 ]
 
 export interface RedirectRuleSeed {
@@ -103,7 +108,7 @@ export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
     action: { type: 'block' as const },
     condition: {
       urlFilter: `||${host}^`,
-      resourceTypes: thirdPartyTypes,
+      resourceTypes: blockedHostTypes,
     },
   }))
 
