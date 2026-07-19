@@ -828,6 +828,17 @@ h1 {
   font-size: 42px;
 }
 
+/* Four buttons in one flex row overflow narrow viewports and wrap their text
+   mid-label; wrap whole buttons instead and keep each label on one line. */
+.header-actions {
+  flex-wrap: wrap;
+}
+
+.header-actions .soft-button,
+.header-actions .danger-button {
+  white-space: nowrap;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
