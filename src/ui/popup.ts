@@ -139,7 +139,8 @@ function renderLive(next: DashboardState): void {
 
   elements.root.dataset.view = 'ready'
   elements.root.dataset.enabled = String(enabled && !allowed)
-  elements.siteTitle.textContent = enabled && !allowed ? 'Protection active' : 'Protection paused'
+  // An allow-listed site reads as "paused" everywhere else; say which it is.
+  elements.siteTitle.textContent = !enabled ? 'Protection paused' : allowed ? 'Site allowed' : 'Protection active'
   renderPageVisit(next)
   elements.dataSaved.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
