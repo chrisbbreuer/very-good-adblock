@@ -7,7 +7,7 @@ The macOS container app that ships the Safari Web Extension build of
   Safari's extension settings).
 - `VeryGoodAdBlock Extension/` — the Safari Web Extension target. Its
   `Resources/` folder is a git-ignored mirror of `dist-safari/`, produced by
-  `bun run safari:sync`.
+  `bun run safari:app` (`buddy extension:safari:app`).
 - `VeryGoodAdBlock.xcodeproj` — checked in on purpose: building the app never
   requires re-running Apple's converter.
 
@@ -28,14 +28,14 @@ From the repo root:
 
 ```bash
 bun install
-bun run safari:app            # build extension → validate → zip → sync → xcodebuild
+bun run safari:app            # buddy extension:safari:app — build → sync → xcodebuild
 ```
 
 or step by step:
 
 ```bash
-bun run build:safari          # dist-safari/
-bun run safari:sync           # mirror into "VeryGoodAdBlock Extension/Resources"
+bun run build:safari          # buddy extension:build --target safari → dist-safari/
+bun run safari:app --skip-xcodebuild      # mirror dist-safari into the appex Resources
 open safari/VeryGoodAdBlock.xcodeproj   # or: xcodebuild -project safari/VeryGoodAdBlock.xcodeproj -scheme VeryGoodAdBlock build
 ```
 
@@ -45,20 +45,28 @@ Safari) and enable **Very Good AdBlock** in
 
 ## Signing
 
-The project ships with `DEVELOPMENT_TEAM` empty so anyone can build.
+The checked-in project sets `DEVELOPMENT_TEAM = 3JJRNQW6B7` (Very Good
+Industries) for both targets; forks should replace it with their own team id
+in *Signing & Capabilities*.
 
 **Local, unsigned (no Apple account):** `bun run safari:app` builds with
 `CODE_SIGNING_ALLOWED=NO`. Unsigned extensions require
 *Safari → Develop → Allow Unsigned Extensions* (resets on Safari updates).
 If the Develop menu is hidden: *Settings → Advanced → Show Develop menu*.
 
-**Signed (Apple Developer Program):** set your team in
-`safari/VeryGoodAdBlock.xcodeproj` → target *Signing & Capabilities* → **Team**
-(both targets), then:
+**Signed (Apple Developer Program):** the Apple ID must be added in
+*Xcode → Settings → Accounts*; `--signed` passes `-allowProvisioningUpdates`
+so Xcode creates/fetches profiles and certificates itself:
 
 ```bash
 bun run safari:app --signed            # Debug, Apple Development identity
 bun run safari:app --signed --release  # Release
+```
+
+A beta Xcode works without touching `xcode-select`:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer bun run safari:app --signed
 ```
 
 ## Distribution

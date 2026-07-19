@@ -8,10 +8,12 @@ description: How the Safari Web Extension build works — the dist-safari pipeli
 Safari Web Extensions ship inside a macOS app, so the Safari port has two halves:
 
 1. **`dist-safari/`** — the web extension itself, built from the same codebase by
-   `bun run build:safari` ([`scripts/build-safari.ts`](../../scripts/build-safari.ts)).
+   `bun run build:safari` (`buddy extension:build --target safari`, provided by
+   `@stacksjs/browser-extension`).
 2. **`safari/`** — a checked-in Xcode project with the container app
    (`VeryGoodAdBlock`) and the Safari Web Extension target
-   (`VeryGoodAdBlock Extension`) that embeds the synced bundle.
+   (`VeryGoodAdBlock Extension`) that embeds the synced bundle. New projects
+   generate the equivalent tree with `buddy extension:safari:init`.
 
 ## Requirements
 
@@ -27,13 +29,17 @@ Safari Web Extensions ship inside a macOS app, so the Safari port has two halves
   | `match_about_blank` | 18.4 | pop-up guard inside `about:blank` frames |
 
 - **Xcode** (full install, not just Command Line Tools) to build the app.
-  `scripts/safari-build-app.ts` checks and tells you what to do.
+  `buddy extension:safari:app` checks and tells you what to do; point
+  `DEVELOPER_DIR` at a beta toolchain (e.g.
+  `/Applications/Xcode-beta.app/Contents/Developer`) to avoid changing the
+  system default.
 
 ## The build pipeline
 
-buddy's `extension:build` only knows the chrome/firefox targets, so
-`scripts/build-safari.ts` builds the Chrome-shaped output into `dist-safari`
-and post-processes it:
+`buddy extension:build --target safari` (from `@stacksjs/browser-extension`)
+builds the Chrome-shaped output into `dist-safari` and post-processes it — the
+safari target is a first-class framework target, so there is no repo-local
+build script:
 
 ### Manifest transform
 
@@ -70,7 +76,8 @@ day-to-day:
   launch once; the extension registers with Safari when the app runs.
 - **`VeryGoodAdBlock Extension`** — the appex. Its `Resources/` folder (a
   folder reference, so no per-file project edits) receives the exact contents
-  of `dist-safari` via `bun run safari:sync`, minus the marketing-site pages.
+  of `dist-safari` when `buddy extension:safari:app` syncs, minus the
+  marketing-site pages listed as `safariExclude` in `config/extension.ts`.
   `SafariWebExtensionHandler.swift` implements the native-messaging protocol;
   the extension keeps all state in the web layer, so it only echoes.
 
@@ -79,11 +86,11 @@ Bundle IDs: `org.verygoodadblock.VeryGoodAdBlock` and `….Extension`.
 ## Build commands
 
 ```bash
-bun run build:safari              # dist-safari/ (bundle only)
+bun run build:safari              # buddy extension:build --target safari → dist-safari/
 bun run package:safari            # + validate + very-good-adblock-<v>-safari.zip
-bun run safari:sync               # mirror dist-safari into the appex Resources
-bun run safari:app                # all of the above + xcodebuild (needs Xcode)
-bun run icons:app                 # regenerate the macOS app icon PNGs from icon.svg
+bun run safari:app                # buddy extension:safari:app — build + sync + xcodebuild
+bun run safari:app --skip-xcodebuild   # build + sync only (CI-friendly)
+bun run safari:init               # buddy extension:safari:init — re-scaffold project + icons
 ```
 
 See [`safari/README.md`](../../safari/README.md) for signing, unsigned local

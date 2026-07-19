@@ -130,7 +130,7 @@ This builds the Safari flavor into `dist-safari/` (a `browser.*`-namespace rewri
 bun run build            # build the Chrome extension into dist/
 bun run build:firefox    # build the Firefox extension into dist-firefox/
 bun run build:safari     # build the Safari extension into dist-safari/
-bun run safari:app       # build + validate + sync + xcodebuild the Safari app
+bun run safari:app       # build + sync + xcodebuild the Safari container app
 bun run bench            # hot-path benchmarks + head-to-head vs uBO/ABP/Ghostery
 bun run test             # unit tests
 bun run smoke:chrome     # headless Bun WebView smoke test
