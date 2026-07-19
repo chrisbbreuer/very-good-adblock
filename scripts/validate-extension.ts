@@ -53,7 +53,8 @@ if (manifest.action?.default_popup) requiredFiles.add(manifest.action.default_po
 if (manifest.options_page) requiredFiles.add(manifest.options_page)
 
 if (target === 'firefox') {
-  if (!manifest.browser_specific_settings?.gecko?.id) throw new Error('Firefox manifest is missing browser_specific_settings.gecko.id')
+  const bss = manifest.browser_specific_settings as { gecko?: { id?: string } } | undefined
+  if (!bss?.gecko?.id) throw new Error('Firefox manifest is missing browser_specific_settings.gecko.id')
   if (!manifest.background || !('scripts' in manifest.background)) throw new Error('Firefox manifest must use background.scripts, not a service worker')
 }
 else if (target === 'safari') {
