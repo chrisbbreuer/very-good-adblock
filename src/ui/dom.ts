@@ -18,17 +18,21 @@ export async function sendMessage<T>(message: RuntimeMessage): Promise<T> {
 }
 
 export function renderBars(element: HTMLElement, values: number[], limit: number, options: BarRenderOptions = {}): void {
-  const max = Math.max(1, ...values)
-  const fragment = document.createDocumentFragment()
+  // Scale to the window actually rendered, not the full series: when the
+  // series' peak falls outside the visible window, scaling against it flattens
+  // every visible bar into the minimum-height floor (the "dotted line" look).
   const start = Math.max(0, values.length - limit)
-  const padding = Math.max(0, limit - (values.length - start))
+  const window_ = values.slice(start)
+  const max = Math.max(0, ...window_)
+  const fragment = document.createDocumentFragment()
+  const padding = Math.max(0, limit - window_.length)
 
   for (let index = 0; index < padding; index++) {
     fragment.append(barElement(0, max, index, options))
   }
 
-  for (let index = start; index < values.length; index++) {
-    fragment.append(barElement(values[index], max, padding + index - start, options))
+  for (let index = 0; index < window_.length; index++) {
+    fragment.append(barElement(window_[index], max, padding + index, options))
   }
 
   element.replaceChildren(fragment)
@@ -37,7 +41,15 @@ export function renderBars(element: HTMLElement, values: number[], limit: number
 
 function barElement(value: number, max: number, index: number, options: BarRenderOptions): HTMLSpanElement {
   const bar = document.createElement('span')
-  bar.style.height = `${Math.max(6, Math.round((value / max) * 100))}%`
+  // Empty slots render as a faint baseline dash (styled in CSS), so hours with
+  // nothing blocked read as empty instead of as small accent bars.
+  if (value > 0 && max > 0) {
+    // A 10% floor keeps small-but-nonzero hours visible next to a peak hour.
+    bar.style.height = `${Math.max(10, Math.round((value / max) * 100))}%`
+  }
+  else {
+    bar.dataset.empty = 'true'
+  }
   const label = options.valueLabel?.(value, index) ?? `${value.toLocaleString()} blocked`
   bar.dataset.tooltip = label
   bar.setAttribute('aria-label', label)

@@ -324,6 +324,9 @@ h1 {
   gap: 4px;
   padding: 12px 1px 0;
   overflow: visible;
+  /* Baseline the bars sit on: anchors the eye so empty hours (flat dashes)
+     read as "nothing blocked" instead of a missing chart. */
+  border-bottom: 1px solid var(--hairline);
 }
 
 .bar-chart.large {
@@ -335,11 +338,17 @@ h1 {
 
 .bar-chart span {
   position: relative;
-  min-height: 6px;
+  min-height: 2px;
   border-radius: var(--radius-pill) var(--radius-pill) 3px 3px;
   background: linear-gradient(180deg, var(--accent-soft), var(--accent));
   outline: none;
   transition: filter 140ms ease, opacity 140ms ease, transform 140ms ease;
+}
+
+.bar-chart span[data-empty="true"] {
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: rgba(var(--text-rgb), 0.14);
 }
 
 .bar-chart span:hover,
