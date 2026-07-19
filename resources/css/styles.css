@@ -305,6 +305,7 @@ h1 {
   width: 100%;
   text-align: left;
   color: inherit;
+  cursor: pointer;
   transition: filter 140ms ease, var(--press);
 }
 
@@ -321,9 +322,10 @@ h1 {
   top: 8px;
   right: 10px;
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
-  color: var(--muted);
+  /* Accent, not muted: the chevron is the only hint that the card expands. */
+  color: var(--accent);
   transition: transform 140ms ease;
 }
 
