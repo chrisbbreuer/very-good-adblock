@@ -66,8 +66,14 @@ const badgeRefreshTabs = new Set<number>()
 const badgeRefreshDelayMs = 400
 let badgeRefreshTimer: ReturnType<typeof setTimeout> | undefined
 const badgePollIntervalMs = 2_000
-const badgePollMaxTicks = 8
-const networkRefreshMinIntervalMs = 1_500
+// getMatchedRules is quota-limited (~20 calls/10min) and now only reconciles
+// what the live listeners miss, so the poll stays short: 5 ticks × 2s after
+// load catches stragglers without exhausting the quota during normal browsing.
+const badgePollMaxTicks = 5
+// webRequest/onRuleMatchedDebug move the network counter live; getMatchedRules
+// only backstops them, so the throttle can be generous — every spared call is
+// quota left for the pages that actually need reconciliation.
+const networkRefreshMinIntervalMs = 10_000
 let badgePollTimer: ReturnType<typeof setTimeout> | undefined
 let badgePollTabId: number | undefined
 let badgePollTicksLeft = 0
@@ -235,9 +241,9 @@ chrome.tabs.onCreated.addListener((tab) => {
   popupCandidates.set(tab.id, { openerTabId: tab.openerTabId, openedAt: Date.now() })
 })
 
-// Live network-block feedback. Only fires for unpacked/dev installs; packed
-// installs rely on getMatchedRules in refreshTabNetworkCount instead. Increments
-// are reconciled (via Math.max) against getMatchedRules so the two never sum.
+// Live network-block feedback in unpacked/dev installs. Packed installs count
+// through the webRequest error listener below; both reconcile against
+// getMatchedRules via Math.max-style deltas so sources never double count.
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const tabId = info.request.tabId
   if (tabId < 0) return
@@ -631,10 +637,9 @@ function incrementPageContent(tabId: number, count: number, url?: string): void 
 }
 
 /**
- * Pull the authoritative network-block count for this page visit from
- * getMatchedRules (works for packed installs, unlike onRuleMatchedDebug) and
- * fold it into the live counter. Math.max keeps whichever source is ahead, so
- * debug increments and matched-rule reads never double-count.
+ * Backstop the live network counter with getMatchedRules (which reports our
+ * own rules exactly, unlike the webRequest listener). Only the delta beyond
+ * what the listeners already counted is folded in, so sources never sum.
  */
 async function refreshTabNetworkCount(tabId: number): Promise<void> {
   const details = pageBadgeStats.get(tabId)
@@ -689,11 +694,12 @@ function scheduleBadgeRefresh(tabId: number): void {
 }
 
 /**
- * Poll the active tab's network-block count for a bounded window after a load or
- * tab switch. onRuleMatchedDebug does not fire for packed installs, so without
- * this the badge would only move on tab/content events; polling getMatchedRules
- * a few times catches ads that finish loading shortly after the page does. The
- * tick budget is bounded so this never keeps the service worker awake for long.
+ * Poll the active tab's network-block count briefly after a load or tab
+ * switch. The live listeners move the badge the moment a request dies; this
+ * only reconciles against getMatchedRules a few times to catch matches the
+ * listeners missed (e.g. while the worker was down), staying inside the
+ * API's tight call quota. The tick budget is bounded so this never keeps
+ * the service worker awake for long.
  */
 function startBadgePolling(tabId: number): void {
   badgePollTabId = tabId
