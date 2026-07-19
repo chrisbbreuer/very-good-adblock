@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'bun:test'
-import { categoryForRequestType, estimateBytesSaved, eventTotals, formatBytes, formatMinutes } from '../src/shared/metrics'
+import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes } from '../src/shared/metrics'
 
 describe('metrics', () => {
   it('formats estimated savings', () => {
     expect(formatBytes(1024)).toBe('1.0 KB')
     expect(formatMinutes(90)).toBe('1.5 min')
+  })
+
+  it('estimates modest per-request savings', () => {
+    // Tracker pings/beacons dominate blocked traffic and are tiny; a blocked
+    // media request is one segment, not a whole video ad.
+    expect(estimateBytesSaved('xhr')).toBe(2_000)
+    expect(estimateBytesSaved('media')).toBe(250_000)
+    expect(estimateBytesSaved('script')).toBe(40_000)
+    expect(estimateVideoAdBytes()).toBe(2_500_000)
+    expect(estimateVideoSecondsSaved()).toBe(15)
   })
 
   it('maps request types to stat categories', () => {

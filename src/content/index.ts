@@ -2,7 +2,7 @@ import { popupBlockMessageSource, popupConfigMessageSource, twitchVideoAdMarkers
 import { activeCosmeticGroups } from '../shared/cosmetic'
 import type { ActiveCosmeticGroup, CosmeticContext } from '../shared/cosmetic'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
-import { estimateBytesSaved, estimateVideoSecondsSaved } from '../shared/metrics'
+import { estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved } from '../shared/metrics'
 import { defaultSettings } from '../shared/storage'
 import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, RuntimeResponse } from '../shared/types'
 
@@ -94,7 +94,9 @@ function onPruneMessage(event: MessageEvent): void {
     scheduleEventFlush()
   }
   else if (data.source === ytPruneMessageSource && ytPruneActive) {
-    queueEvent('video', 'media', count, estimateBytesSaved('media', count), estimateVideoSecondsSaved() * count)
+    // Pruned JSON entries are placements (feed cells, shelves, ad pods) that
+    // never rendered — credit them as placements, not as watched video ads.
+    queueEvent('youtube', 'other', count)
     scheduleEventFlush()
   }
 }
@@ -273,7 +275,7 @@ function fastForwardYouTubeAd(): void {
     if (adRestoreRate === undefined) {
       adRestoreRate = video.playbackRate
       adRestoreMuted = video.muted
-      queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+      queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
     }
     try {
       video.muted = true
@@ -407,7 +409,7 @@ function clickYouTubeSkip(): void {
     button.click()
     if (!seen.has(button)) {
       seen.add(button)
-      queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+      queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
     }
   }
 }
@@ -477,15 +479,31 @@ function isPromotedTweet(article: Element): boolean {
   return false
 }
 
+/**
+ * Twitch re-renders its ad markers constantly during a break (the countdown
+ * ticks every second) and each re-render is a NEW element, so element identity
+ * alone can't dedupe them. Credit at most one video ad per window while fresh
+ * markers keep appearing — roughly one 15–30 s ad per half minute of break.
+ */
+const twitchVideoCreditWindowMs = 30_000
+let lastTwitchVideoCreditAt = 0
+
 function recordTwitchVideoAds(roots: readonly SelectorRoot[]): void {
+  let freshMarker = false
   for (const selector of twitchVideoAdMarkers) {
     for (const root of roots) {
       for (const marker of queryAllSafe(root, selector)) {
         if (videoMarkersSeen.has(marker)) continue
         videoMarkersSeen.add(marker)
-        queueEvent('video', 'media', 1, estimateBytesSaved('media'), estimateVideoSecondsSaved())
+        freshMarker = true
       }
     }
+  }
+
+  const now = Date.now()
+  if (freshMarker && now - lastTwitchVideoCreditAt >= twitchVideoCreditWindowMs) {
+    lastTwitchVideoCreditAt = now
+    queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
   }
 }
 

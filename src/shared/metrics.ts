@@ -1,18 +1,30 @@
 import type { BlockEvent, ResourceCategory, StatBucket } from './types'
 
+/**
+ * Average compressed transfer size of a blocked request, per category. These
+ * are deliberately modest: most blocked requests are tracker pings and beacons
+ * (~1 KB), not full creatives, and a blocked media REQUEST is one HLS segment,
+ * not a whole video — the full video-ad credit lives in estimateVideoAdBytes
+ * and is applied only when an actual ad is skipped or neutralized.
+ */
 const byteEstimates: Record<ResourceCategory, number> = {
-  document: 180_000,
-  script: 52_000,
-  image: 92_000,
-  media: 2_800_000,
-  stylesheet: 18_000,
-  xhr: 34_000,
-  font: 42_000,
-  other: 24_000,
+  document: 60_000,
+  script: 40_000,
+  image: 25_000,
+  media: 250_000,
+  stylesheet: 12_000,
+  xhr: 2_000,
+  font: 35_000,
+  other: 6_000,
 }
 
 export function estimateBytesSaved(category: ResourceCategory, count = 1): number {
   return byteEstimates[category] * count
+}
+
+/** A whole blocked/skipped video ad creative (15–30 s at roughly 1 Mbps). */
+export function estimateVideoAdBytes(count = 1): number {
+  return count * 2_500_000
 }
 
 /** Map a network request type (webRequest / DNR match info) to a stat category. */
