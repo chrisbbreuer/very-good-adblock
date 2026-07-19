@@ -45,6 +45,11 @@ interface PageVisitState {
 
 const pageBadgeStats = new Map<number, PageVisitState>()
 const cosmeticActivity = new Map<number, Map<string, number>>()
+// Tabs opened by another tab (target=_blank clicks, scripted window.open that
+// the page-level guard let through), remembered briefly so a network-blocked
+// pop-under can be attributed to the page that spawned it and closed.
+const popupCandidates = new Map<number, { openerTabId: number, openedAt: number }>()
+const popupCandidateMaxAgeMs = 30_000
 const maxCosmeticSelectors = 24
 const badgeRefreshTabs = new Set<number>()
 const badgeRefreshDelayMs = 400
@@ -102,10 +107,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
+  popupCandidates.delete(tabId)
   if (badgePollTabId === tabId) {
     badgePollTabId = undefined
     badgePollTicksLeft = 0
   }
+})
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id === undefined || tab.openerTabId === undefined) return
+  popupCandidates.set(tab.id, { openerTabId: tab.openerTabId, openedAt: Date.now() })
 })
 
 // Live network-block feedback. Only fires for unpacked/dev installs; packed
@@ -135,8 +146,16 @@ const hasRuleMatchDebug = typeof chrome.declarativeNetRequest.onRuleMatchedDebug
 chrome.webRequest?.onErrorOccurred.addListener(onRequestError, { urls: ['http://*/*', 'https://*/*'] })
 
 function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void {
-  if (details.tabId < 0 || hasRuleMatchDebug) return
+  if (details.tabId < 0) return
   if (!isOurBlock(details)) return
+
+  // A blocked top-level document in a freshly opened tab is a pop-under that
+  // escaped the page-level guard (an anchor target=_blank click, which the
+  // window.open wrapper cannot see). This also runs where the debug listener
+  // counts subresource blocks — the paths never overlap.
+  if (details.frameId === 0 && handleBlockedPopupTab(details)) return
+
+  if (hasRuleMatchDebug) return
 
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled) return
@@ -149,6 +168,38 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
 
   page.network += 1
   scheduleBadgeRefresh(details.tabId)
+}
+
+/**
+ * Handle a blocked document load in a popup tab: count it as a blocked pop-up
+ * on the opener and close the ad tab, so pop-unders vanish instead of leaving
+ * a browser error page behind. Returns false when the tab is not a recent
+ * popup (a direct navigation), letting the caller count it as a page block.
+ */
+function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails): boolean {
+  const candidate = popupCandidates.get(details.tabId)
+  if (!candidate) return false
+  popupCandidates.delete(details.tabId)
+  if (Date.now() - candidate.openedAt > popupCandidateMaxAgeMs) return false
+
+  const settings = cachedSettings ?? defaultSettings
+  if (!settings.enabled || !settings.popupBlocking) return false
+
+  const opener = pageBadgeStats.get(candidate.openerTabId)
+  const openerHostname = opener?.url ? hostnameFromUrl(opener.url) : ''
+  if (!openerHostname || siteMatches(openerHostname, settings.allowedSites)) return false
+
+  incrementPageContent(candidate.openerTabId, 1, opener?.url)
+  void recordBlockEvents([{
+    hostname: openerHostname,
+    source: 'popup',
+    category: 'document',
+    count: 1,
+    occurredAt: new Date().toISOString(),
+  }])
+  void updateBadge(candidate.openerTabId)
+  void chrome.tabs.remove(details.tabId).catch(() => {})
+  return true
 }
 
 function isOurBlock(details: chrome.webRequest.OnErrorOccurredDetails): boolean {
