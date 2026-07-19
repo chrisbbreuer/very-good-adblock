@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes } from '../src/shared/metrics'
+import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes, localDayKey } from '../src/shared/metrics'
 
 describe('metrics', () => {
   it('formats estimated savings', () => {
@@ -30,6 +30,14 @@ describe('metrics', () => {
     expect(categoryForRequestType('sub_frame')).toBe('document')
     expect(categoryForRequestType('csp_report')).toBe('other')
     expect(categoryForRequestType('something-else')).toBe('other')
+  })
+
+  it('keys days by the local calendar, not UTC', () => {
+    // 23:30 local must stay on the local day regardless of the host timezone —
+    // this is what makes "Blocked today" roll over at local midnight.
+    expect(localDayKey(new Date(2026, 6, 5, 23, 30))).toBe('2026-07-05')
+    expect(localDayKey(new Date(2026, 0, 1, 0, 30))).toBe('2026-01-01')
+    expect(localDayKey()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it('rolls up block events', () => {

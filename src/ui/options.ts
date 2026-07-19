@@ -1,5 +1,5 @@
 import { normalizeHostname } from '../shared/domain'
-import { formatBytes, formatMinutes } from '../shared/metrics'
+import { formatBytes, formatMinutes, localDayKey } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, downloadJson, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
@@ -187,7 +187,7 @@ function render(next: DashboardState): void {
   elements.blocked.textContent = next.lifetime.adsBlocked.toLocaleString()
   elements.data.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.video.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = localDayKey()
   const today = next.local.daily.find(bucket => bucket.key === todayKey)
   elements.today.textContent = (today?.adsBlocked ?? 0).toLocaleString()
   elements.enabled.checked = next.settings.enabled

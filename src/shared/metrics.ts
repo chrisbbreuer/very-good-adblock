@@ -82,6 +82,18 @@ export function compactBuckets(buckets: StatBucket[], limit: number): StatBucket
   return [...buckets].sort((a, b) => a.key.localeCompare(b.key)).slice(-limit)
 }
 
+/**
+ * YYYY-MM-DD in the user's local timezone. Daily buckets follow the local
+ * calendar so "Blocked today" rolls over at local midnight, and the chart's
+ * day labels (parsed as local dates) match the day the user experienced.
+ */
+export function localDayKey(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function eventTotals(events: BlockEvent[]): Pick<StatBucket, 'adsBlocked' | 'bytesSaved' | 'videoSecondsSaved'> {
   return events.reduce(
     (totals, event) => {
