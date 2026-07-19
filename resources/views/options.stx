@@ -51,6 +51,11 @@
             <strong>60 days</strong>
           </div>
           <div id="daily-chart" class="bar-chart large" role="img" aria-label="Blocked ads per day, last 60 days"></div>
+          <div class="timeline-footer">
+            <span>older</span>
+            <strong id="daily-total">0 in window</strong>
+            <span>now</span>
+          </div>
         </article>
 
         <article class="glass-panel dashboard-panel">

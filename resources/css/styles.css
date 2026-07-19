@@ -331,9 +331,15 @@ h1 {
 
 .bar-chart.large {
   grid-template-columns: repeat(60, 1fr);
-  flex: 1;
-  min-height: 220px;
-  height: auto;
+  flex: none;
+  height: 190px;
+  min-height: 0;
+  gap: 2px;
+}
+
+/* Dense daily bars read as one continuous stream, not a comb. */
+.bar-chart.large span {
+  border-radius: var(--radius-pill);
 }
 
 .bar-chart span {
@@ -709,10 +715,13 @@ h1 {
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
   gap: 16px;
   margin-top: 16px;
+  /* Panels size to their content instead of stretching to the row's tallest
+     panel — the history chart no longer floats in a half-empty box next to
+     the long Protection panel. */
+  align-items: start;
 }
 
 .dashboard-panel {
-  min-height: 260px;
   display: flex;
   flex-direction: column;
 }

@@ -10,6 +10,7 @@ const elements = {
   video: byId('dashboard-video'),
   today: byId('dashboard-today'),
   dailyChart: byId('daily-chart'),
+  dailyTotal: byId('daily-total'),
   enabled: byId<HTMLInputElement>('setting-enabled'),
   cosmetic: byId<HTMLInputElement>('setting-cosmetic'),
   aggressive: byId<HTMLInputElement>('setting-aggressive'),
@@ -194,11 +195,38 @@ function render(next: DashboardState): void {
   elements.blockedCount.textContent = String(next.settings.blockedSites.length)
   elements.status.textContent = 'Lifetime stats and compact history sync through Chrome; detailed history stays local.'
 
-  renderBars(elements.dailyChart, next.local.daily.map(bucket => bucket.adsBlocked), 60)
+  renderDailyChart(next)
   renderAllowedSites(next)
   renderBlockedSites(next)
   renderDiagnostics(next)
   renderCosmeticActivity(next)
+}
+
+const dailyWindow = 60
+
+/**
+ * The 60-day history, scaled to the visible window (see renderBars) with each
+ * bar dated in its tooltip and the window total in the footer. Leading padding
+ * slots (fewer than 60 buckets) get no date — there is no day to label.
+ */
+function renderDailyChart(next: DashboardState): void {
+  const buckets = next.local.daily.slice(-dailyWindow)
+  const pad = Math.max(0, dailyWindow - buckets.length)
+  const total = buckets.reduce((sum, bucket) => sum + bucket.adsBlocked, 0)
+
+  elements.dailyTotal.textContent = `${total.toLocaleString()} in window`
+  renderBars(elements.dailyChart, buckets.map(bucket => bucket.adsBlocked), dailyWindow, {
+    valueLabel: (value, index) => {
+      const bucket = buckets[index - pad]
+      const prefix = bucket ? `${shortDate(bucket.key)}: ` : ''
+      return `${prefix}${value.toLocaleString()} blocked`
+    },
+  })
+}
+
+function shortDate(key: string): string {
+  const date = new Date(`${key}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? key : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function renderCosmeticActivity(next: DashboardState): void {
