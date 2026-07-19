@@ -17,6 +17,7 @@ const elements = {
   video: byId('dashboard-video'),
   today: byId('dashboard-today'),
   dailyChart: byId('daily-chart'),
+  dailyEmpty: byId('daily-chart-empty'),
   dailyTotal: byId('daily-total'),
   enabled: byId<HTMLInputElement>('setting-enabled'),
   cosmetic: byId<HTMLInputElement>('setting-cosmetic'),
@@ -225,6 +226,11 @@ function renderDailyChart(next: DashboardState): void {
   const total = buckets.reduce((sum, bucket) => sum + bucket.adsBlocked, 0)
 
   elements.dailyTotal.textContent = `${total.toLocaleString()} in window`
+  // An all-zero window renders as a field of baseline dashes; swap it for a
+  // friendly note instead (fresh installs, right after a stats reset).
+  const isEmpty = total === 0
+  elements.dailyChart.classList.toggle('is-empty', isEmpty)
+  elements.dailyEmpty.hidden = !isEmpty
   renderBars(elements.dailyChart, buckets.map(bucket => bucket.adsBlocked), dailyWindow, {
     valueLabel: (value, index) => {
       const bucket = buckets[index - pad]

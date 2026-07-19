@@ -417,6 +417,29 @@ h1 {
   gap: 2px;
 }
 
+/* With an all-zero window the chart swaps for .chart-empty-note (options.ts).
+   A class, not the hidden attribute: the display:grid above would win over
+   the UA's [hidden] rule. */
+.bar-chart.large.is-empty {
+  display: none;
+}
+
+.chart-empty-note {
+  display: grid;
+  place-items: center;
+  height: 190px;
+  margin: 0;
+  padding: 0 24px;
+  color: rgba(var(--text-rgb), 0.5);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.chart-empty-note[hidden] {
+  display: none;
+}
+
 /* Dense daily bars read as one continuous stream, not a comb. */
 .bar-chart.large span {
   border-radius: var(--radius-pill);
