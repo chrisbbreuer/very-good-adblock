@@ -437,6 +437,12 @@ function makeDashboardState(): DashboardState {
       network: 11,
       content: 7,
     },
+    activePageBlocks: [
+      { kind: 'network', label: 'ads.example.test', detail: 'script', count: 8, at: now.toISOString() },
+      { kind: 'network', label: 'tracker.example.test', detail: 'image', count: 3, at: now.toISOString() },
+      { kind: 'cosmetic', label: '.ad-banner', count: 4, at: now.toISOString() },
+      { kind: 'popup', label: 'promo.example.test', count: 3, at: now.toISOString() },
+    ],
     dnr: {
       available: true,
       recentMatchedRules: 16,

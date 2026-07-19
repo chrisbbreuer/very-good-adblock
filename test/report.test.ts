@@ -22,6 +22,7 @@ function dashboardState(overrides: Partial<DashboardState> = {}): DashboardState
     cloudSync: { available: false, dailyBuckets: 0, siteRollups: 0 },
     activeTab: { tabId: 7, hostname: 'youtube.com', url: 'https://youtube.com/watch?v=secret&t=42#frag', allowed: false, blocked: false },
     activePage: { blocked: 3, network: 2, content: 1 },
+    activePageBlocks: [],
     dnr: { available: true, recentMatchedRules: 9, activeTabMatchedRules: 2, rulesetHits: {}, checkedAt: '' },
     cosmetic: { enabled: true, aggressive: false, activeTabHidden: 5, activeTabSelectors: [] },
     filters: {

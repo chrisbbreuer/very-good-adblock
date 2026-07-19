@@ -19,7 +19,7 @@ import {
   resetStats,
   setSettings,
 } from '../shared/storage'
-import type { ActivePageStats, BlockEvent, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, ResourceCategory, RuntimeMessage, RuntimeResponse } from '../shared/types'
+import type { ActivePageStats, BlockEvent, BlockSource, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, PageBlockEntry, PageBlockKind, ResourceCategory, RuntimeMessage, RuntimeResponse } from '../shared/types'
 
 const staticRuleCount = curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.hosts.length
 const filterSources = generatedNetworkHosts.sources.map(source => ({
@@ -62,6 +62,14 @@ let pageStatsPersistTimer: ReturnType<typeof setTimeout> | undefined
 const popupCandidates = new Map<number, { openerTabId: number, openedAt: number }>()
 const popupCandidateMaxAgeMs = 30_000
 const maxCosmeticSelectors = 24
+// Per-tab log of what was blocked on the current page visit, powering the
+// popup's "what's blocked" list. Entries merge when kind+label+detail match
+// (a burst of script blocks to the same host becomes one row with a count),
+// and the log is capped so a runaway page can't grow it without bound.
+// Mirrored to session storage alongside pageBadgeStats.
+const pageBlockLog = new Map<number, PageBlockEntry[]>()
+const maxPageBlockEntries = 60
+const pageBlockLogStorageKey = 'pageBlockLog'
 const badgeRefreshTabs = new Set<number>()
 const badgeRefreshDelayMs = 400
 let badgeRefreshTimer: ReturnType<typeof setTimeout> | undefined
@@ -91,11 +99,11 @@ async function hydratePageBadgeStats(): Promise<void> {
   if (!session) return
 
   try {
-    const stored = await session.get(pageStatsStorageKey)
+    const stored = await session.get([pageStatsStorageKey, pageBlockLogStorageKey])
     const entries = stored[pageStatsStorageKey] as Record<string, PageVisitState> | undefined
-    if (!entries) return
+    const storedLogs = stored[pageBlockLogStorageKey] as Record<string, PageBlockEntry[]> | undefined
 
-    for (const [key, state] of Object.entries(entries)) {
+    for (const [key, state] of Object.entries(entries ?? {})) {
       const tabId = Number(key)
       if (!Number.isInteger(tabId) || !state || typeof state !== 'object') continue
 
@@ -109,6 +117,16 @@ async function hydratePageBadgeStats(): Promise<void> {
         loadedAt: Math.min(existing?.loadedAt ?? Number.POSITIVE_INFINITY, state.loadedAt ?? Number.POSITIVE_INFINITY),
         networkCheckedAt: Math.max(existing?.networkCheckedAt ?? 0, state.networkCheckedAt ?? 0),
       })
+    }
+
+    for (const [key, log] of Object.entries(storedLogs ?? {})) {
+      const tabId = Number(key)
+      if (!Number.isInteger(tabId) || !Array.isArray(log)) continue
+
+      // Same merge rule as the counters: live entries that already landed win,
+      // stored ones (older) slot in before them, capped to the newest.
+      const existing = pageBlockLog.get(tabId) ?? []
+      pageBlockLog.set(tabId, [...log, ...existing].slice(-maxPageBlockEntries))
     }
   }
   catch {
@@ -124,7 +142,9 @@ function schedulePageStatsPersist(): void {
     pageStatsPersistTimer = undefined
     const snapshot: Record<string, PageVisitState> = {}
     for (const [tabId, state] of pageBadgeStats) snapshot[String(tabId)] = state
-    void session.set({ [pageStatsStorageKey]: snapshot }).catch(() => {})
+    const logSnapshot: Record<string, PageBlockEntry[]> = {}
+    for (const [tabId, log] of pageBlockLog) logSnapshot[String(tabId)] = log
+    void session.set({ [pageStatsStorageKey]: snapshot, [pageBlockLogStorageKey]: logSnapshot }).catch(() => {})
   }, pageStatsPersistDelayMs)
 }
 
@@ -137,14 +157,53 @@ const pendingNetworkStats = new Map<string, BlockEvent>()
 const networkStatsFlushDelayMs = 5_000
 let networkStatsFlushTimer: ReturnType<typeof setTimeout> | undefined
 
+/**
+ * Append to the per-tab "what's blocked" log. Bursts of the same item (a host
+ * hammering scripts, one selector hiding many nodes) collapse into a single
+ * entry whose count grows, so the popup list stays readable.
+ */
+function logPageBlock(tabId: number, entry: PageBlockEntry): void {
+  const log = pageBlockLog.get(tabId) ?? []
+  const previous = log[log.length - 1]
+  if (previous && previous.kind === entry.kind && previous.label === entry.label && previous.detail === entry.detail) {
+    previous.count += entry.count
+    previous.at = entry.at
+  }
+  else {
+    log.push(entry)
+    if (log.length > maxPageBlockEntries) log.splice(0, log.length - maxPageBlockEntries)
+  }
+  pageBlockLog.set(tabId, log)
+  schedulePageStatsPersist()
+}
+
+/**
+ * Human-facing row for a content-script block event in the "what's blocked"
+ * list. 'cosmetic' and 'dnr' return undefined: their items already arrive with
+ * better labels via record-cosmetic (selectors) and addNetworkBlocks (hosts).
+ */
+function pageBlockRowForSource(source: BlockSource): { kind: PageBlockKind, label: string } | undefined {
+  switch (source) {
+    case 'popup': return { kind: 'popup', label: 'Pop-up window' }
+    case 'video': return { kind: 'video', label: 'Video ad' }
+    case 'twitch': return { kind: 'video', label: 'Twitch ad' }
+    case 'youtube': return { kind: 'video', label: 'YouTube placement' }
+    case 'x': return { kind: 'x', label: 'Promoted post' }
+    case 'consent': return { kind: 'consent', label: 'Cookie banner' }
+    case 'manual': return { kind: 'other', label: 'Manual rule' }
+    default: return undefined
+  }
+}
+
 /** The single funnel for network-block increments: page counter plus stats. */
-function addNetworkBlocks(tabId: number, count: number, category: ResourceCategory): void {
+function addNetworkBlocks(tabId: number, count: number, category: ResourceCategory, label?: string): void {
   if (count <= 0) return
   const page = pageBadgeStats.get(tabId)
   const hostname = page?.url ? hostnameFromUrl(page.url) : ''
   if (!page || !hostname) return
 
   page.network += count
+  logPageBlock(tabId, { kind: 'network', label: label ?? 'blocked request', detail: category, count, at: new Date().toISOString() })
   schedulePageStatsPersist()
 
   const key = `${hostname}:${category}`
@@ -215,6 +274,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' || changeInfo.url) {
     pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
+    pageBlockLog.delete(tabId)
     schedulePageStatsPersist()
     void updateBadge(tabId)
   }
@@ -228,6 +288,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
+  pageBlockLog.delete(tabId)
   popupCandidates.delete(tabId)
   schedulePageStatsPersist()
   if (badgePollTabId === tabId) {
@@ -247,7 +308,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const tabId = info.request.tabId
   if (tabId < 0) return
-  addNetworkBlocks(tabId, 1, categoryForRequestType(info.request.type))
+  addNetworkBlocks(tabId, 1, categoryForRequestType(info.request.type), hostnameFromUrl(info.request.url))
   scheduleBadgeRefresh(tabId)
 })
 
@@ -287,7 +348,7 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   const pageHostname = (page.url ? hostnameFromUrl(page.url) : '') || hostnameFromUrl(details.initiator ?? '')
   if (pageHostname && siteMatches(pageHostname, settings.allowedSites)) return
 
-  addNetworkBlocks(details.tabId, 1, categoryForRequestType(details.type))
+  addNetworkBlocks(details.tabId, 1, categoryForRequestType(details.type), hostnameFromUrl(details.url))
   scheduleBadgeRefresh(details.tabId)
 }
 
@@ -311,6 +372,12 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   if (!openerHostname || siteMatches(openerHostname, settings.allowedSites)) return false
 
   incrementPageContent(candidate.openerTabId, 1, opener?.url)
+  logPageBlock(candidate.openerTabId, {
+    kind: 'popup',
+    label: hostnameFromUrl(details.url) || 'pop-up window',
+    count: 1,
+    at: new Date().toISOString(),
+  })
   void recordBlockEvents([{
     hostname: openerHostname,
     source: 'popup',
@@ -463,6 +530,12 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       await recordBlockEvents(message.events)
       if (sender.tab?.id !== undefined) {
         incrementPageContent(sender.tab.id, message.events.reduce((total, event) => total + event.count, 0), sender.tab.url)
+        for (const event of message.events) {
+          const row = pageBlockRowForSource(event.source)
+          if (row && event.count > 0) {
+            logPageBlock(sender.tab.id, { ...row, count: event.count, at: event.occurredAt })
+          }
+        }
       }
       await updateBadge(sender.tab?.id)
       return true
@@ -508,6 +581,7 @@ async function getDashboard(): Promise<DashboardState> {
     },
     activeTab,
     activePage: pageVisitStats(activeTab?.tabId),
+    activePageBlocks: pageBlocksForTab(activeTab?.tabId),
     dnr: await getDnrTelemetry(activeTab?.tabId),
     cosmetic: getCosmeticTelemetry(settings, activeTab?.tabId),
     filters: {
@@ -609,9 +683,11 @@ async function updateBadge(tabId?: number): Promise<void> {
 function recordCosmeticActivity(tabId: number, hits: Array<{ selector: string, count: number }>): void {
   if (!hits.length) return
   const perTab = cosmeticActivity.get(tabId) ?? new Map<string, number>()
+  const at = new Date().toISOString()
   for (const hit of hits) {
     if (!hit.selector || hit.count <= 0) continue
     perTab.set(hit.selector, (perTab.get(hit.selector) ?? 0) + hit.count)
+    logPageBlock(tabId, { kind: 'cosmetic', label: hit.selector, count: hit.count, at })
   }
   cosmeticActivity.set(tabId, perTab)
 }
@@ -670,8 +746,8 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
       // request types, falling back to 'other' when the list is truncated.
       const entries = matched.rulesMatchedInfo.slice(-delta)
       for (const entry of entries) {
-        const type = (entry as { request?: { type?: string } }).request?.type ?? 'other'
-        addNetworkBlocks(tabId, 1, categoryForRequestType(type))
+        const request = (entry as { request?: { type?: string, url?: string } }).request
+        addNetworkBlocks(tabId, 1, categoryForRequestType(request?.type ?? 'other'), request?.url ? hostnameFromUrl(request.url) : undefined)
       }
       if (entries.length < delta) addNetworkBlocks(tabId, delta - entries.length, 'other')
     }
@@ -687,6 +763,33 @@ function pageVisitStats(tabId?: number): ActivePageStats {
   const network = details?.network ?? 0
   const content = details?.content ?? 0
   return { blocked: network + content, network, content }
+}
+
+/**
+ * The tab's "what's blocked" list for the popup: log entries grouped by
+ * kind+label+detail with counts summed, most-blocked first, capped so the
+ * popup stays scannable.
+ */
+function pageBlocksForTab(tabId?: number): PageBlockEntry[] {
+  const log = tabId === undefined ? undefined : pageBlockLog.get(tabId)
+  if (!log?.length) return []
+
+  const grouped = new Map<string, PageBlockEntry>()
+  for (const entry of log) {
+    const key = `${entry.kind}|${entry.label}|${entry.detail ?? ''}`
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.count += entry.count
+      if (entry.at > existing.at) existing.at = entry.at
+    }
+    else {
+      grouped.set(key, { ...entry })
+    }
+  }
+
+  return [...grouped.values()]
+    .sort((a, b) => b.count - a.count || b.at.localeCompare(a.at))
+    .slice(0, 12)
 }
 
 /** Coalesce the frequent debug-listener updates into one badge refresh. */

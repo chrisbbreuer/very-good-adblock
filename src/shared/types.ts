@@ -79,6 +79,7 @@ export interface DashboardState {
   cloudSync: CloudSyncState
   activeTab?: ActiveTabState
   activePage: ActivePageStats
+  activePageBlocks: PageBlockEntry[]
   dnr: DnrTelemetry
   cosmetic: CosmeticTelemetry
   filters: FilterMetadata
@@ -137,6 +138,23 @@ export interface ActiveTabState {
   favIconUrl?: string
   allowed: boolean
   blocked: boolean
+}
+
+export type PageBlockKind = 'network' | 'popup' | 'cosmetic' | 'video' | 'consent' | 'x' | 'other'
+
+/**
+ * One item blocked on the current page visit, for the "what's blocked" list.
+ * `label` is the blocked request's host for network blocks, the pop-up's
+ * destination host, the matched selector for cosmetic hides, or a short
+ * human label for the rest. `detail` carries the request category for
+ * network blocks.
+ */
+export interface PageBlockEntry {
+  kind: PageBlockKind
+  label: string
+  detail?: string
+  count: number
+  at: string
 }
 
 export type RuntimeMessage =
