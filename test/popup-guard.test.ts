@@ -40,6 +40,8 @@ describe('built pop-up guard', () => {
         floodBlocked: boolean
         linkPiggybackBlocked: boolean
         linkOwnHrefAllowed: boolean
+        javascriptChatAllowed: boolean
+        javascriptLinkMismatchBlocked: boolean
         reported: number
       }>(`window.__guardTest`)
 
@@ -52,6 +54,8 @@ describe('built pop-up guard', () => {
       // through, but a pop-up to the link's own destination is fine.
       expect(result.linkPiggybackBlocked).toBe(true)
       expect(result.linkOwnHrefAllowed).toBe(true)
+      expect(result.javascriptChatAllowed).toBe(true)
+      expect(result.javascriptLinkMismatchBlocked).toBe(true)
       expect(result.reported).toBeGreaterThanOrEqual(1)
       expect(errors).toEqual([])
     }
@@ -87,10 +91,14 @@ function fixture(guardScript: string): string {
     <button id="signin">Sign in</button>
     <a id="navlink" href="/other-page">Other page</a>
     <a id="extlink" href="https://legit.example/page">External</a>
+    <a id="vwchat" href='javascript:void(open("https://chat.vw.com/", "VW Chat"))'>Chat</a>
+    <a id="jslink" href='javascript:window.open("https://help.example/chat")'>Help</a>
     <script>
       // Stand in for the native window.open so "allowed" calls are observable
       // without actually opening a window; the guard wraps this as its original.
       window.open = function (url) { return { __stub: true, url: url }; };
+      window.__now = 1000;
+      Date.now = function () { return window.__now; };
     </script>
     <script>${guardScript}</script>
     <script>
@@ -122,6 +130,15 @@ function fixture(guardScript: string): string {
         clickOn('navlink');
         var piggyback = window.open('https://ads.example/pop');
 
+        // Legacy but legitimate chat launchers (including vw.com) put a
+        // literal window.open destination in a javascript: anchor. That exact
+        // destination is allowed, while piggybacking to another host is not.
+        clickOn('vwchat');
+        var javascriptChat = window.open('https://chat.vw.com/');
+        clickOn('jslink');
+        var javascriptMismatch = window.open('https://ads.example/pop');
+        window.__now += 5000;
+
         // Allowed cases (each pushes toward the flood budget):
         // Link opening its own external destination.
         clickOn('extlink');
@@ -146,6 +163,8 @@ function fixture(guardScript: string): string {
             floodBlocked: floodBlocked,
             linkPiggybackBlocked: isDecoy(piggyback),
             linkOwnHrefAllowed: !!(linkOwn && linkOwn.__stub),
+            javascriptChatAllowed: !!(javascriptChat && javascriptChat.__stub),
+            javascriptLinkMismatchBlocked: isDecoy(javascriptMismatch),
             reported: reported,
             done: true,
           };

@@ -123,7 +123,14 @@ function classifyGesture(node: EventTarget | null): GestureInfo {
   for (let depth = 0; element && depth < 12; depth++) {
     const tag = element.tagName
     const href = element.getAttribute('href')
-    if (tag === 'A' && href) return { kind: 'anchor', href: resolve(href) }
+    if (tag === 'A' && href) {
+      // Some established sites still implement legitimate chat/help links as
+      // `javascript:void(open("https://…"))` anchors. Compare the eventual
+      // pop-up with that statically declared URL, just as we do for a normal
+      // href. We deliberately do not execute or broadly trust javascript:
+      // links; an unrelated destination remains blocked.
+      return { kind: 'anchor', href: popupHrefFromJavascript(href) || resolve(href) }
+    }
     if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '' }
     if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '' }
     if (tag === 'INPUT') {
@@ -133,6 +140,14 @@ function classifyGesture(node: EventTarget | null): GestureInfo {
     element = element.parentElement
   }
   return { kind: 'other', href: '' }
+}
+
+/** Extract a literal first argument from a javascript: open() link, if present. */
+function popupHrefFromJavascript(href: string): string {
+  if (!/^javascript\s*:/i.test(href)) return ''
+
+  const match = href.match(/(?:\bwindow\s*\.\s*)?\bopen\s*\(\s*(['"])([^'"]+)\1/i)
+  return match ? resolve(match[2]) : ''
 }
 
 function resolve(href: string): string {
