@@ -32,8 +32,9 @@ if (!existsSync('dist-safari/manifest.json')) {
 await Bun.$`bun --bun scripts/safari-sync-resources.ts`
 
 // 2. xcodebuild needs full Xcode, not just the Command Line Tools.
-const developerDir = (await Bun.$`xcode-select -p`.text()).trim()
-if (!developerDir.includes('Xcode.app')) {
+// DEVELOPER_DIR overrides xcode-select (e.g. /Applications/Xcode-beta.app/Contents/Developer).
+const developerDir = (process.env.DEVELOPER_DIR ?? (await Bun.$`xcode-select -p`.text()).trim()).replace(/\/$/, '')
+if (!developerDir.includes('.app/Contents/Developer')) {
   console.error(`
 Full Xcode is required to build the app, but the active developer directory is
 ${developerDir}
@@ -54,8 +55,9 @@ Alternative without this repo's checked-in project:
   process.exit(1)
 }
 
-// 3. Build.
-const signing = signed ? [] : ['CODE_SIGNING_ALLOWED=NO']
+// 3. Build. Signed builds let Xcode fetch/create provisioning profiles and
+// certificates for the Apple ID added in Xcode → Settings → Accounts.
+const signing = signed ? ['-allowProvisioningUpdates'] : ['CODE_SIGNING_ALLOWED=NO']
 await Bun.$`xcodebuild -project ${project} -scheme VeryGoodAdBlock -configuration ${configuration} -derivedDataPath ${derivedData} ${signing} build`
 
 const appPath = `${derivedData}/Build/Products/${configuration}/VeryGoodAdBlock.app`
