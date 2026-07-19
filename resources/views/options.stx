@@ -141,6 +141,14 @@
           </div>
           <div id="cosmetic-selectors" class="diagnostics"></div>
         </article>
+
+        <article class="glass-panel dashboard-panel">
+          <div class="section-heading">
+            <span>Recent blocks</span>
+            <strong id="recent-count">0</strong>
+          </div>
+          <div id="recent-blocks" class="diagnostics"></div>
+        </article>
       </section>
 
       <p id="options-status" class="status-message" role="status">Loading dashboard...</p>

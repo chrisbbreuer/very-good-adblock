@@ -2,6 +2,7 @@ import { siteMatches } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState } from '../shared/types'
 import { byId, renderBars, sendMessage } from './dom'
+import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
 
 const elements = {
@@ -316,19 +317,6 @@ function renderTopCategories(next: DashboardState): void {
 function siteStatsFor(next: DashboardState, hostname: string): DashboardState['local']['sites'][string] | undefined {
   return next.local.sites[hostname]
     ?? Object.values(next.local.sites).find(site => siteMatches(hostname, [site.hostname]))
-}
-
-function sourceLabel(source: string): string | undefined {
-  if (source === 'dnr') return 'Network rules'
-  if (source === 'video') return 'Video skips'
-  if (source === 'twitch') return 'Twitch banners'
-  if (source === 'youtube') return 'YouTube placements'
-  if (source === 'cosmetic') return 'Hidden placements'
-  if (source === 'consent') return 'Cookie banners'
-  if (source === 'popup') return 'Pop-ups'
-  if (source === 'x') return 'X promoted'
-  if (source === 'manual') return 'Manual rules'
-  return undefined
 }
 
 function hourLabel(index: number): string {

@@ -2,6 +2,7 @@ import { normalizeHostname } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState } from '../shared/types'
 import { byId, downloadJson, renderBars, sendMessage } from './dom'
+import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
 
 const elements = {
@@ -21,6 +22,8 @@ const elements = {
   badge: byId<HTMLInputElement>('setting-badge'),
   cosmeticStatus: byId('cosmetic-status'),
   cosmeticSelectors: byId('cosmetic-selectors'),
+  recentCount: byId('recent-count'),
+  recentBlocks: byId('recent-blocks'),
   rulesStatus: byId('rules-status'),
   allowedCount: byId('allowed-count'),
   allowForm: byId<HTMLFormElement>('allow-form'),
@@ -200,6 +203,7 @@ function render(next: DashboardState): void {
   renderBlockedSites(next)
   renderDiagnostics(next)
   renderCosmeticActivity(next)
+  renderRecentBlocks(next)
 }
 
 const dailyWindow = 60
@@ -247,6 +251,24 @@ function renderCosmeticActivity(next: DashboardState): void {
   elements.cosmeticSelectors.replaceChildren(
     diagnosticRow('Hidden here', String(cosmetic.activeTabHidden)),
     ...cosmetic.activeTabSelectors.map(hit => diagnosticRow(hit.selector, String(hit.count))),
+  )
+}
+
+/** The newest blocked events across all sites, most recent first. */
+function renderRecentBlocks(next: DashboardState): void {
+  const events = next.local.recentEvents.slice(-12).reverse()
+  elements.recentCount.textContent = next.local.recentEvents.length.toLocaleString()
+
+  if (!events.length) {
+    elements.recentBlocks.replaceChildren(diagnosticRow('No blocked events yet', ''))
+    return
+  }
+
+  elements.recentBlocks.replaceChildren(
+    ...events.map(event => diagnosticRow(
+      event.hostname,
+      `${sourceLabel(event.source) ?? event.source} ×${event.count.toLocaleString()}`,
+    )),
   )
 }
 
