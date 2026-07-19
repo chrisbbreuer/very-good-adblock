@@ -1,7 +1,7 @@
 import { normalizeHostname } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
-import { byId, downloadJson, renderBars, sendMessage } from './dom'
+import { byId, downloadJson, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
 import { normalizeDashboardState } from './state'
@@ -273,7 +273,7 @@ function renderRecentBlocks(next: DashboardState): void {
   elements.recentBlocks.replaceChildren(
     ...events.map(event => diagnosticRow(
       event.hostname,
-      `${sourceLabel(event.source) ?? event.source} ×${event.count.toLocaleString()}`,
+      `${sourceLabel(event.source) ?? event.source} ×${event.count.toLocaleString()} · ${relativeTime(event.occurredAt)}`,
     )),
   )
 }

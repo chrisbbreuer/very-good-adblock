@@ -1,7 +1,7 @@
 import { siteMatches } from '../shared/domain'
 import { formatBytes, formatMinutes } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
-import { byId, renderBars, sendMessage } from './dom'
+import { byId, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
 import { normalizeDashboardState } from './state'
@@ -339,18 +339,6 @@ function hourLabel(index: number): string {
   if (hoursAgo <= 0) return 'This hour'
   if (hoursAgo === 1) return '1 hour ago'
   return `${hoursAgo} hours ago`
-}
-
-function relativeTime(value: string): string {
-  const date = new Date(value)
-  const diffMs = Date.now() - date.getTime()
-  if (!Number.isFinite(diffMs)) return 'recently'
-  const minutes = Math.max(0, Math.round(diffMs / 60_000))
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.round(hours / 24)}d ago`
 }
 
 function emptyRow(text: string): HTMLElement {

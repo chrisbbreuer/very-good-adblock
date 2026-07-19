@@ -11,6 +11,19 @@ export function byId<T extends HTMLElement>(id: string): T {
   return element as T
 }
 
+/** Compact "3m ago" style timestamp for stats rows. */
+export function relativeTime(value: string): string {
+  const date = new Date(value)
+  const diffMs = Date.now() - date.getTime()
+  if (!Number.isFinite(diffMs)) return 'recently'
+  const minutes = Math.max(0, Math.round(diffMs / 60_000))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
 export async function sendMessage<T>(message: RuntimeMessage): Promise<T> {
   const response = await chrome.runtime.sendMessage(message) as RuntimeResponse<T>
   if (!response.ok) throw new Error(response.error ?? 'Extension request failed')
