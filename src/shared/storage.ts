@@ -7,6 +7,7 @@ const syncKeys = {
   settings: 'settings',
   lifetime: 'lifetime',
   cloudStats: 'cloudStats',
+  statsVersion: 'statsVersion',
 } as const
 
 const localKeys = {
@@ -145,6 +146,43 @@ export async function initializeStorage(): Promise<void> {
     setLocalStats(localStats),
     cloudStats ? undefined : chrome.storage.sync.set({ [syncKeys.cloudStats]: buildCloudStatsSnapshot(lifetime, localStats) }),
   ])
+}
+
+// v1 → v2 recalibration: the old estimator ran high on the categories that
+// dominate blocked traffic (34 KB per tracker ping, 2.8 MB per media request,
+// a whole video ad per re-rendered Twitch marker or pruned feed placement).
+// Stored aggregates carry no per-source breakdown to recompute from, so they
+// are rescaled once by the ratio of the recalibrated per-unit averages. The
+// blocked COUNTS are accurate and stay untouched.
+const statsSchemaVersion = 2
+const statsRecalibrationFactor = 0.2
+
+export async function migrateStatsSchema(): Promise<void> {
+  const result = await chrome.storage.sync.get(syncKeys.statsVersion)
+  const version = (result[syncKeys.statsVersion] as number | undefined) ?? 1
+  if (version >= statsSchemaVersion) return
+
+  // Mark first: if the rescale is interrupted, leaving the old totals in place
+  // is safer than rescaling a second time on the next start.
+  await chrome.storage.sync.set({ [syncKeys.statsVersion]: statsSchemaVersion })
+
+  const { lifetime, local } = await readPersistedStats()
+  lifetime.bytesSaved = Math.round(lifetime.bytesSaved * statsRecalibrationFactor)
+  lifetime.videoSecondsSaved = Math.round(lifetime.videoSecondsSaved * statsRecalibrationFactor)
+  for (const bucket of [...local.hourly, ...local.daily]) {
+    bucket.bytesSaved = Math.round(bucket.bytesSaved * statsRecalibrationFactor)
+    bucket.videoSecondsSaved = Math.round(bucket.videoSecondsSaved * statsRecalibrationFactor)
+  }
+  for (const site of Object.values(local.sites)) {
+    site.bytesSaved = Math.round(site.bytesSaved * statsRecalibrationFactor)
+    site.videoSecondsSaved = Math.round(site.videoSecondsSaved * statsRecalibrationFactor)
+  }
+
+  await persistStats(lifetime, local)
+  // Flush now: the version flag is already set, so the rescaled totals must
+  // reach sync storage before the worker can be killed — otherwise the next
+  // start would merge the stale (inflated) cloud snapshot back over them.
+  await flushSyncStats()
 }
 
 export async function hydrateSyncedStats(value: unknown): Promise<void> {

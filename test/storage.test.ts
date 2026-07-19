@@ -4,9 +4,12 @@ import {
   cloudStatsSnapshotBytes,
   defaultLifetimeStats,
   defaultLocalStats,
+  getLifetimeStats,
+  getLocalStats,
   getSettings,
   hydrateLocalStatsFromCloud,
   mergeLifetimeStats,
+  migrateStatsSchema,
   setSettings,
 } from '../src/shared/storage'
 import type { LocalStats, SiteStats, StatBucket } from '../src/shared/types'
@@ -137,6 +140,84 @@ describe('cloud stats sync', () => {
       expect(persisted.aggressiveCosmetic).toBe(true)
       expect(persisted.xEnhancements).toBeUndefined()
       expect(persisted.youtubeEnhancements).toBe(false)
+    }
+    finally {
+      Object.defineProperty(globalThis, 'chrome', {
+        configurable: true,
+        value: originalChrome,
+      })
+    }
+  })
+
+  it('recalibrates stored estimates once on the v2 stats schema', async () => {
+    const originalChrome = globalThis.chrome
+    const syncStore: Record<string, unknown> = {
+      lifetime: {
+        adsBlocked: 1_000,
+        bytesSaved: 10_000_000,
+        videoSecondsSaved: 10_000,
+        since: '2026-06-01T00:00:00.000Z',
+        lastUpdated: '2026-07-01T00:00:00.000Z',
+      },
+    }
+    const localStore: Record<string, unknown> = {
+      stats: {
+        hourly: [{ key: '2026-07-01T10', adsBlocked: 10, bytesSaved: 100_000, videoSecondsSaved: 600 }],
+        daily: [{ key: '2026-07-01', adsBlocked: 10, bytesSaved: 100_000, videoSecondsSaved: 600 }],
+        sites: {
+          'example.com': { hostname: 'example.com', adsBlocked: 10, bytesSaved: 100_000, videoSecondsSaved: 600, lastBlockedAt: '2026-07-01T00:00:00.000Z' },
+        },
+        recentEvents: [],
+      },
+    }
+
+    Object.defineProperty(globalThis, 'chrome', {
+      configurable: true,
+      value: {
+        storage: {
+          sync: {
+            async get(keys: string | string[]) {
+              const list = Array.isArray(keys) ? keys : [keys]
+              return Object.fromEntries(list.map(key => [key, syncStore[key]]))
+            },
+            async set(values: Record<string, unknown>) {
+              Object.assign(syncStore, values)
+            },
+          },
+          local: {
+            async get(keys: string | string[]) {
+              const list = Array.isArray(keys) ? keys : [keys]
+              return Object.fromEntries(list.map(key => [key, localStore[key]]))
+            },
+            async set(values: Record<string, unknown>) {
+              Object.assign(localStore, values)
+            },
+          },
+        },
+      } as unknown as typeof chrome,
+    })
+
+    try {
+      await migrateStatsSchema()
+
+      // Estimates rescale by the recalibration factor; counts stay untouched.
+      const lifetime = await getLifetimeStats()
+      expect(lifetime.bytesSaved).toBe(2_000_000)
+      expect(lifetime.videoSecondsSaved).toBe(2_000)
+      expect(lifetime.adsBlocked).toBe(1_000)
+
+      const local = await getLocalStats()
+      expect(local.daily[0].bytesSaved).toBe(20_000)
+      expect(local.daily[0].videoSecondsSaved).toBe(120)
+      expect(local.sites['example.com'].bytesSaved).toBe(20_000)
+      expect(local.sites['example.com'].adsBlocked).toBe(10)
+      expect(syncStore.statsVersion).toBe(2)
+
+      // A second run is a no-op — the version flag prevents double rescaling.
+      await migrateStatsSchema()
+      const again = await getLifetimeStats()
+      expect(again.bytesSaved).toBe(2_000_000)
+      expect(again.videoSecondsSaved).toBe(2_000)
     }
     finally {
       Object.defineProperty(globalThis, 'chrome', {

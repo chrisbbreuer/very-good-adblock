@@ -15,6 +15,7 @@ import {
   getSettings,
   hydrateSyncedStats,
   initializeStorage,
+  migrateStatsSchema,
   recordBlockEvents,
   resetStats,
   setSettings,
@@ -419,6 +420,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 async function setup(): Promise<void> {
   await pageStatsHydration
   await initializeStorage()
+  await migrateStatsSchema()
   const settings = await getSettings()
   cachedSettings = settings
   await syncDynamicRules(settings)
