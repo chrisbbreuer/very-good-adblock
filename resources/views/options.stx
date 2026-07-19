@@ -38,9 +38,9 @@
           <small>estimated</small>
         </article>
         <article class="metric-card">
-          <span>Version</span>
-          <strong id="dashboard-version">0.0.0</strong>
-          <small>local build</small>
+          <span>Blocked today</span>
+          <strong id="dashboard-today">0</strong>
+          <small>since midnight</small>
         </article>
       </section>
 

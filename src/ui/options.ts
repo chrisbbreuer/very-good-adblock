@@ -8,7 +8,7 @@ const elements = {
   blocked: byId('dashboard-blocked'),
   data: byId('dashboard-data'),
   video: byId('dashboard-video'),
-  version: byId('dashboard-version'),
+  today: byId('dashboard-today'),
   dailyChart: byId('daily-chart'),
   enabled: byId<HTMLInputElement>('setting-enabled'),
   cosmetic: byId<HTMLInputElement>('setting-cosmetic'),
@@ -177,7 +177,9 @@ function render(next: DashboardState): void {
   elements.blocked.textContent = next.lifetime.adsBlocked.toLocaleString()
   elements.data.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.video.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
-  elements.version.textContent = next.manifestVersion
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const today = next.local.daily.find(bucket => bucket.key === todayKey)
+  elements.today.textContent = (today?.adsBlocked ?? 0).toLocaleString()
   elements.enabled.checked = next.settings.enabled
   elements.cosmetic.checked = next.settings.cosmeticFiltering
   elements.aggressive.checked = next.settings.aggressiveCosmetic
@@ -281,6 +283,7 @@ function renderDiagnostics(next: DashboardState): void {
     ['Static rules', next.filters.staticRuleCount],
     ['Generated hosts', next.filters.generatedHostRules],
     ['Filter sources', next.filters.sources.length],
+    ['Version', next.manifestVersion],
     ['DNR telemetry', next.dnr.available ? `${next.dnr.recentMatchedRules} recent` : 'Unavailable'],
     ['Active-tab DNR', next.dnr.available ? next.dnr.activeTabMatchedRules : 0],
     ['Blocked on this page', `${next.activePage.blocked} (${next.activePage.network} network, ${next.activePage.content} hidden)`],
