@@ -51,6 +51,7 @@
     "dns:sync": "bunx --bun buddy dns:sync",
     "dns:pull": "bunx --bun buddy dns:pull",
     "release": "bunx --bun buddy release",
+    "release:minor": "bunx --bun buddy release --bump minor",
     "changelog": "bunx --bun buddy changelog",
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun scripts/generate-marketing-preview.ts",
