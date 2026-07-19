@@ -45,6 +45,15 @@ interface PageVisitState {
 
 const pageBadgeStats = new Map<number, PageVisitState>()
 const cosmeticActivity = new Map<number, Map<string, number>>()
+// pageBadgeStats is mirrored to chrome.storage.session (debounced) so the
+// per-page counts survive service-worker restarts: MV3 workers are killed
+// after ~30s idle, and without the mirror the badge and popup reset to zero
+// mid-visit on exactly the long-lived pages (streams, videos) that rack up
+// the most blocks. Session storage dies with the browser session, matching
+// the per-visit lifetime of these counters.
+const pageStatsStorageKey = 'pageBadgeStats'
+const pageStatsPersistDelayMs = 500
+let pageStatsPersistTimer: ReturnType<typeof setTimeout> | undefined
 // Tabs opened by another tab (target=_blank clicks, scripted window.open that
 // the page-level guard let through), remembered briefly so a network-blocked
 // pop-under can be attributed to the page that spawned it and closed.
@@ -64,6 +73,52 @@ let badgePollTicksLeft = 0
 // too often to await chrome.storage on every event. Kept in sync through the
 // storage.onChanged listener below; undefined until setup() loads them.
 let cachedSettings: ExtensionSettings | undefined
+
+// Kick off the restore immediately so counts from before a worker restart are
+// back before the first events land. Listeners merge rather than overwrite.
+const pageStatsHydration = hydratePageBadgeStats()
+
+async function hydratePageBadgeStats(): Promise<void> {
+  const session = chrome.storage.session as chrome.storage.StorageArea | undefined
+  if (!session) return
+
+  try {
+    const stored = await session.get(pageStatsStorageKey)
+    const entries = stored[pageStatsStorageKey] as Record<string, PageVisitState> | undefined
+    if (!entries) return
+
+    for (const [key, state] of Object.entries(entries)) {
+      const tabId = Number(key)
+      if (!Number.isInteger(tabId) || !state || typeof state !== 'object') continue
+
+      // Live events can land before hydration finishes; keep whichever side is
+      // ahead per field rather than letting the older snapshot erase them.
+      const existing = pageBadgeStats.get(tabId)
+      pageBadgeStats.set(tabId, {
+        content: Math.max(existing?.content ?? 0, state.content ?? 0),
+        network: Math.max(existing?.network ?? 0, state.network ?? 0),
+        url: existing?.url ?? state.url,
+        loadedAt: Math.min(existing?.loadedAt ?? Number.POSITIVE_INFINITY, state.loadedAt ?? Number.POSITIVE_INFINITY),
+        networkCheckedAt: Math.max(existing?.networkCheckedAt ?? 0, state.networkCheckedAt ?? 0),
+      })
+    }
+  }
+  catch {
+    // Session storage unavailable or unreadable; counts stay memory-only.
+  }
+}
+
+function schedulePageStatsPersist(): void {
+  const session = chrome.storage.session as chrome.storage.StorageArea | undefined
+  if (!session || pageStatsPersistTimer) return
+
+  pageStatsPersistTimer = setTimeout(() => {
+    pageStatsPersistTimer = undefined
+    const snapshot: Record<string, PageVisitState> = {}
+    for (const [tabId, state] of pageBadgeStats) snapshot[String(tabId)] = state
+    void session.set({ [pageStatsStorageKey]: snapshot }).catch(() => {})
+  }, pageStatsPersistDelayMs)
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   void setup()
@@ -95,6 +150,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' || changeInfo.url) {
     pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
+    schedulePageStatsPersist()
     void updateBadge(tabId)
   }
 
@@ -108,6 +164,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
   popupCandidates.delete(tabId)
+  schedulePageStatsPersist()
   if (badgePollTabId === tabId) {
     badgePollTabId = undefined
     badgePollTicksLeft = 0
@@ -126,7 +183,10 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const tabId = info.request.tabId
   if (tabId < 0) return
   const details = pageBadgeStats.get(tabId)
-  if (details) details.network += 1
+  if (details) {
+    details.network += 1
+    schedulePageStatsPersist()
+  }
   scheduleBadgeRefresh(tabId)
 })
 
@@ -167,6 +227,7 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   if (pageHostname && siteMatches(pageHostname, settings.allowedSites)) return
 
   page.network += 1
+  schedulePageStatsPersist()
   scheduleBadgeRefresh(details.tabId)
 }
 
@@ -229,6 +290,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 })
 
 async function setup(): Promise<void> {
+  await pageStatsHydration
   await initializeStorage()
   const settings = await getSettings()
   cachedSettings = settings
@@ -511,6 +573,7 @@ function incrementPageContent(tabId: number, count: number, url?: string): void 
     loadedAt: existing?.loadedAt ?? Date.now(),
     networkCheckedAt: existing?.networkCheckedAt ?? 0,
   })
+  schedulePageStatsPersist()
 }
 
 /**
@@ -532,7 +595,11 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
-    details.network = Math.max(details.network, matched.rulesMatchedInfo.length)
+    const reconciled = Math.max(details.network, matched.rulesMatchedInfo.length)
+    if (reconciled !== details.network) {
+      details.network = reconciled
+      schedulePageStatsPersist()
+    }
   }
   catch {
     // getMatchedRules can throw without the feedback permission or when quota is
