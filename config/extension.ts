@@ -19,6 +19,13 @@ const extension: ExtensionConfig = defineExtension({
   name: 'Very Good AdBlock',
   description: 'Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. Fast, private, no telemetry.',
   geckoId: 'extension@verygoodadblock.org',
+  chromeWebStore: {
+    publisherId: process.env.CHROME_WEB_STORE_PUBLISHER_ID ?? '',
+    itemId: 'ondclgjpkclbchfbbjdikdpdnopbachc',
+  },
+  firefoxAddons: {
+    channel: 'listed',
+  },
   safariBundleId: 'org.verygoodadblock.VeryGoodAdBlock',
   safariTeamId: '3JJRNQW6B7',
   // Site-only pages built into dist for the marketing site — never shipped in

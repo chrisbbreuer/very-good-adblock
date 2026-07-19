@@ -1,13 +1,9 @@
 name: Release
 
-# Cut a GitHub Release with the packaged Chrome + Firefox extensions attached.
-# Triggered by a version tag — `buddy release` bumps package.json, writes the
-# changelog (logsmith), commits, tags `v*` and pushes, which fires this workflow.
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,47 +13,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Provides the bun runtime (install: false ⇒ pantry sets up bun without
-      # running a project `pantry install`; we use `bun install` for node deps).
-      - name: Setup Pantry
-        uses: home-lang/pantry/packages/action@main
-        with:
-          install: 'false'
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Builds and zips both targets to the repo root:
-      #   very-good-adblock-<version>.zip and very-good-adblock-<version>-firefox.zip
-      - name: Package extensions (Chrome + Firefox)
-        run: |
-          bun run package
-          bun run package:firefox
-
-      # Creates (or updates) the GitHub Release for the tag and uploads the
-      # extension zips as assets. `release-changelog: auto` has the action
-      # generate this release's notes from git history with logsmith (previous
-      # tag → this tag), and it also generates and attaches a checksums.txt
-      # (sha256) over the assets — no committed CHANGELOG.md or extra step needed.
-      - name: Create GitHub Release
-        uses: home-lang/pantry/packages/action@main
-        with:
-          install: 'false'
-          release: 'true'
-          release-changelog: auto
-          release-checksums: 'true'
-          release-files: |
-            very-good-adblock-*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  publish:
+    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.125
+    with:
+      chrome-publisher-id: ${{ vars.CHROME_WEB_STORE_PUBLISHER_ID }}
+      safari-enabled: ${{ vars.ENABLE_SAFARI_PUBLISH == 'true' }}
+    secrets:
+      CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON: ${{ secrets.CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON }}
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}

@@ -42,6 +42,9 @@
     "package": "bun run build && bun run validate:extension && bun --bun scripts/package-extension.ts",
     "package:firefox": "bun run build:firefox && bun run validate:extension:firefox && bun --bun scripts/package-extension.ts --target=firefox",
     "package:safari": "bun run build:safari && bun run validate:extension:safari && bun --bun scripts/package-extension.ts --target=safari",
+    "chrome:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:chrome:publish",
+    "chrome:status": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:chrome:status",
+    "firefox:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:firefox:publish",
     "safari:app": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:app",
     "safari:init": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:init",
     "safari:provision": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:provision",
@@ -53,10 +56,10 @@
     "dns:diff": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:diff verygoodadblock.org",
     "dns:sync": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:sync verygoodadblock.org",
     "dns:pull": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:pull verygoodadblock.org",
-    "release": "bun --bun scripts/release.ts",
-    "release:patch": "bun --bun scripts/release.ts --bump patch",
-    "release:minor": "bun --bun scripts/release.ts --bump minor",
-    "release:major": "bun --bun scripts/release.ts --bump major",
+    "release": "bun node_modules/@stacksjs/buddy/dist/cli.js release",
+    "release:patch": "bun node_modules/@stacksjs/buddy/dist/cli.js release --bump patch",
+    "release:minor": "bun node_modules/@stacksjs/buddy/dist/cli.js release --bump minor",
+    "release:major": "bun node_modules/@stacksjs/buddy/dist/cli.js release --bump major",
     "changelog": "bunx --bun buddy changelog",
     "screenshots": "bun run build && bun --bun scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun scripts/generate-marketing-preview.ts",
@@ -76,14 +79,18 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "stacks": "^0.70.120"
+    "@stacksjs/bunpress": "^0.1.13",
+    "@stacksjs/components": "^0.2.99",
+    "@stacksjs/stx": "^0.2.99",
+    "bun-plugin-stx": "^0.2.99",
+    "stacks": "^0.70.125"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
     "@gorhill/ubo-core": "^0.1.30",
     "@types/chrome": "^0.2.2",
     "adblockpluscore": "^0.11.1",
-    "better-dx": "^0.2.15",
+    "better-dx": "^0.2.19",
     "web-ext": "^10.4.0"
   },
   "git-hooks": {
