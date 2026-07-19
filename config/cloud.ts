@@ -88,6 +88,18 @@ export const tsCloud: TsCloudConfig = {
       domain: 'www.verygoodadblock.org',
       redirect: 'https://verygoodadblock.org',
     },
+
+    // Legacy hyphenated domain → canonical domain. Declaring these as rpx
+    // redirect sites makes ts-cloud upsert both zones to the shared Hetzner box,
+    // provision their TLS names, and keep the request path/query intact.
+    veryGoodAdblockLegacy: {
+      domain: 'very-good-adblock.org',
+      redirect: 'https://verygoodadblock.org',
+    },
+    veryGoodAdblockLegacyWww: {
+      domain: 'www.very-good-adblock.org',
+      redirect: 'https://verygoodadblock.org',
+    },
   },
 }
 
