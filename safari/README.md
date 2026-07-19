@@ -71,18 +71,28 @@ DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer bun run safari:app
 
 ## Distribution
 
-Two supported paths once signed:
+`safari:publish` builds the extension, syncs it into the container app,
+archives a signed Release build, and uploads it to App Store Connect:
 
-- **Mac App Store** — `xcodebuild archive` (or Xcode → Product → Archive), then
-  Xcode Organizer → Distribute App → App Store Connect. Needs an App ID for
-  `org.verygoodadblock.VeryGoodAdBlock` (and the `.Extension` suffix id is
-  covered by the same App Group-less setup) plus an App Store Connect record.
+```bash
+export APP_STORE_CONNECT_API_KEY_ID=...
+export APP_STORE_CONNECT_API_ISSUER_ID=...
+export APP_STORE_CONNECT_API_KEY_PATH=/absolute/path/to/AuthKey_....p8
+
+bun run safari:validate                 # validate without uploading
+bun run safari:publish -- --build 42    # archive and upload
+```
+
+The command needs an App ID and App Store Connect app record for
+`org.verygoodadblock.VeryGoodAdBlock`. Use a stable Xcode release accepted by
+App Store Connect. The checked-in `safariTeamId` supplies the team ID, and the
+marketing version defaults to `package.json`.
+
+For direct distribution outside the Mac App Store:
+
 - **Developer ID + notarization** — archive, export with a Developer ID
   profile, then `xcrun notarytool submit … --wait && xcrun stapler staple
   VeryGoodAdBlock.app`. The project already enables the hardened runtime.
-
-Either way, bump `MARKETING_VERSION` in the project when
-[`package.json`](../package.json) releases.
 
 ## Regenerating with Apple's converter (optional)
 

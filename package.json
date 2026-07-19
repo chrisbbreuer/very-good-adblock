@@ -44,11 +44,14 @@
     "package:safari": "bun run build:safari && bun run validate:extension:safari && bun --bun scripts/package-extension.ts --target=safari",
     "safari:app": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:app",
     "safari:init": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:init",
+    "safari:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish",
+    "safari:validate": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish --validate-only",
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
     "site:build": "bun run build && bun run docs:build && bun --bun scripts/build-site.ts",
     "deploy": "bunx --bun buddy deploy",
-    "dns:sync": "bunx --bun buddy dns:sync",
-    "dns:pull": "bunx --bun buddy dns:pull",
+    "dns:diff": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:diff verygoodadblock.org",
+    "dns:sync": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:sync verygoodadblock.org",
+    "dns:pull": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:pull verygoodadblock.org",
     "release": "bun --bun scripts/release.ts",
     "release:patch": "bun --bun scripts/release.ts --bump patch",
     "release:minor": "bun --bun scripts/release.ts --bump minor",
@@ -72,7 +75,7 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "stacks": "^0.70.73"
+    "stacks": "^0.70.118"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
