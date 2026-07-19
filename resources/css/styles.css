@@ -646,6 +646,19 @@ h1 {
   font-size: 13px;
 }
 
+/* Long hostnames and cosmetic selectors truncate with an ellipsis instead of
+   shoving the value off the row; the full string stays on the title attr. */
+.diagnostic-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostic-row strong {
+  flex: none;
+}
+
 .current-site-card {
   display: block;
 }

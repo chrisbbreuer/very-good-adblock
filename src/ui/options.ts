@@ -290,6 +290,9 @@ function diagnosticRow(label: string, value: string): HTMLElement {
   const labelElement = document.createElement('span')
   const valueElement = document.createElement('strong')
   labelElement.textContent = label
+  // The label truncates with an ellipsis (see styles.css) — keep the full
+  // hostname/selector readable on hover.
+  labelElement.title = label
   valueElement.textContent = value
   row.replaceChildren(labelElement, valueElement)
   return row
