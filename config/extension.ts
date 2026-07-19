@@ -19,6 +19,19 @@ const extension: ExtensionConfig = defineExtension({
   name: 'Very Good AdBlock',
   description: 'Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. Fast, private, no telemetry.',
   geckoId: 'extension@verygoodadblock.org',
+  safariBundleId: 'org.verygoodadblock.VeryGoodAdBlock',
+  // Site-only pages built into dist for the marketing site — never shipped in
+  // the appex (extension:safari:app keeps them out of the synced Resources).
+  safariExclude: [
+    'marketing.html',
+    'marketing.js',
+    'features.html',
+    'network-blocking.html',
+    'youtube-twitch.html',
+    'popups.html',
+    'controls.html',
+    'privacy.html',
+  ],
   targets: ['chrome', 'firefox'],
 
   background: 'src/background/index.ts',
