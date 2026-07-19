@@ -249,9 +249,18 @@ function renderPageVisit(next: DashboardState): void {
   elements.pageBlocksToggle.title = title
 }
 
-/** The expandable "what's blocked" list under the page counter. */
+/**
+ * The expandable "what's blocked" list under the page counter. Rows rebuild
+ * only when the entries actually change — the live tick fires every 2s, and
+ * rebuilding identical rows would drop hover/scroll state each time.
+ */
+let pageBlocksSignature = ''
+
 function renderPageBlocks(next: DashboardState): void {
   const entries = next.activePageBlocks
+  const signature = JSON.stringify(entries)
+  if (signature === pageBlocksSignature) return
+  pageBlocksSignature = signature
 
   if (!entries.length) {
     elements.pageBlocks.replaceChildren(emptyRow(
