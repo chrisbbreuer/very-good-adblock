@@ -358,8 +358,8 @@ h1 {
   flex: none;
   padding: 1px 6px;
   border-radius: var(--radius-pill);
-  background: rgba(var(--accent-rgb), 0.16);
-  color: var(--accent-soft);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
