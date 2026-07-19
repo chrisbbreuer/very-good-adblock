@@ -371,7 +371,7 @@
 				CODE_SIGN_ENTITLEMENTS = VeryGoodAdBlock/VeryGoodAdBlock.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3JJRNQW6B7;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST = NO;
 				INFOPLIST_FILE = VeryGoodAdBlock/Info.plist;
@@ -394,7 +394,7 @@
 				CODE_SIGN_ENTITLEMENTS = VeryGoodAdBlock/VeryGoodAdBlock.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3JJRNQW6B7;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST = NO;
 				INFOPLIST_FILE = VeryGoodAdBlock/Info.plist;
@@ -415,7 +415,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "VeryGoodAdBlock Extension/VeryGoodAdBlock_Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3JJRNQW6B7;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST = NO;
 				INFOPLIST_FILE = "VeryGoodAdBlock Extension/Info.plist";
@@ -437,7 +437,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "VeryGoodAdBlock Extension/VeryGoodAdBlock_Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3JJRNQW6B7;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST = NO;
 				INFOPLIST_FILE = "VeryGoodAdBlock Extension/Info.plist";
