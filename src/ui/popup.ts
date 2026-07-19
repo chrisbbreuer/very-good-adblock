@@ -21,6 +21,8 @@ const elements = {
   siteToggle: byId<HTMLButtonElement>('site-toggle'),
   pageBlocked: byId('page-blocked'),
   pageBreakdown: byId('page-breakdown'),
+  pageBlocksToggle: byId<HTMLButtonElement>('page-blocks-toggle'),
+  pageBlocks: byId('page-blocks'),
   siteBlocked: byId('site-blocked'),
   siteData: byId('site-data'),
   siteVideo: byId('site-video'),
@@ -75,6 +77,12 @@ elements.siteToggle.addEventListener('click', async () => {
 
 elements.openOptions.addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
+})
+
+elements.pageBlocksToggle.addEventListener('click', () => {
+  const expanded = elements.pageBlocksToggle.getAttribute('aria-expanded') === 'true'
+  elements.pageBlocksToggle.setAttribute('aria-expanded', String(!expanded))
+  elements.pageBlocks.hidden = expanded
 })
 
 elements.reportAd.addEventListener('click', async () => {
@@ -142,6 +150,7 @@ function renderLive(next: DashboardState): void {
   // An allow-listed site reads as "paused" everywhere else; say which it is.
   elements.siteTitle.textContent = !enabled ? 'Protection paused' : allowed ? 'Site allowed' : 'Protection active'
   renderPageVisit(next)
+  renderPageBlocks(next)
   elements.dataSaved.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
@@ -228,10 +237,55 @@ function renderPageVisit(next: DashboardState): void {
   elements.pageBreakdown.textContent = next.activeTab ? 'on this page' : 'no active tab'
 
   const title = next.activeTab
-    ? `${page.blocked.toLocaleString()} blocked on this page — ${page.network.toLocaleString()} network requests, ${page.content.toLocaleString()} pop-ups and placements`
+    ? `${page.blocked.toLocaleString()} blocked on this page — ${page.network.toLocaleString()} network requests, ${page.content.toLocaleString()} pop-ups and placements. Click for the list.`
     : 'No active tab'
-  elements.pageBlocked.title = title
-  elements.pageBreakdown.title = title
+  elements.pageBlocksToggle.title = title
+}
+
+/** The expandable "what's blocked" list under the page counter. */
+function renderPageBlocks(next: DashboardState): void {
+  const entries = next.activePageBlocks
+
+  if (!entries.length) {
+    elements.pageBlocks.replaceChildren(emptyRow(
+      next.activeTab ? 'Nothing blocked on this page yet.' : 'Open a site to see what gets blocked.',
+    ))
+    return
+  }
+
+  elements.pageBlocks.replaceChildren(
+    ...entries.map((entry) => {
+      const row = document.createElement('div')
+      row.className = 'page-block-row'
+
+      const kind = document.createElement('span')
+      kind.className = 'page-block-kind'
+      kind.textContent = pageBlockKindLabel(entry.kind)
+
+      const labelEl = document.createElement('span')
+      labelEl.className = 'page-block-label'
+      labelEl.textContent = entry.detail ? `${entry.label} · ${entry.detail}` : entry.label
+      labelEl.title = labelEl.textContent
+
+      const count = document.createElement('strong')
+      count.textContent = `×${entry.count.toLocaleString()}`
+
+      row.replaceChildren(kind, labelEl, count)
+      return row
+    }),
+  )
+}
+
+function pageBlockKindLabel(kind: DashboardState['activePageBlocks'][number]['kind']): string {
+  switch (kind) {
+    case 'network': return 'Network'
+    case 'popup': return 'Pop-up'
+    case 'cosmetic': return 'Hidden'
+    case 'video': return 'Video'
+    case 'consent': return 'Consent'
+    case 'x': return 'Promoted'
+    default: return 'Other'
+  }
 }
 
 function renderTopCategories(next: DashboardState): void {

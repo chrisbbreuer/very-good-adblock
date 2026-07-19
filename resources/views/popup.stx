@@ -32,11 +32,12 @@
       </div>
 
       <section class="stat-grid" aria-label="Very Good AdBlock statistics">
-        <article class="metric-card primary">
+        <button class="metric-card primary page-blocks-toggle" id="page-blocks-toggle" type="button" aria-expanded="false" aria-controls="page-blocks" title="Show what was blocked on this page">
           <span>Blocked</span>
           <strong id="page-blocked">0</strong>
           <small id="page-breakdown">on this page</small>
-        </article>
+          <span class="page-blocks-chevron" aria-hidden="true">▾</span>
+        </button>
         <article class="metric-card">
           <span>Data saved</span>
           <strong id="data-saved">0 KB</strong>
@@ -48,6 +49,8 @@
           <small>estimated</small>
         </article>
       </section>
+
+      <div id="page-blocks" class="page-blocks" hidden></div>
 
       <section class="timeline-card">
         <div class="section-heading">
