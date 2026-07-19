@@ -420,7 +420,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 async function setup(): Promise<void> {
   await pageStatsHydration
   await initializeStorage()
-  await migrateStatsSchema()
+  try {
+    await migrateStatsSchema()
+  }
+  catch {
+    // A stats-migration failure must never take down the rest of setup —
+    // blocking and the badge matter more than recalibrated estimates.
+  }
   const settings = await getSettings()
   cachedSettings = settings
   await syncDynamicRules(settings)
