@@ -44,6 +44,7 @@
     "package:safari": "bun run build:safari && bun run validate:extension:safari && bun --bun scripts/package-extension.ts --target=safari",
     "safari:app": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:app",
     "safari:init": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:init",
+    "safari:provision": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:provision",
     "safari:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish",
     "safari:validate": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish --validate-only",
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
@@ -75,7 +76,7 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "stacks": "^0.70.119"
+    "stacks": "^0.70.120"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
