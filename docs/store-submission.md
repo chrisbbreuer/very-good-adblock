@@ -3,37 +3,42 @@
 Copy-paste reference for the Chrome Web Store and Firefox AMO listings. Keep this
 in sync with `src/shared/constants.ts` (name/description) and `package.json`.
 
-## Publishing — step by step
+## Publishing
 
-**One-time accounts**
+Cut a release from a clean, up-to-date `main` branch:
 
-- **Chrome Web Store**: a developer account at the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) (one-time US$5 registration fee).
-- **Firefox AMO**: a free account at the [AMO Developer Hub](https://addons.mozilla.org/developers/).
-- The Firefox add-on id (`extension@verygoodadblock.org`) is fixed — never change it, or AMO treats it as a brand-new add-on.
+```bash
+bun run release:patch # or release:minor / release:major
+```
 
-**Build the store artifacts** (or download them from the tagged GitHub Release — `gh release download v<version>`):
+Stacks creates the release commit and `v*` tag. The tag calls Stacks' reusable
+browser-extension workflow, which builds and validates every target, submits the
+existing Chrome and Firefox listings, builds/uploads the signed Safari container
+app with stable Xcode, and creates the GitHub Release only after every enabled
+store job succeeds. Firefox receives a human-readable source archive alongside
+the signed build.
+
+The workflow reads these repository settings; never commit their values:
+
+- `CHROME_WEB_STORE_PUBLISHER_ID` (variable) and
+  `CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON` (secret)
+- `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (secrets)
+- `APP_STORE_CONNECT_API_KEY`, `APP_STORE_CONNECT_API_KEY_ID`, and
+  `APP_STORE_CONNECT_API_ISSUER_ID` (secrets)
+- `ENABLE_SAFARI_PUBLISH` (variable; `true` after the macOS app record exists)
+
+The Chrome item id and stable Firefox add-on id are declared in
+`config/extension.ts`; never replace them or the stores will treat the upload as
+a different extension.
+
+For local validation, build the same store artifacts directly:
 
 ```bash
 bun run package          # → very-good-adblock-<version>-chrome.zip    (Chrome)
 bun run package:firefox  # → very-good-adblock-<version>-firefox.zip   (Firefox)
+bun run package:safari   # → very-good-adblock-<version>-safari.zip    (Safari source bundle)
 bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x800)
 ```
-
-**Chrome Web Store**
-
-1. [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **Add new item**.
-2. Upload `very-good-adblock-<version>-chrome.zip`. The icon (128px) comes from the manifest automatically.
-3. **Store listing**: paste the name, short + detailed description, and category (Productivity) from below; add the three 1280x800 screenshots.
-4. **Privacy practices**: set the single purpose, paste the permission justifications, and declare **no data collection** (see the disclosure below).
-5. **Submit for review** (typically hours to a few days). Later updates: bump the version, `bun run package`, and upload the new zip as a new package under the same item.
-
-**Firefox AMO**
-
-1. [AMO Developer Hub](https://addons.mozilla.org/developers/) → **Submit a New Add-on** → *On this site*.
-2. Upload `very-good-adblock-<version>-firefox.zip`; the validator runs automatically.
-3. **Source code**: the build is minified, so AMO requires source — upload a zip of this repo and note the build command `bun run build:firefox` (Bun ≥ 1.3, output in `dist-firefox/`).
-4. Fill the listing (same copy) and add the screenshots.
-5. **Submit for review**. Keep the add-on id stable across every submission.
 
 ## Basics
 
