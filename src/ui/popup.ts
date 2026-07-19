@@ -162,7 +162,7 @@ function renderLive(next: DashboardState): void {
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
   // Peak of the same 24-hour window the chart renders (see renderBars).
-  elements.chartPeak.textContent = `${Math.max(0, ...hourlyValues.slice(-24)).toLocaleString()} peak`
+  elements.chartPeak.textContent = `peak ${Math.max(0, ...hourlyValues.slice(-24)).toLocaleString()}/hr`
   elements.currentSite.textContent = active?.hostname || 'No active tab'
   elements.siteToggle.textContent = allowed ? 'Protect' : 'Allow'
   elements.siteToggle.disabled = !active
