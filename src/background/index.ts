@@ -5,7 +5,7 @@ import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost } from '../rules/blocked-hosts'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
-import { formatBytes } from '../shared/metrics'
+import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
 import {
   defaultSettings,
   getActiveTabState,
@@ -19,7 +19,7 @@ import {
   resetStats,
   setSettings,
 } from '../shared/storage'
-import type { ActivePageStats, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, RuntimeMessage, RuntimeResponse } from '../shared/types'
+import type { ActivePageStats, BlockEvent, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, ResourceCategory, RuntimeMessage, RuntimeResponse } from '../shared/types'
 
 const staticRuleCount = curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.hosts.length
 const filterSources = generatedNetworkHosts.sources.map(source => ({
@@ -30,10 +30,12 @@ const filterSources = generatedNetworkHosts.sources.map(source => ({
 }))
 /**
  * Per-tab counters for the current page visit (reset on navigation).
- * `content` is fed by the content script (cosmetic hides, video skips);
- * `network` is the declarativeNetRequest match count for this load, kept live by
- * the debug listener and reconciled against getMatchedRules. `loadedAt` bounds
- * the getMatchedRules lookup to the current visit.
+ * `content` is fed by the content script (cosmetic hides, video skips, pop-up
+ * blocks); `network` is the declarativeNetRequest match count for this load,
+ * kept live by the debug listener (unpacked) or the webRequest error listener
+ * (packed), and reconciled against getMatchedRules. Every network increment
+ * flows through addNetworkBlocks, which also feeds the lifetime/site stats.
+ * `loadedAt` bounds the getMatchedRules lookup to the current visit.
  */
 interface PageVisitState {
   content: number
@@ -120,6 +122,63 @@ function schedulePageStatsPersist(): void {
   }, pageStatsPersistDelayMs)
 }
 
+// Lifetime/site rollups for network blocks. The per-page counter moves
+// instantly, but a busy page can block hundreds of requests a minute — far too
+// many for one storage write each — so events accumulate per site+category and
+// flush on a short timer. Up to one flush window of events is lost if the
+// worker dies first; the page counters themselves are session-persisted.
+const pendingNetworkStats = new Map<string, BlockEvent>()
+const networkStatsFlushDelayMs = 5_000
+let networkStatsFlushTimer: ReturnType<typeof setTimeout> | undefined
+
+/** The single funnel for network-block increments: page counter plus stats. */
+function addNetworkBlocks(tabId: number, count: number, category: ResourceCategory): void {
+  if (count <= 0) return
+  const page = pageBadgeStats.get(tabId)
+  const hostname = page?.url ? hostnameFromUrl(page.url) : ''
+  if (!page || !hostname) return
+
+  page.network += count
+  schedulePageStatsPersist()
+
+  const key = `${hostname}:${category}`
+  const existing = pendingNetworkStats.get(key)
+  if (existing) {
+    existing.count += count
+    existing.bytesSaved = (existing.bytesSaved ?? 0) + estimateBytesSaved(category, count)
+    existing.occurredAt = new Date().toISOString()
+  }
+  else {
+    pendingNetworkStats.set(key, {
+      hostname,
+      source: 'dnr',
+      category,
+      count,
+      bytesSaved: estimateBytesSaved(category, count),
+      occurredAt: new Date().toISOString(),
+    })
+  }
+
+  if (networkStatsFlushTimer) return
+  networkStatsFlushTimer = setTimeout(() => {
+    networkStatsFlushTimer = undefined
+    void flushNetworkStats()
+  }, networkStatsFlushDelayMs)
+}
+
+async function flushNetworkStats(): Promise<void> {
+  if (!pendingNetworkStats.size) return
+  // Match the content-side rule: no stats accrue while protection is off.
+  if (!(await getSettings()).enabled) {
+    pendingNetworkStats.clear()
+    return
+  }
+
+  const events = [...pendingNetworkStats.values()]
+  pendingNetworkStats.clear()
+  await recordBlockEvents(events)
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void setup()
 })
@@ -182,11 +241,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const tabId = info.request.tabId
   if (tabId < 0) return
-  const details = pageBadgeStats.get(tabId)
-  if (details) {
-    details.network += 1
-    schedulePageStatsPersist()
-  }
+  addNetworkBlocks(tabId, 1, categoryForRequestType(info.request.type))
   scheduleBadgeRefresh(tabId)
 })
 
@@ -226,8 +281,7 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   const pageHostname = (page.url ? hostnameFromUrl(page.url) : '') || hostnameFromUrl(details.initiator ?? '')
   if (pageHostname && siteMatches(pageHostname, settings.allowedSites)) return
 
-  page.network += 1
-  schedulePageStatsPersist()
+  addNetworkBlocks(details.tabId, 1, categoryForRequestType(details.type))
   scheduleBadgeRefresh(details.tabId)
 }
 
@@ -595,10 +649,18 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
-    const reconciled = Math.max(details.network, matched.rulesMatchedInfo.length)
-    if (reconciled !== details.network) {
-      details.network = reconciled
-      schedulePageStatsPersist()
+    const delta = Math.max(0, matched.rulesMatchedInfo.length - details.network)
+    if (delta > 0) {
+      // Matches the live listeners missed (e.g. while the worker was down):
+      // fold them through the same funnel so lifetime stats stay in lockstep.
+      // The newest entries sit at the tail — categorize the delta from their
+      // request types, falling back to 'other' when the list is truncated.
+      const entries = matched.rulesMatchedInfo.slice(-delta)
+      for (const entry of entries) {
+        const type = (entry as { request?: { type?: string } }).request?.type ?? 'other'
+        addNetworkBlocks(tabId, 1, categoryForRequestType(type))
+      }
+      if (entries.length < delta) addNetworkBlocks(tabId, delta - entries.length, 'other')
     }
   }
   catch {

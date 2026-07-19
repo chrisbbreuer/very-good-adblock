@@ -15,6 +15,32 @@ export function estimateBytesSaved(category: ResourceCategory, count = 1): numbe
   return byteEstimates[category] * count
 }
 
+/** Map a network request type (webRequest / DNR match info) to a stat category. */
+export function categoryForRequestType(type: string): ResourceCategory {
+  switch (type) {
+    case 'script':
+      return 'script'
+    case 'image':
+      return 'image'
+    case 'media':
+      return 'media'
+    case 'stylesheet':
+      return 'stylesheet'
+    case 'font':
+      return 'font'
+    case 'xmlhttprequest':
+    case 'ping':
+    case 'websocket':
+    case 'beacon':
+      return 'xhr'
+    case 'main_frame':
+    case 'sub_frame':
+      return 'document'
+    default:
+      return 'other'
+  }
+}
+
 export function estimateVideoSecondsSaved(count = 1): number {
   return count * 15
 }
