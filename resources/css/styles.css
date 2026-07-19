@@ -150,7 +150,7 @@ button {
 
 .popup-frame {
   min-height: 100vh;
-  padding: 14px 12px 16px;
+  padding: 12px 12px 12px;
 }
 
 .glass-panel,
@@ -197,7 +197,7 @@ button {
 
 h1 {
   margin: 0;
-  font-size: 23px;
+  font-size: 21px;
   line-height: 1.08;
 }
 
@@ -211,8 +211,8 @@ h1 {
 }
 
 .power-button {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-pill);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.14);
@@ -232,8 +232,8 @@ h1 {
 }
 
 .power-glyph {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
 }
 
 .site-id {
@@ -261,8 +261,8 @@ h1 {
 .dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .dashboard-metrics {
@@ -274,11 +274,11 @@ h1 {
 .site-card,
 .dashboard-panel {
   border-radius: var(--radius-card);
-  padding: 11px;
+  padding: 10px;
 }
 
 .metric-card {
-  min-height: 80px;
+  min-height: 66px;
   background: linear-gradient(150deg, rgba(var(--text-rgb), 0.06), rgba(var(--text-rgb), 0.03));
 }
 
@@ -289,8 +289,8 @@ h1 {
 
 .metric-card strong {
   display: block;
-  margin: 7px 0 2px;
-  font-size: 23px;
+  margin: 5px 0 2px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -303,11 +303,11 @@ h1 {
 .timeline-card,
 .site-card,
 .category-list {
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 .section-heading {
-  min-height: 30px;
+  min-height: 26px;
   font-size: 13px;
 }
 
@@ -320,9 +320,9 @@ h1 {
   display: grid;
   grid-template-columns: repeat(24, 1fr);
   align-items: end;
-  height: 58px;
+  height: 52px;
   gap: 4px;
-  padding: 12px 1px 0;
+  padding: 8px 1px 0;
   overflow: visible;
   /* Baseline the bars sit on: anchors the eye so empty hours (flat dashes)
      read as "nothing blocked" instead of a missing chart. */
@@ -469,8 +469,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
-  padding: 8px 12px;
+  margin-top: 9px;
+  padding: 6px 10px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-inner);
   background: var(--panel-deep);
@@ -488,7 +488,7 @@ h1 {
 .chip-button {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  padding: 4px 10px;
+  padding: 3px 9px;
   font-size: 12px;
   font-weight: 700;
   color: rgba(var(--text-rgb), 0.82);
@@ -559,7 +559,7 @@ h1 {
 
 .site-stat-caption {
   display: block;
-  margin-top: 12px;
+  margin-top: 10px;
   color: rgba(var(--text-rgb), 0.5);
   font-size: 10px;
   font-weight: 800;
@@ -571,13 +571,13 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 7px;
 }
 
 .site-stat-grid article {
   min-width: 0;
   border-radius: var(--radius-inner);
-  padding: 9px 10px;
+  padding: 8px 9px;
   background: rgba(var(--text-rgb), 0.04);
 }
 
@@ -620,8 +620,8 @@ h1 {
   align-items: center;
   gap: 11px;
   width: 100%;
-  margin-top: 14px;
-  padding: 11px 12px;
+  margin-top: 10px;
+  padding: 9px 11px;
   text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius-inner);
@@ -681,7 +681,7 @@ h1 {
 }
 
 .status-message {
-  margin: 14px 2px 0;
+  margin: 10px 2px 0;
   font-size: 12px;
   line-height: 1.35;
 }
