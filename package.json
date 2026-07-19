@@ -75,7 +75,7 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "stacks": "^0.70.118"
+    "stacks": "^0.70.119"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
