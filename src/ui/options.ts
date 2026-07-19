@@ -270,6 +270,8 @@ function renderAllowedSites(next: DashboardState): void {
   elements.allowedSites.replaceChildren(
     ...next.settings.allowedSites.map((hostname) => {
       const button = pill(hostname)
+      button.classList.add('pill-removable')
+      button.title = `Remove ${hostname} from the allowlist`
       button.addEventListener('click', async () => {
         const allowedSites = next.settings.allowedSites.filter(site => site !== hostname)
         state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { allowedSites } })
@@ -289,6 +291,8 @@ function renderBlockedSites(next: DashboardState): void {
   elements.blockedSites.replaceChildren(
     ...next.settings.blockedSites.map((hostname) => {
       const button = pill(hostname)
+      button.classList.add('pill-removable')
+      button.title = `Remove ${hostname} from the blocklist`
       button.addEventListener('click', async () => {
         const blockedSites = next.settings.blockedSites.filter(site => site !== hostname)
         state = await sendMessage<DashboardState>({ type: 'set-settings', settings: { blockedSites } })

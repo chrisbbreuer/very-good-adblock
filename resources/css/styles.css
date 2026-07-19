@@ -811,6 +811,29 @@ h1 {
   padding: 8px 11px;
   color: var(--text);
   background: var(--panel-strong);
+  cursor: default;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+/* Site pills delete on click — show the affordance instead of hiding it. */
+.pill-removable {
+  cursor: pointer;
+}
+
+.pill-removable::after {
+  content: '×';
+  margin-left: 7px;
+  color: rgba(var(--text-rgb), 0.45);
+}
+
+.pill-removable:hover {
+  border-color: rgba(255, 92, 122, 0.42);
+  color: var(--danger);
+  background: rgba(255, 92, 122, 0.1);
+}
+
+.pill-removable:hover::after {
+  color: var(--danger);
 }
 
 .marketing-shell {
