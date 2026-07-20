@@ -16,7 +16,7 @@ jobs:
       name: production
       url: https://verygoodadblock.org
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Pantry
         uses: home-lang/pantry/packages/action@main
