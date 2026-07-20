@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
   publish:
-    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.143
+    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.144
     with:
       chrome-publisher-id: ${{ vars.CHROME_WEB_STORE_PUBLISHER_ID }}
       safari-enabled: ${{ vars.ENABLE_SAFARI_PUBLISH == 'true' }}
