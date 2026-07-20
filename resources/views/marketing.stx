@@ -45,7 +45,7 @@
             then stays out of the way. No telemetry, no bloat.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc">Add to Chrome</a>
+            <a class="primary-link" href="#get" data-browser-install>Choose your browser</a>
             <a class="download-pill" href="https://addons.mozilla.org/firefox/addon/very-good-adblock/" aria-label="Install Very Good AdBlock for Firefox">
               <img class="download-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="20" height="20" loading="lazy">
               <span>Firefox</span>
@@ -182,7 +182,7 @@
           <h2>Browse like the ads were never there.</h2>
           <p>MIT licensed, built for Chrome, Firefox, macOS, iPhone, and iPad from one codebase, with no account and no telemetry.</p>
           <div class="hero-actions">
-            <a class="primary-link" href="#get">Choose your browser</a>
+            <a class="primary-link" href="#get" data-browser-install>Choose your browser</a>
             <a class="secondary-link" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">View source</a>
           </div>
         </div>

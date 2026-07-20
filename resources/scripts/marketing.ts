@@ -4,6 +4,15 @@
  * SQLite): intercept the submit, post via fetch, and show inline status so the
  * visitor never leaves the page. Without JS the form still submits.
  */
+import { resolveBrowserInstall } from './browser-install'
+
+const installTarget = resolveBrowserInstall(navigator.userAgent)
+for (const link of document.querySelectorAll<HTMLAnchorElement>('[data-browser-install]')) {
+  link.href = installTarget.href
+  link.textContent = installTarget.label
+  link.setAttribute('aria-label', `${installTarget.label} with Very Good AdBlock`)
+}
+
 const form = document.getElementById('subscribe-form') as HTMLFormElement | null
 const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null
 const status = document.getElementById('subscribe-status')
