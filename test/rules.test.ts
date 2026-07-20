@@ -3,7 +3,7 @@ import { dynamicRuleEndId, dynamicRuleStartId } from '../src/shared/constants'
 import { buildDynamicRules } from '../src/rules/dynamic-rules'
 import { buildStaticRules, curatedRuleSeeds, redirectRuleSeeds } from '../src/rules/static-rules'
 import { defaultSettings } from '../src/shared/storage'
-import generatedNetworkHosts from '../rules/generated/network-hosts.json'
+import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
 
 describe('rules', () => {
   it('builds unique static DNR rules from curated seeds', () => {

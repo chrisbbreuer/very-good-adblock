@@ -3,7 +3,7 @@
  * declarativeNetRequest rules enforce, and a representative request corpus.
  *
  * The filter lists are the *same* sources the extension pins in
- * `rules/filter-sources.json`, fetched at their pinned revisions and cached in
+ * `src/rules/filter-sources.json`, fetched at their pinned revisions and cached in
  * `bench/fixtures/` (git-ignored — EasyList/AdGuard are GPL, so we don't vendor
  * them into this MIT repo). This keeps the comparison honest: our host set is
  * derived from exactly these lists, so the competitor engines match the same
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { curatedRuleSeeds } from '../../src/rules/static-rules'
 import { hostnameFromUrl } from '../../src/shared/domain'
 import type { BenchRequest, BenchResourceType } from './harness'
-import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
+import generatedNetworkHosts from '../../src/rules/generated/network-hosts.json'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const fixturesDir = join(here, '..', 'fixtures')

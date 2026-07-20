@@ -17,7 +17,7 @@ export const refreshRuleEndId = 89999
 export const maxRefreshRules = 25000
 export const filterRefreshAlarm = 'very-good-adblock-filter-refresh'
 export const resumeAlarm = 'very-good-adblock-resume-protection'
-export const filterRefreshUrl = 'https://raw.githubusercontent.com/chrisbbreuer/very-good-adblock/main/rules/generated/network-hosts.json'
+export const filterRefreshUrl = 'https://raw.githubusercontent.com/chrisbbreuer/very-good-adblock/main/src/rules/generated/network-hosts.json'
 
 // GitHub project links, used by the one-click "report an ad that got through"
 // flow so users can file a fully pre-filled issue straight from the popup.

@@ -4,7 +4,7 @@ import { defineExtension } from '@stacksjs/browser-extension'
 /**
  * Very Good AdBlock — MV3 extension config.
  *
- * This fully replaces the old `src/manifest.ts` + `scripts/build-extension.ts`
+ * This fully replaces the old hand-written manifest and build script
  * boilerplate: `@stacksjs/browser-extension` derives the Chrome/Firefox
  * manifests, bundles content/background + page scripts, builds & sanitizes the
  * stx pages, compiles the DNR ruleset, copies assets, and packages the

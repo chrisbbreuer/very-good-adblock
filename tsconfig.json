@@ -29,7 +29,7 @@
     "skipLibCheck": true
   },
   "include": [
-    "scripts/**/*.ts",
+    "resources/scripts/**/*.ts",
     "src/**/*.ts",
     "test/**/*.ts",
     "types/**/*.d.ts",

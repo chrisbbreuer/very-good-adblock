@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import packageJson from '../package.json'
-import type { BlockEvent, DashboardState, ExtensionSettings, LocalStats } from '../src/shared/types'
+import packageJson from '../../package.json'
+import type { BlockEvent, DashboardState, ExtensionSettings, LocalStats } from '../../src/shared/types'
 
 const extensionPath = resolve('dist')
 const screenshotDir = resolve('temp/smoke-screenshots')

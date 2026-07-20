@@ -1,5 +1,5 @@
 import packageJson from '../../package.json'
-import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
+import generatedNetworkHosts from '../rules/generated/network-hosts.json'
 import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'

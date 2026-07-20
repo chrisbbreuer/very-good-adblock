@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import generatedNetworkHosts from '../rules/generated/network-hosts.json'
+import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
 import { addBlockedHosts, isBlockedHost } from '../src/rules/blocked-hosts'
 
 describe('blocked-hosts matcher', () => {

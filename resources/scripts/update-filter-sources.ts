@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import sourceConfig from '../rules/filter-sources.json'
+import sourceConfig from '../../src/rules/filter-sources.json'
 
 interface FilterSource {
   name: string
@@ -40,7 +40,7 @@ for (const source of sourceConfig.sources as FilterSource[]) {
 }
 
 const hosts = [...allHosts].sort()
-await Bun.write('rules/generated/network-hosts.json', `${JSON.stringify({
+await Bun.write('src/rules/generated/network-hosts.json', `${JSON.stringify({
   generatedAt: new Date().toISOString(),
   totalHosts: hosts.length,
   hosts,

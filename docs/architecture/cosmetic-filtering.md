@@ -98,5 +98,5 @@ which keeps the selector policy testable without a browser.
 - `test/x-prune.test.ts` asserts the GraphQL pruner removes promoted entries
   (by `promotedMetadata` and `promoted-` ids, including promoted module items)
   while leaving organic entries and unrelated `entries` arrays untouched.
-- `scripts/smoke-extension.ts` screenshots the built extension against YouTube,
+- `resources/scripts/smoke-extension.ts` screenshots the built extension against YouTube,
   Twitch, popup, options, and marketing surfaces.

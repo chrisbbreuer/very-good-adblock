@@ -1,4 +1,4 @@
-import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
+import generatedNetworkHosts from './generated/network-hosts.json'
 import { normalizeHostname } from '../shared/domain'
 import { curatedRuleSeeds } from './static-rules'
 

@@ -1,5 +1,5 @@
-import { buildStaticRules } from '../src/rules/static-rules'
-import generatedNetworkHosts from '../rules/generated/network-hosts.json'
+import { buildStaticRules } from '../../src/rules/static-rules'
+import generatedNetworkHosts from '../../src/rules/generated/network-hosts.json'
 
 // Chrome MV3 only guarantees this many *enabled* static declarativeNetRequest
 // rules will load (chrome.declarativeNetRequest.GUARANTEED_MINIMUM_STATIC_RULES).
@@ -17,7 +17,7 @@ if (generatedNetworkHosts.totalHosts < 1000) {
 if (rules.length > GUARANTEED_MINIMUM_STATIC_RULES) {
   throw new Error(
     `Static ruleset has ${rules.length} rules, over Chrome's guaranteed static-rule limit of ${GUARANTEED_MINIMUM_STATIC_RULES}; the overflow may not load. `
-    + 'Lower maxHostsPerSource in rules/filter-sources.json or split into additional rulesets.',
+    + 'Lower maxHostsPerSource in src/rules/filter-sources.json or split into additional rulesets.',
   )
 }
 

@@ -1,4 +1,4 @@
-import packageJson from '../package.json'
+import packageJson from '../../package.json'
 
 const targetArg = Bun.argv.find(arg => arg.startsWith('--target='))?.split('=')[1]
 const target = targetArg === 'firefox' || targetArg === 'safari' ? targetArg : 'chrome'

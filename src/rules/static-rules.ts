@@ -1,5 +1,5 @@
 import type { ResourceCategory } from '../shared/types'
-import generatedNetworkHosts from '../../rules/generated/network-hosts.json'
+import generatedNetworkHosts from './generated/network-hosts.json'
 
 export interface CuratedRuleSeed {
   id: number

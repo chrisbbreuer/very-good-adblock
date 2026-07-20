@@ -4,7 +4,7 @@
  * surfaces show the same believable numbers, and a product-formatting change
  * (e.g. video time in hours) shows up everywhere at once.
  */
-import type { DashboardState } from '../../src/shared/types'
+import type { DashboardState } from '../../../src/shared/types'
 
 /** A chrome.runtime mock that answers the popup/options message calls. */
 export function shimScript(state: DashboardState): string {

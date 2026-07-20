@@ -1,6 +1,6 @@
 /**
  * Marketing-page email capture. Progressive enhancement over a plain form that
- * POSTs same-origin to /api/email/subscribe (server/api.ts → project-owned
+ * POSTs same-origin to /api/email/subscribe (Stacks route → project-owned
  * SQLite): intercept the submit, post via fetch, and show inline status so the
  * visitor never leaves the page. Without JS the form still submits.
  */
