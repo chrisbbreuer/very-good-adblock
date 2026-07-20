@@ -1,5 +1,34 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.1.2...v0.2.0)
+
+## ✨ Features
+
+- **safari**: add universal Apple platform support ([8d4443b](https://github.com/chrisbbreuer/very-good-adblock/commit/8d4443b)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **firefox**: require data declaration support ([259d4b1](https://github.com/chrisbbreuer/very-good-adblock/commit/259d4b1)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: preserve legitimate browser-opened tabs ([e60838b](https://github.com/chrisbbreuer/very-good-adblock/commit/e60838b)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ✅ Tests
+
+- **browser**: retry Chrome startup ([51b743d](https://github.com/chrisbbreuer/very-good-adblock/commit/51b743d)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **browser**: isolate WebView lifecycle ([2322112](https://github.com/chrisbbreuer/very-good-adblock/commit/2322112)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **firefox**: update minimum version expectation ([fdfbc22](https://github.com/chrisbbreuer/very-good-adblock/commit/fdfbc22)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 💚 Continuous Integration
+
+- **release**: use Stacks 0.70.143 ([fb80dfe](https://github.com/chrisbbreuer/very-good-adblock/commit/fb80dfe)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: rely on the Stacks meta-package ([9129aeb](https://github.com/chrisbbreuer/very-good-adblock/commit/9129aeb)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.1.1...v0.1.2)
 
 ## ✨ Features
