@@ -70,7 +70,7 @@
     "validate:extension:firefox": "bun --bun scripts/validate-extension.ts --target=firefox",
     "validate:extension:safari": "bun --bun scripts/validate-extension.ts --target=safari",
     "validate:rules": "bun --bun scripts/validate-rules.ts",
-    "test": "bun run cache:youtube-fixture && bun test ./test/*.test.ts",
+    "test": "bun run cache:youtube-fixture && bun test --parallel=1 ./test/*.test.ts",
     "lint": "bunx --bun pickier .",
     "lint:fix": "bunx --bun pickier . --fix",
     "typecheck": "bun --bun tsc --noEmit",

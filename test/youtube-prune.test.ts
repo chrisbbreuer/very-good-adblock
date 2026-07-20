@@ -95,7 +95,6 @@ describe('built YouTube MAIN-world pruner', () => {
       view.close()
       server.stop(true)
       await rm(certDir, { recursive: true, force: true })
-      Bun.WebView.closeAll()
     }
   }, 30_000)
 })

@@ -62,7 +62,6 @@ describe('built pop-up guard', () => {
     finally {
       view.close()
       server.stop(true)
-      Bun.WebView.closeAll()
     }
   }, 30_000)
 

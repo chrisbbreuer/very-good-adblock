@@ -67,7 +67,6 @@ describe('cookie-consent content filtering', () => {
       view.close()
       server.stop(true)
       await rm(certDir, { recursive: true, force: true })
-      Bun.WebView.closeAll()
     }
   }, 30_000)
 })

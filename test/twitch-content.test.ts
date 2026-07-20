@@ -86,7 +86,6 @@ describe('cached Twitch content script fixture', () => {
       view.close()
       server.stop(true)
       await rm(certDir, { recursive: true, force: true })
-      Bun.WebView.closeAll()
     }
   }, 30_000)
 })
