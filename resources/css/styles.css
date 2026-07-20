@@ -1182,6 +1182,10 @@ h1 {
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
 
+.download-pill[hidden] {
+  display: none;
+}
+
 .download-pill:hover {
   border-color: rgba(var(--accent-rgb), 0.42);
   background: rgba(var(--accent-rgb), 0.12);

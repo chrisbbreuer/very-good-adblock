@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { alternateBrowserStores, resolveBrowserInstall } from '../resources/scripts/browser-install'
+import { openChromeView } from './helpers/webview'
 
 describe('browser-aware install target', () => {
   it('links macOS Safari to the App Store', () => {
@@ -45,5 +46,29 @@ describe('browser-aware install target', () => {
     expect(alternateBrowserStores(resolveBrowserInstall('Mozilla/5.0 Version/18.5 Safari/605.1.15'))).toEqual(['chrome', 'firefox'])
     expect(alternateBrowserStores(resolveBrowserInstall('Mozilla/5.0 Chrome/138.0.0.0 Safari/537.36'))).toEqual(['firefox', 'safari'])
     expect(alternateBrowserStores(resolveBrowserInstall('curl/8.7.1'))).toEqual(['chrome', 'firefox', 'safari'])
+  })
+
+  it('keeps the primary browser store pill visually hidden', async () => {
+    const styles = await Bun.file('resources/css/styles.css').text()
+    const server = Bun.serve({
+      port: 0,
+      fetch: () => new Response(`<style>${styles}</style><a class="download-pill" hidden>Chrome</a>`, {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      }),
+    })
+    const view = await openChromeView({
+      width: 320,
+      height: 200,
+      backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*'] },
+    })
+
+    try {
+      await view.navigate(`http://127.0.0.1:${server.port}/`)
+      expect(await view.evaluate<string>(`getComputedStyle(document.querySelector('.download-pill')).display`)).toBe('none')
+    }
+    finally {
+      view.close()
+      server.stop(true)
+    }
   })
 })
