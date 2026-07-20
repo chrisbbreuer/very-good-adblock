@@ -30,6 +30,49 @@ const extension: ExtensionConfig = defineExtension({
   safariTeamId: '3JJRNQW6B7',
   safariPlatforms: ['macos', 'ios'],
   safariAppCategory: 'public.app-category.utilities',
+  safariAppStore: {
+    locale: 'en-US',
+    subtitle: 'Fast, private ad blocking',
+    privacyPolicyUrl: 'https://verygoodadblock.org/privacy/',
+    description: `Very Good AdBlock blocks ads, trackers, cookie banners, and intrusive pop-ups in Safari on iPhone, iPad, and Mac. It uses Safari's content-blocking and web-extension APIs to stop requests before they load, helps reduce page clutter and data use, and gives you simple per-site controls.
+
+Privacy first: no telemetry, no browsing-history collection, no selling or sharing of data. Settings and blocking statistics remain on your devices. Optional browser-account sync is handled by your browser vendor, not our servers.
+
+Features:
+• Network-level ad and tracker blocking
+• YouTube and Twitch ad defenses
+• Pop-up and pop-under protection
+• Per-site pause, allowlist, and blocklist controls
+• Optional cookie-banner hiding
+• Local blocking and savings statistics
+
+Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Extensions on iPhone or iPad, or Safari > Settings > Extensions on Mac.`,
+    keywords: 'ad blocker,privacy,tracker blocker,popups,Safari,YouTube,Twitch,cookie banners',
+    supportUrl: 'https://github.com/chrisbbreuer/very-good-adblock/issues',
+    marketingUrl: 'https://verygoodadblock.org',
+    copyright: '2026 Chris Breuer',
+    primaryCategory: 'UTILITIES',
+    contentRightsDeclaration: 'USES_THIRD_PARTY_CONTENT',
+    price: '0',
+    baseTerritory: 'USA',
+    releaseType: 'AFTER_APPROVAL',
+    availableInNewTerritories: true,
+    usesIdfa: false,
+    usesNonExemptEncryption: false,
+    reviewContact: {
+      firstName: 'Chris',
+      lastName: 'Breuer',
+      phone: '+1 808-218-8241',
+      email: 'chrisbreuer93@gmail.com',
+      notes: 'No account or login is required. Launch the app once, then enable Very Good AdBlock in Settings > Apps > Safari > Extensions on iPhone or iPad, or Safari > Settings > Extensions on Mac. The extension processes blocking locally and sends no browsing data to us.',
+    },
+    screenshots: {
+      APP_DESKTOP: ['resources/app-store/screenshots/macos-01.png'],
+      APP_IPHONE_67: ['resources/app-store/screenshots/iphone-01.png'],
+      APP_IPAD_PRO_3GEN_129: ['resources/app-store/screenshots/ipad-01.png'],
+    },
+    submitForReview: true,
+  },
   // Site-only pages built into dist for the marketing site — never shipped in
   // the appex (extension:safari:app keeps them out of the synced Resources).
   safariExclude: [

@@ -13,6 +13,7 @@ import { dashboardState, shimScript } from './lib/preview-fixture'
 
 const dist = resolve('dist')
 const outDir = join(dist, 'store')
+const appleOutDir = resolve('resources/app-store/screenshots')
 
 if (!existsSync(join(dist, 'popup.html'))) {
   throw new Error('dist/popup.html is missing. Run `bun run build` first.')
@@ -20,6 +21,8 @@ if (!existsSync(join(dist, 'popup.html'))) {
 
 await rm(outDir, { recursive: true, force: true })
 await mkdir(outDir, { recursive: true })
+await rm(appleOutDir, { recursive: true, force: true })
+await mkdir(appleOutDir, { recursive: true })
 
 const shim = shimScript(dashboardState())
 
@@ -40,7 +43,7 @@ const server = Bun.serve({
     const url = new URL(request.url)
     if (url.pathname === '/popup.html') return htmlResponse(inject(await Bun.file(join(dist, 'popup.html')).text()))
     if (url.pathname === '/options.html') return htmlResponse(inject(await Bun.file(join(dist, 'options.html')).text()))
-    if (url.pathname === '/frame') return htmlResponse(framePage(Number(url.searchParams.get('i') ?? '0')))
+    if (url.pathname === '/frame') return htmlResponse(framePage(Number(url.searchParams.get('i') ?? '0'), url.searchParams.get('format') ?? 'desktop'))
 
     const asset = join(dist, url.pathname.replace(/^\//, ''))
     if (existsSync(asset)) return new Response(Bun.file(asset))
@@ -67,6 +70,30 @@ try {
     // Force the exact store dimensions (sips is macOS-only; harmless if absent).
     await Bun.$`sips -z 800 1280 ${outPath}`.quiet().nothrow()
     console.log(`Wrote ${outPath} (1280x800)`)
+  }
+
+  const appleShots = [
+    { name: 'macos-01.png', width: 1280, height: 800, format: 'desktop' },
+    { name: 'iphone-01.png', width: 1290, height: 2796, format: 'iphone' },
+    { name: 'ipad-01.png', width: 2048, height: 2732, format: 'ipad' },
+  ]
+  for (const shot of appleShots) {
+    const appleView = new Bun.WebView({
+      width: shot.width,
+      height: shot.height + 87,
+      backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*', '--force-device-scale-factor=1'] },
+    })
+    try {
+      await appleView.navigate(`http://127.0.0.1:${server.port}/frame?surface=popup&i=0&format=${shot.format}`)
+      await settle(appleView)
+      const outPath = join(appleOutDir, shot.name)
+      await Bun.write(outPath, await appleView.screenshot({ encoding: 'buffer' }))
+      await Bun.$`sips -z ${shot.height} ${shot.width} ${outPath}`.quiet()
+      console.log(`Wrote ${outPath} (${shot.width}x${shot.height})`)
+    }
+    finally {
+      appleView.close()
+    }
   }
 }
 finally {
@@ -98,12 +125,12 @@ async function settle(view: Bun.WebView): Promise<void> {
   await Bun.sleep(500)
 }
 
-function framePage(index: number): string {
+function framePage(index: number, format: string): string {
   const caption = captions[index] ?? captions[0]
   return `<!doctype html>
 <html>
   <head><meta charset="utf-8"><style>${frameCss()}</style></head>
-  <body class="store-frame">
+  <body class="store-frame ${format}">
     <div class="frame-copy">
       <svg class="frame-logo" viewBox="0 0 128 128" fill="none" aria-hidden="true">
         <defs>
@@ -147,5 +174,20 @@ function frameCss(): string {
       width: 390px; height: 620px; border: 0; border-radius: 18px;
       box-shadow: 0 40px 90px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);
     }
+    .store-frame.iphone { width: 1290px; height: 2796px; flex-direction: column; align-items: stretch; }
+    .store-frame.iphone .frame-copy { flex: 0 0 46%; padding: 220px 150px 80px; }
+    .store-frame.iphone .frame-logo { width: 112px; height: 112px; margin-bottom: 64px; }
+    .store-frame.iphone .frame-copy h1 { font-size: 118px; max-width: 9ch; }
+    .store-frame.iphone .frame-copy p { font-size: 46px; max-width: 25ch; margin-top: 48px; }
+    .store-frame.iphone .frame-wordmark { margin-top: 68px; font-size: 26px; }
+    .store-frame.iphone .frame-stage { min-height: 0; padding-bottom: 180px; }
+    .store-frame.iphone .frame-device { width: 780px; height: 1240px; border-radius: 36px; transform: scale(1.15); }
+    .store-frame.ipad { width: 2048px; height: 2732px; }
+    .store-frame.ipad .frame-copy { flex: 0 0 51%; padding: 0 70px 0 150px; }
+    .store-frame.ipad .frame-logo { width: 100px; height: 100px; margin-bottom: 58px; }
+    .store-frame.ipad .frame-copy h1 { font-size: 106px; max-width: 9ch; }
+    .store-frame.ipad .frame-copy p { font-size: 39px; max-width: 25ch; margin-top: 44px; }
+    .store-frame.ipad .frame-wordmark { margin-top: 64px; font-size: 24px; }
+    .store-frame.ipad .frame-device { width: 702px; height: 1116px; border-radius: 32px; transform: scale(1.12); }
   `
 }
