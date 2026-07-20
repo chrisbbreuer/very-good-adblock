@@ -1,6 +1,5 @@
 import type { ExtensionConfig } from '@stacksjs/browser-extension'
 import { defineExtension } from '@stacksjs/browser-extension'
-import packageJson from '../package.json'
 
 /**
  * Very Good AdBlock — MV3 extension config.
@@ -145,10 +144,6 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
       if (!(await Bun.file(file).exists()))
         return
       let html = await Bun.file(file).text()
-
-      // Point the hero's Chrome/Firefox download buttons at the current release's
-      // assets (github.com/…/releases/download/v<version>/…-<version>-<target>.zip).
-      html = html.replaceAll('__VGA_VERSION__', packageJson.version)
 
       // Inline the real popup component into the hero, replacing the
       // #popup-preview placeholder. Runs after sanitize so the markup survives.

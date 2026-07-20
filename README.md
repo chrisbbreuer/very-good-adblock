@@ -8,6 +8,17 @@ A fast, open-source Manifest V3 ad blocker for Chrome, Firefox, and Safari. It r
   <img src="docs/public/screenshots/popup.png" width="860" alt="The Very Good AdBlock popup: 47 ads blocked on the current page, 8.4 GB of data saved, 20 hours of video time recovered, a 24-hour activity chart, and per-site controls.">
 </p>
 
+## Install
+
+Use the official store for automatic updates, or download the verified packages from the latest GitHub Release:
+
+- [Chrome Web Store](https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc) for Chrome, Edge, Brave, Arc, and other Chromium browsers.
+- [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/very-good-adblock/) for desktop Firefox 142 and newer.
+- [Apple App Store](https://apps.apple.com/app/id6792576349) for Safari on Mac, iPhone, and iPad. The listing is in App Review and this permanent link becomes installable when Apple approves it.
+- [Latest GitHub Release](https://github.com/chrisbbreuer/very-good-adblock/releases/latest) for versioned Chrome, Firefox, and Safari packages plus SHA-256 checksums.
+
+Safari users launch the app once, then enable the extension in **Settings > Apps > Safari > Extensions** on iPhone or iPad, or **Safari > Settings > Extensions** on Mac.
+
 ## Features
 
 - Cross-browser Manifest V3 build (Chrome, Firefox, and Safari) from one codebase, with per-target manifests generated at build time.
@@ -122,7 +133,11 @@ This emits a Firefox-flavored build (an event-page `background`, `browser_specif
 bun run safari:app
 ```
 
-This builds the Safari flavor into `dist-safari/` (a `browser.*`-namespace rewrite plus a Safari manifest with `strict_min_version` 18.4), syncs it into the checked-in Xcode project under `safari/`, and builds the macOS container app with `xcodebuild`. Launch the app once, then enable **Very Good AdBlock** in *Safari → Settings → Extensions*. Requires Safari 18.4+ and full Xcode; signing/distribution (App Store or Developer ID + notarization) is covered in [`safari/README.md`](./safari/README.md) and [`docs/architecture/safari.md`](./docs/architecture/safari.md).
+This builds the Safari flavor into `dist-safari/` (a `browser.*`-namespace rewrite plus a Safari manifest with `strict_min_version` 18.4), generates the shared macOS/iOS Xcode container, and builds the selected app targets. On iPhone or iPad, enable **Very Good AdBlock** in *Settings > Apps > Safari > Extensions*. On Mac, launch the app once and enable it in *Safari > Settings > Extensions*. Requires Safari 18.4+ and full Xcode; signing and App Store distribution are covered in [`safari/README.md`](./safari/README.md) and [`docs/architecture/safari.md`](./docs/architecture/safari.md).
+
+## Releases
+
+`bun run release:patch`, `release:minor`, and `release:major` create and push the version commit and tag. GitHub Actions then validates all browser packages, publishes Chrome and Firefox, builds and uploads the macOS/iOS Safari app, and creates the GitHub Release with checksums. If Chrome or Apple is already reviewing an earlier version, Stacks records the new version as queued and retries those stores automatically every six hours without republishing Firefox.
 
 ## Scripts
 

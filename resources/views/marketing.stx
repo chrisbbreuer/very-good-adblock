@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Very Good AdBlock is a fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta name="description" content="Very Good AdBlock is a fast, private ad blocker for Chrome, Firefox, and Safari on Mac, iPhone, and iPad. No account, telemetry, or bloat.">
     <meta name="theme-color" content="#100a0b">
     <link rel="canonical" href="https://verygoodadblock.org/">
     <script>
@@ -20,16 +20,16 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Very Good AdBlock">
     <meta property="og:url" content="https://verygoodadblock.org/">
-    <meta property="og:title" content="Very Good AdBlock — fast, private ad blocker for Chrome & Firefox">
-    <meta property="og:description" content="A fast Manifest V3 ad blocker for Chrome and Firefox that removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta property="og:title" content="Very Good AdBlock — fast, private ad blocking everywhere">
+    <meta property="og:description" content="Install Very Good AdBlock for Chrome, Firefox, or Safari on Mac, iPhone, and iPad. No account, telemetry, or bloat.">
     <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Very Good AdBlock — fast, private ad blocker for Chrome & Firefox">
-    <meta name="twitter:description" content="Removes ads, pop-ups, and YouTube and Twitch interruptions at the source. No telemetry.">
+    <meta name="twitter:title" content="Very Good AdBlock — fast, private ad blocking everywhere">
+    <meta name="twitter:description" content="Available for Chrome, Firefox, and Safari on Mac, iPhone, and iPad. No telemetry.">
     <meta name="twitter:image" content="https://verygoodadblock.org/icons/icon-128.png">
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-    <title>Very Good AdBlock — fast, private ad blocker for Chrome &amp; Firefox</title>
+    <title>Very Good AdBlock — fast, private ad blocker for Chrome, Firefox &amp; Safari</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="marketing-shell">
@@ -38,23 +38,25 @@
     <main id="top">
       <section class="marketing-hero">
         <div class="hero-copy">
-          <p class="eyebrow">Chrome &amp; Firefox · Manifest V3</p>
+          <p class="eyebrow">Chrome · Firefox · Safari for Mac, iPhone &amp; iPad</p>
           <h1>Ads gone before the page loads.</h1>
           <p class="hero-lede">
             Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at the source,
             then stays out of the way. No telemetry, no bloat.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="docs/guide/install/">Install locally</a>
-            <!-- Direct downloads off the latest GitHub release; __VGA_VERSION__ is
-                 replaced with package.json's version by config/extension.ts postBuild. -->
-            <a class="download-pill" href="https://github.com/chrisbbreuer/very-good-adblock/releases/download/v__VGA_VERSION__/very-good-adblock-__VGA_VERSION__-chrome.zip" download aria-label="Download Very Good AdBlock for Chrome">
-              <img class="download-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="20" height="20" loading="lazy">
-              <span>Chrome</span>
-            </a>
-            <a class="download-pill" href="https://github.com/chrisbbreuer/very-good-adblock/releases/download/v__VGA_VERSION__/very-good-adblock-__VGA_VERSION__-firefox.zip" download aria-label="Download Very Good AdBlock for Firefox">
+            <a class="primary-link" href="https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc">Add to Chrome</a>
+            <a class="download-pill" href="https://addons.mozilla.org/firefox/addon/very-good-adblock/" aria-label="Install Very Good AdBlock for Firefox">
               <img class="download-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="20" height="20" loading="lazy">
               <span>Firefox</span>
+            </a>
+            <a class="download-pill" href="https://apps.apple.com/app/id6792576349" aria-label="Download Very Good AdBlock for Safari on Mac, iPhone, and iPad">
+              <img class="download-logo" src="https://cdn.simpleicons.org/safari" alt="" width="20" height="20" loading="lazy">
+              <span>Safari</span>
+            </a>
+            <a class="download-pill" href="https://github.com/chrisbbreuer/very-good-adblock/releases/latest" aria-label="Download signed release packages from GitHub">
+              <img class="download-logo" src="https://cdn.simpleicons.org/github" alt="" width="20" height="20" loading="lazy">
+              <span>Manual download</span>
             </a>
           </div>
           <a class="hero-how" href="#how">How it works →</a>
@@ -116,12 +118,12 @@
           <li>
             <span class="how-num">1</span>
             <h3>Install</h3>
-            <p>Load it into Chrome or Firefox. One codebase, a browser-specific build, no account.</p>
+            <p>Use the Chrome Web Store, Firefox Add-ons, or the App Store for Safari on Mac, iPhone, and iPad.</p>
           </li>
           <li>
             <span class="how-num">2</span>
-            <h3>Pin it</h3>
-            <p>The toolbar icon shows exactly what got blocked on the page in front of you.</p>
+            <h3>Enable it</h3>
+            <p>Pin the browser button, or enable the Safari extension once in Settings on your Apple device.</p>
           </li>
           <li>
             <span class="how-num">3</span>
@@ -178,9 +180,9 @@
         <div class="cta-inner">
           <span class="cta-badge">Free and open source</span>
           <h2>Browse like the ads were never there.</h2>
-          <p>MIT licensed, Chrome and Firefox from one codebase, with no account and no telemetry. Read the code, file an issue, or send a pull request.</p>
+          <p>MIT licensed, built for Chrome, Firefox, macOS, iPhone, and iPad from one codebase, with no account and no telemetry.</p>
           <div class="hero-actions">
-            <a class="primary-link" href="docs/guide/install/">Install locally</a>
+            <a class="primary-link" href="#get">Choose your browser</a>
             <a class="secondary-link" href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">View source</a>
           </div>
         </div>

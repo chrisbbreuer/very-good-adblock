@@ -1,17 +1,21 @@
 <section id="get" class="browsers-band">
   <div class="browsers-copy">
     <p class="eyebrow">Get it</p>
-    <h2>Runs on Chrome and Firefox.</h2>
-    <p>One codebase, a browser-specific Manifest V3 build. Add it to your browser and browse like the ads were never there.</p>
+    <h2>One blocker, every browser you use.</h2>
+    <p>Install the native store release for Chrome, Firefox, or Safari on Mac, iPhone, and iPad. Every target is built from the same open-source codebase.</p>
   </div>
   <div class="browser-buttons">
-    <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Chrome">
+    <a class="browser-button" href="https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc" aria-label="Get Very Good AdBlock from the Chrome Web Store">
       <img class="browser-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="34" height="34" loading="lazy">
       <span class="browser-text"><strong>Get it for Chrome</strong><small>Chrome, Edge, Brave, Arc</small></span>
     </a>
-    <a class="browser-button" href="/docs/guide/install/" aria-label="Get Very Good AdBlock for Firefox">
+    <a class="browser-button" href="https://addons.mozilla.org/firefox/addon/very-good-adblock/" aria-label="Get Very Good AdBlock from Firefox Add-ons">
       <img class="browser-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="34" height="34" loading="lazy">
-      <span class="browser-text"><strong>Get it for Firefox</strong><small>Firefox 140 and up</small></span>
+      <span class="browser-text"><strong>Get it for Firefox</strong><small>Desktop Firefox 142 and up</small></span>
+    </a>
+    <a class="browser-button" href="https://apps.apple.com/app/id6792576349" aria-label="Get Very Good AdBlock from the App Store for Safari">
+      <img class="browser-logo" src="https://cdn.simpleicons.org/safari" alt="" width="34" height="34" loading="lazy">
+      <span class="browser-text"><strong>Get it for Safari</strong><small>Mac, iPhone, and iPad · App Store review in progress</small></span>
     </a>
   </div>
 </section>
