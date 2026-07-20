@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { ytPruneMessageSource } from '../src/shared/constants'
+import { openChromeView } from './helpers/webview'
 
 /**
  * Runs the real built `yt-inpage.js` in a real Chromium (Bun WebView), against a
@@ -38,7 +39,7 @@ describe('built YouTube MAIN-world pruner', () => {
     })
 
     const errors: string[] = []
-    const view = new Bun.WebView({
+    const view = await openChromeView({
       width: 900,
       height: 700,
       backend: {

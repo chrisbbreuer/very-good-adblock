@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { popupBlockMessageSource } from '../src/shared/constants'
+import { openChromeView } from './helpers/webview'
 
 /**
  * Runs the real built popup-guard.js in Chromium and checks the window.open
@@ -20,7 +21,7 @@ describe('built pop-up guard', () => {
     })
 
     const errors: string[] = []
-    const view = new Bun.WebView({
+    const view = await openChromeView({
       width: 640,
       height: 480,
       backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*'] },

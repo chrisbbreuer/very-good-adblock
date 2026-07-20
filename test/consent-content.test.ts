@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
+import { openChromeView } from './helpers/webview'
 
 describe('cookie-consent content filtering', () => {
   it('hides a consent banner and restores page scrolling when opted in', async () => {
@@ -23,7 +24,7 @@ describe('cookie-consent content filtering', () => {
     })
 
     const errors: string[] = []
-    const view = new Bun.WebView({
+    const view = await openChromeView({
       width: 900,
       height: 700,
       backend: {

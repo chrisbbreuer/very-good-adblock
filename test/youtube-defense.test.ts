@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
+import { openChromeView } from './helpers/webview'
 
 let contentScript = ''
 
@@ -85,7 +86,7 @@ async function withYouTubePage(bodyMarkup: string, run: (view: Bun.WebView) => P
   })
 
   const errors: string[] = []
-  const view = new Bun.WebView({
+  const view = await openChromeView({
     width: 1100,
     height: 780,
     backend: {
