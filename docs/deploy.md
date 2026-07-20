@@ -1,6 +1,6 @@
 # Deploying the site
 
-`https://verygoodadblock.org` is the marketing site (`resources/views/`) plus
+`<https://verygoodadblock.org>` is the marketing site (`resources/views/`) plus
 the BunPress docs, assembled by `bun run site:build` into `dist/site/`, with a
 small subscribe API (`app/`, `routes/api.ts`, `server/serve.ts`) served
 same-origin at `/api`.
@@ -32,7 +32,7 @@ the workflow file:
   upserting the `verygoodadblock.org` records.
 
 Each run is recorded as a GitHub **Deployment** against the `production`
-environment (`https://verygoodadblock.org`), visible under the repo's
+environment (`<https://verygoodadblock.org>`), visible under the repo's
 [Deployments](https://github.com/chrisbbreuer/very-good-adblock/deployments) and
 Actions tabs.
 

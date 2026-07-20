@@ -327,7 +327,7 @@ function youtubeFixture(): string {
     <h1>YouTube fixture</h1>
     <div id="masthead-ad">masthead ad</div>
     <ytd-display-ad-renderer>display ad</ytd-display-ad-renderer>
-    <div class="html5-video-player ad-showing">
+    <div class="ad-showing html5-video-player">
       <div class="ytp-ad-module">video ad module</div>
       <div class="video-ads">video ad</div>
       <button class="ytp-ad-skip-button" onclick="document.body.dataset.skipped = 'true'">Skip ad</button>

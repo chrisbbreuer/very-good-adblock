@@ -86,7 +86,7 @@ bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x8
 | `storage` | Save your settings and local statistics, and sync compact totals across your own installs. |
 | `tabs` | Read the active tab's URL and favicon to show per-site stats and the per-site allow/pause toggle. |
 | `alarms` | Schedule the daily filter-list refresh and the timer that resumes protection after a pause. |
-| `host_permissions` (`http://*/*`, `https://*/*`) | Apply cosmetic hiding, source-level ad pruning, and pop-up blocking on the pages you choose to visit. Nothing is read or sent off-device. |
+| `host_permissions` (`<http://*/*>`, `<https://*/*>`) | Apply cosmetic hiding, source-level ad pruning, and pop-up blocking on the pages you choose to visit. Nothing is read or sent off-device. |
 
 ## Data collection disclosure
 
