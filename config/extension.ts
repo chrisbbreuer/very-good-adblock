@@ -28,6 +28,8 @@ const extension: ExtensionConfig = defineExtension({
   },
   safariBundleId: 'org.verygoodadblock.VeryGoodAdBlock',
   safariTeamId: '3JJRNQW6B7',
+  safariPlatforms: ['macos', 'ios'],
+  safariAppCategory: 'public.app-category.utilities',
   // Site-only pages built into dist for the marketing site — never shipped in
   // the appex (extension:safari:app keeps them out of the synced Resources).
   safariExclude: [
