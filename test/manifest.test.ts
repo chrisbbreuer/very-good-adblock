@@ -24,7 +24,7 @@ describe('manifest', () => {
     expect(manifest.browser_specific_settings).toEqual({
       gecko: {
         id: extensionGeckoId,
-        strict_min_version: '140.0',
+        strict_min_version: '142.0',
         data_collection_permissions: { required: ['none'] },
       },
     })
