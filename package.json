@@ -82,9 +82,9 @@
     "@stacksjs/bunpress": "^0.1.13",
     "@stacksjs/components": "^0.2.99",
     "@stacksjs/stx": "^0.2.99",
-    "@stacksjs/ts-cloud": "^0.7.43",
+    "@stacksjs/ts-cloud": "^0.7.44",
     "bun-plugin-stx": "^0.2.99",
-    "stacks": "^0.70.131"
+    "stacks": "^0.70.132"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
