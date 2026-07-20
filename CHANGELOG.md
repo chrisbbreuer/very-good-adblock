@@ -1,5 +1,31 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.0...v0.2.1)
+
+## ✨ Features
+
+- **safari**: automate App Store submission ([e1321bd](https://github.com/chrisbbreuer/very-good-adblock/commit/e1321bd)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **ci**: create GitHub releases reliably ([71fcc22](https://github.com/chrisbbreuer/very-good-adblock/commit/71fcc22)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **extension**: preserve isolated user popups ([eb82cee](https://github.com/chrisbbreuer/very-good-adblock/commit/eb82cee)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 💚 Continuous Integration
+
+- **release**: support safe store retries ([491f2c2](https://github.com/chrisbbreuer/very-good-adblock/commit/491f2c2)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: update Stacks to 0.70.147 ([532ae1b](https://github.com/chrisbbreuer/very-good-adblock/commit/532ae1b)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: update Stacks to 0.70.146 ([54eb0fb](https://github.com/chrisbbreuer/very-good-adblock/commit/54eb0fb)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: update Stacks to 0.70.145 ([d71814f](https://github.com/chrisbbreuer/very-good-adblock/commit/d71814f)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: update Stacks to 0.70.144 ([9c787c1](https://github.com/chrisbbreuer/very-good-adblock/commit/9c787c1)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.1.2...v0.2.0)
 
 ## ✨ Features
