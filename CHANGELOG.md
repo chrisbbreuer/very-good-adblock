@@ -1,5 +1,35 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.1...v0.2.2)
+
+## ✨ Features
+
+- **branding**: improve browser icon contrast ([36b8699](https://github.com/chrisbbreuer/very-good-adblock/commit/36b8699)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **marketing**: tailor install CTA to browser ([460b441](https://github.com/chrisbbreuer/very-good-adblock/commit/460b441)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **marketing**: add browser store downloads ([6f3e96b](https://github.com/chrisbbreuer/very-good-adblock/commit/6f3e96b)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **marketing**: keep alternate browser stores visible ([1137fb7](https://github.com/chrisbbreuer/very-good-adblock/commit/1137fb7)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ♻️ Code Refactoring
+
+- **server**: use native Stacks API ([0836d47](https://github.com/chrisbbreuer/very-good-adblock/commit/0836d47)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **resources**: consolidate project assets ([c77ba3f](https://github.com/chrisbbreuer/very-good-adblock/commit/c77ba3f)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 💚 Continuous Integration
+
+- **release**: retry deferred store submissions ([342581f](https://github.com/chrisbbreuer/very-good-adblock/commit/342581f)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: update Stacks to 0.70.150 ([fa630da](https://github.com/chrisbbreuer/very-good-adblock/commit/fa630da)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: update stacks to 0.70.148 ([503ff4a](https://github.com/chrisbbreuer/very-good-adblock/commit/503ff4a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.0...v0.2.1)
 
 ## ✨ Features
