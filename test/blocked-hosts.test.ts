@@ -25,6 +25,7 @@ describe('blocked-hosts matcher', () => {
 
   it('rejects unrelated hosts', () => {
     expect(isBlockedHost('example.com')).toBe(false)
+    expect(isBlockedHost('www.google.com')).toBe(false)
     expect(isBlockedHost('thestreameast.one')).toBe(false)
     expect(isBlockedHost('')).toBe(false)
   })

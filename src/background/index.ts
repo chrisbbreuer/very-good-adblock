@@ -368,6 +368,15 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled || !settings.popupBlocking) return false
 
+  // ERR_BLOCKED_BY_CLIENT is shared by every blocker in the browser. Some
+  // browsers also give searches opened from their command bar an opener tab,
+  // so treating every such error as ours can close a legitimate search window
+  // immediately. Only remove the tab when its destination is covered by one of
+  // our shipped/refreshed host rules or by the user's explicit block list.
+  const targetHostname = hostnameFromUrl(details.url)
+  const blockedByUs = isBlockedHost(targetHostname) || siteMatches(targetHostname, settings.blockedSites)
+  if (!blockedByUs) return false
+
   const opener = pageBadgeStats.get(candidate.openerTabId)
   const openerHostname = opener?.url ? hostnameFromUrl(opener.url) : ''
   if (!openerHostname || siteMatches(openerHostname, settings.allowedSites)) return false
@@ -375,7 +384,7 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   incrementPageContent(candidate.openerTabId, 1, opener?.url)
   logPageBlock(candidate.openerTabId, {
     kind: 'popup',
-    label: hostnameFromUrl(details.url) || 'pop-up window',
+    label: targetHostname || 'pop-up window',
     count: 1,
     at: new Date().toISOString(),
   })
