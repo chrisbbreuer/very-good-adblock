@@ -56,7 +56,9 @@ function installPopupGuard(): void {
 
     const openOrigin = originOf(url == null ? '' : String(url))
     const sameOriginPage = openOrigin !== '' && openOrigin === window.location.origin
-    const withGesture = now - gestureAt < 1000
+    const browserActivated = navigator.userActivation?.isActive === true
+    const withGesture = now - gestureAt < 1000 || browserActivated
+    const openerIsolated = isolatesOpener(target, features)
 
     let allow: boolean
     if (!withGesture) {
@@ -75,8 +77,14 @@ function installPopupGuard(): void {
       allow = true
     }
     else {
-      // Clicking a non-interactive area (video/overlay): same-origin only.
-      allow = sameOriginPage
+      // Clicking a non-interactive area (video/overlay): same-origin only. The
+      // narrow exception is an opener-isolated window while the browser itself
+      // still reports transient user activation. Frameworks such as Bluesky's
+      // React Native Web link handler prevent the native anchor navigation and
+      // call window.open(url, target, 'noopener'); event abstraction can hide
+      // the original anchor from our classifier. Timers have no activation,
+      // while ordinary pop-under calls do not isolate their opener.
+      allow = sameOriginPage || (browserActivated && openerIsolated)
     }
 
     // Never let a flood through, whatever the gesture was (a couple of legit
@@ -94,6 +102,14 @@ function installPopupGuard(): void {
 
   ;(guarded as { __vgaGuarded?: boolean }).__vgaGuarded = true
   window.open = guarded as typeof window.open
+}
+
+/** Whether the requested new context is explicitly isolated from its opener. */
+function isolatesOpener(target?: string, features?: string): boolean {
+  if (target !== '_blank') return false
+  return (features ?? '')
+    .split(/[\s,]+/)
+    .some(feature => feature.toLowerCase() === 'noopener' || feature.toLowerCase() === 'noreferrer')
 }
 
 /**

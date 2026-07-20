@@ -43,6 +43,7 @@ describe('built pop-up guard', () => {
         linkOwnHrefAllowed: boolean
         javascriptChatAllowed: boolean
         javascriptLinkMismatchBlocked: boolean
+        isolatedUserPopupAllowed: boolean
         reported: number
       }>(`window.__guardTest`)
 
@@ -57,6 +58,7 @@ describe('built pop-up guard', () => {
       expect(result.linkOwnHrefAllowed).toBe(true)
       expect(result.javascriptChatAllowed).toBe(true)
       expect(result.javascriptLinkMismatchBlocked).toBe(true)
+      expect(result.isolatedUserPopupAllowed).toBe(true)
       expect(result.reported).toBeGreaterThanOrEqual(1)
       expect(errors).toEqual([])
     }
@@ -98,7 +100,12 @@ function fixture(guardScript: string): string {
       // without actually opening a window; the guard wraps this as its original.
       window.open = function (url) { return { __stub: true, url: url }; };
       window.__now = 1000;
+      window.__userActive = false;
       Date.now = function () { return window.__now; };
+      Object.defineProperty(navigator, 'userActivation', {
+        configurable: true,
+        value: { get isActive() { return window.__userActive; } },
+      });
     </script>
     <script>${guardScript}</script>
     <script>
@@ -139,6 +146,15 @@ function fixture(guardScript: string): string {
         var javascriptMismatch = window.open('https://ads.example/pop');
         window.__now += 5000;
 
+        // Framework-managed external links can lose their anchor identity but
+        // retain the browser's transient user activation. Only an explicitly
+        // opener-isolated window gets this fallback.
+        clickOn('video');
+        window.__userActive = true;
+        var isolatedUserPopup = window.open('https://article.example/read', '_blank', 'noopener');
+        window.__userActive = false;
+        window.__now += 5000;
+
         // Allowed cases (each pushes toward the flood budget):
         // Link opening its own external destination.
         clickOn('extlink');
@@ -165,6 +181,7 @@ function fixture(guardScript: string): string {
             linkOwnHrefAllowed: !!(linkOwn && linkOwn.__stub),
             javascriptChatAllowed: !!(javascriptChat && javascriptChat.__stub),
             javascriptLinkMismatchBlocked: isDecoy(javascriptMismatch),
+            isolatedUserPopupAllowed: !!(isolatedUserPopup && isolatedUserPopup.__stub),
             reported: reported,
             done: true,
           };
