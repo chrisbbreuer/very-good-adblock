@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   publish:
-    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.138
+    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.139
     with:
       chrome-publisher-id: ${{ vars.CHROME_WEB_STORE_PUBLISHER_ID }}
       safari-enabled: ${{ vars.ENABLE_SAFARI_PUBLISH == 'true' }}
