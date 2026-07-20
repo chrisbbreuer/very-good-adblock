@@ -88,7 +88,7 @@ const extension: ExtensionConfig = defineExtension({
     permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'webRequest', 'storage', 'tabs', 'alarms'],
     hostPermissions: ['http://*/*', 'https://*/*'],
     minimumChromeVersion: '111',
-    firefoxMinVersion: '140.0',
+    firefoxMinVersion: '142.0',
     webAccessibleResources: [
       { resources: ['stubs/googletag.js', 'stubs/adsbygoogle.js'], matches: ['<all_urls>'] },
     ],
