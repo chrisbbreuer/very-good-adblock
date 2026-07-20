@@ -1,3 +1,5 @@
+import type { RequestInstance } from '@stacksjs/types'
+import { Action } from '@stacksjs/actions'
 import Subscriber from '../Models/Subscriber'
 
 export interface SubscribeResult {
@@ -5,27 +7,15 @@ export interface SubscribeResult {
   message: string
 }
 
-export interface SubscribeAction {
-  name: string
-  method: 'POST'
-  handle: (params: Record<string, string>) => Promise<SubscribeResult>
-}
-
 // One @, a dot in the domain, no whitespace — matches the model's
 // schema.string().email() closely enough for a signup form.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
- * SubscriberEmailAction — store a newsletter signup from the marketing page's
- * "notify me when it hits the stores" form. Mirrors the Stacks framework's
- * default action (validate → dedupe → create) and writes through the app's own
- * Subscriber model (app/Models/Subscriber.ts), i.e. the real ORM.
- *
- * Kept as a plain handler rather than a `@stacksjs/actions` Action so it runs in
- * the lean server (server/serve.ts) without booting the framework's feature
- * system — the ORM model still does the actual persistence.
+ * Store a newsletter signup from the marketing page. Exported separately from
+ * the Action adapter so the persistence contract remains easy to test.
  */
-export async function handle(params: Record<string, string>): Promise<SubscribeResult> {
+export async function subscribe(params: Record<string, string>): Promise<SubscribeResult> {
   const email = (params.email || '').trim().toLowerCase()
   const source = (params.source || 'homepage').slice(0, 100)
 
@@ -50,5 +40,17 @@ export async function handle(params: Record<string, string>): Promise<SubscribeR
   return { success: true, message: 'Subscribed' }
 }
 
-const SubscriberEmailAction: SubscribeAction = { name: 'SubscriberEmailAction', method: 'POST', handle }
+const SubscriberEmailAction: Action = new Action({
+  name: 'SubscriberEmailAction',
+  description: 'Store a Very Good AdBlock newsletter subscription',
+  method: 'POST',
+  skipCsrf: true,
+  async handle(request: RequestInstance) {
+    return await subscribe({
+      email: String(request.get('email') ?? ''),
+      source: String(request.get('source') ?? 'homepage'),
+    })
+  },
+})
+
 export default SubscriberEmailAction

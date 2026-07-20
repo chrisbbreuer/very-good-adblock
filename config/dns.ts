@@ -4,8 +4,8 @@ import type { DnsConfig } from '@stacksjs/types'
  * DNS records for verygoodadblock.org — the complete, declared picture of the
  * zone. Regenerate/verify against live DNS with `bun run dns:pull`.
  *
- * `scripts/sync-dns.ts` (the "Sync DNS records" deploy step, or `bun run
- * dns:sync`) reconciles these to Porkbun **safely**:
+ * `buddy dns:sync` (also exposed as `bun run dns:sync`) reconciles these to
+ * Porkbun **safely**:
  *   - it only ever CREATES records that are declared here but missing,
  *   - it never deletes a record, and never overwrites an existing one.
  * So records managed elsewhere are documented here for completeness but are

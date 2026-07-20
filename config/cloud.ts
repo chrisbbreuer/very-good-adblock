@@ -51,9 +51,8 @@ export const tsCloud: TsCloudConfig = {
       pathRewriteStyle: 'directory',
     },
 
-    // Subscribe API: the app's own Stacks pieces (routes/api.ts → app/Actions →
-    // app/Models/Subscriber via the ORM) served by a lean Bun entry
-    // (server/serve.ts) run as a systemd service. rpx routes the SAME domain by
+    // Subscribe API: native Stacks routes, actions, ORM, migrations, and
+    // `buddy serve:api`, run as a systemd service. rpx routes the SAME domain by
     // longest path prefix, so `/api/*` hits this process and everything else
     // stays static above — the marketing form posts same-origin (no CORS). Bound
     // to loopback (HOST=127.0.0.1); rpx is the only public entry.
@@ -70,10 +69,13 @@ export const tsCloud: TsCloudConfig = {
       root: '.',
       path: '/api',
       domain: env.APP_DOMAIN || 'verygoodadblock.org',
-      start: 'bun server/serve.ts',
+      start: 'bun node_modules/@stacksjs/buddy/dist/cli.js serve:api',
       port: 3010,
-      preStart: ['bun install --frozen-lockfile'],
-      exclude: ['node_modules', '.git', 'dist', 'dist-firefox', '*.zip', 'pantry', 'bench'],
+      preStart: [
+        'bun install --frozen-lockfile',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate --no-auth --force',
+      ],
+      exclude: ['node_modules', '.git', '.cache', '.qb', '.stx', 'dist', 'dist-firefox', '*.zip', 'pantry', 'bench'],
       env: {
         HOST: '127.0.0.1',
         PORT: '3010',

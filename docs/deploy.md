@@ -2,7 +2,7 @@
 
 `<https://verygoodadblock.org>` is the marketing site (`resources/views/`) plus
 the BunPress docs, assembled by `bun run site:build` into `dist/site/`, with a
-small subscribe API (`app/`, `routes/api.ts`, `server/serve.ts`) served
+small subscribe API (`routes/api.ts` and `app/`) served by `buddy serve:api`
 same-origin at `/api`.
 
 It is served in **server mode** from a shared stacks box via

@@ -1,4 +1,5 @@
 .cache
+.qb
 .stx
 .DS_Store
 .idea
