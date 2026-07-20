@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.2...v0.2.3)
+
+## 🐛 Bug Fixes
+
+- **marketing**: hide duplicate browser store ([ed7f254](https://github.com/chrisbbreuer/very-good-adblock/commit/ed7f254)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.1...v0.2.2)
 
 ## ✨ Features
