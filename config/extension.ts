@@ -118,6 +118,10 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
     48: 'icons/icon-48.png',
     128: 'icons/icon-128.png',
   },
+  actionIcons: {
+    16: 'icons/toolbar-16.png',
+    32: 'icons/toolbar-32.png',
+  },
 
   public: 'public',
   assets: { 'styles.css': 'resources/css/styles.css' },

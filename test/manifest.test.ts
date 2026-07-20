@@ -14,6 +14,14 @@ describe('manifest', () => {
     expect(manifest.background).toEqual({ service_worker: 'background.js', type: 'module' })
     expect(manifest.minimum_chrome_version).toBe('111')
     expect(manifest.browser_specific_settings).toBeUndefined()
+    expect(manifest.action).toEqual({
+      default_title: 'Very Good AdBlock',
+      default_popup: 'popup.html',
+      default_icon: {
+        16: 'icons/toolbar-16.png',
+        32: 'icons/toolbar-32.png',
+      },
+    })
   })
 
   it('builds a Firefox event-page manifest with gecko settings', () => {
