@@ -4,6 +4,10 @@ export interface BrowserInstallTarget {
   label: string
 }
 
+export type BrowserStore = Exclude<BrowserInstallTarget['browser'], 'other'>
+
+const browserStores: BrowserStore[] = ['chrome', 'firefox', 'safari']
+
 const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc'
 const FIREFOX_STORE_URL = 'https://addons.mozilla.org/firefox/addon/very-good-adblock/'
 const SAFARI_STORE_URL = 'https://apps.apple.com/app/id6792576349'
@@ -29,4 +33,11 @@ export function resolveBrowserInstall(userAgent: string): BrowserInstallTarget {
   if (/\b(?:Chrome|Chromium|CriOS|Edg|EdgiOS|OPR|OPiOS)\//i.test(userAgent)) return targets.chrome
 
   return targets.other
+}
+
+/** Store pills shown beside the primary CTA, excluding its duplicate. */
+export function alternateBrowserStores(target: BrowserInstallTarget): BrowserStore[] {
+  return target.browser === 'other'
+    ? browserStores
+    : browserStores.filter(store => store !== target.browser)
 }

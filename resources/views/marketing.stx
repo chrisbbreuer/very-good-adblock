@@ -46,11 +46,15 @@
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="#get" data-browser-install>Choose your browser</a>
-            <a class="download-pill" href="https://addons.mozilla.org/firefox/addon/very-good-adblock/" aria-label="Install Very Good AdBlock for Firefox">
+            <a class="download-pill" href="https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc" aria-label="Install Very Good AdBlock from the Chrome Web Store" data-browser-store="chrome">
+              <img class="download-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="20" height="20" loading="lazy">
+              <span>Chrome</span>
+            </a>
+            <a class="download-pill" href="https://addons.mozilla.org/firefox/addon/very-good-adblock/" aria-label="Install Very Good AdBlock for Firefox" data-browser-store="firefox">
               <img class="download-logo" src="https://cdn.simpleicons.org/firefoxbrowser" alt="" width="20" height="20" loading="lazy">
               <span>Firefox</span>
             </a>
-            <a class="download-pill" href="https://apps.apple.com/app/id6792576349" aria-label="Download Very Good AdBlock for Safari on Mac, iPhone, and iPad">
+            <a class="download-pill" href="https://apps.apple.com/app/id6792576349" aria-label="Download Very Good AdBlock for Safari on Mac, iPhone, and iPad" data-browser-store="safari">
               <img class="download-logo" src="https://cdn.simpleicons.org/safari" alt="" width="20" height="20" loading="lazy">
               <span>Safari</span>
             </a>

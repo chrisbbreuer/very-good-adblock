@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { resolveBrowserInstall } from '../resources/scripts/browser-install'
+import { alternateBrowserStores, resolveBrowserInstall } from '../resources/scripts/browser-install'
 
 describe('browser-aware install target', () => {
   it('links macOS Safari to the App Store', () => {
@@ -39,5 +39,11 @@ describe('browser-aware install target', () => {
       href: '#get',
       label: 'Choose your browser',
     })
+  })
+
+  it('shows every alternate store without duplicating the primary CTA', () => {
+    expect(alternateBrowserStores(resolveBrowserInstall('Mozilla/5.0 Version/18.5 Safari/605.1.15'))).toEqual(['chrome', 'firefox'])
+    expect(alternateBrowserStores(resolveBrowserInstall('Mozilla/5.0 Chrome/138.0.0.0 Safari/537.36'))).toEqual(['firefox', 'safari'])
+    expect(alternateBrowserStores(resolveBrowserInstall('curl/8.7.1'))).toEqual(['chrome', 'firefox', 'safari'])
   })
 })
