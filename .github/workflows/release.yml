@@ -1,6 +1,10 @@
 name: Release
 
 on:
+  schedule:
+    # Chrome and Apple allow only one version in review. Retry the current
+    # release automatically after either store finishes reviewing its predecessor.
+    - cron: '17 */6 * * *'
   workflow_dispatch:
     inputs:
       github-release-only:
@@ -11,6 +15,18 @@ on:
         description: Existing tag to repair; defaults to v<package.json version>
         type: string
         required: false
+      publish-chrome:
+        description: Publish or retry Chrome
+        type: boolean
+        default: true
+      publish-firefox:
+        description: Publish or retry Firefox
+        type: boolean
+        default: true
+      publish-safari:
+        description: Publish or retry Safari
+        type: boolean
+        default: true
   push:
     tags:
       - 'v*'
@@ -24,11 +40,14 @@ concurrency:
 
 jobs:
   publish:
-    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.147
+    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.148
     with:
       chrome-publisher-id: ${{ vars.CHROME_WEB_STORE_PUBLISHER_ID }}
       safari-enabled: ${{ vars.ENABLE_SAFARI_PUBLISH == 'true' }}
-      publish-stores: ${{ !inputs.github-release-only }}
+      publish-stores: ${{ github.event_name != 'workflow_dispatch' || !inputs.github-release-only }}
+      publish-chrome: ${{ github.event_name != 'workflow_dispatch' || inputs.publish-chrome }}
+      publish-firefox: ${{ github.event_name != 'schedule' && (github.event_name != 'workflow_dispatch' || inputs.publish-firefox) }}
+      publish-safari: ${{ github.event_name != 'workflow_dispatch' || inputs.publish-safari }}
       release-tag: ${{ inputs.release-tag || '' }}
     secrets:
       CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON: ${{ secrets.CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON }}
