@@ -2,6 +2,15 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      github-release-only:
+        description: Build packages and create or repair the GitHub Release only
+        type: boolean
+        default: false
+      release-tag:
+        description: Existing tag to repair; defaults to v<package.json version>
+        type: string
+        required: false
   push:
     tags:
       - 'v*'
@@ -10,15 +19,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release-${{ inputs.release-tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   publish:
-    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.144
+    uses: stacksjs/stacks/.github/workflows/browser-extension-release.yml@v0.70.147
     with:
       chrome-publisher-id: ${{ vars.CHROME_WEB_STORE_PUBLISHER_ID }}
       safari-enabled: ${{ vars.ENABLE_SAFARI_PUBLISH == 'true' }}
+      publish-stores: ${{ !inputs.github-release-only }}
+      release-tag: ${{ inputs.release-tag || '' }}
     secrets:
       CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON: ${{ secrets.CHROME_WEB_STORE_SERVICE_ACCOUNT_JSON }}
       AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
