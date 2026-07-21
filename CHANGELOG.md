@@ -1,5 +1,19 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.5...v0.2.6)
+
+## 🐛 Bug Fixes
+
+- **popups**: allow isolated blank link windows ([b6f4d92](https://github.com/chrisbbreuer/very-good-adblock/commit/b6f4d92)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ✅ Tests
+
+- **popups**: automate outbound link navigation ([c3461ad](https://github.com/chrisbbreuer/very-good-adblock/commit/c3461ad)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.4...v0.2.5)
 
 ## 🐛 Bug Fixes
