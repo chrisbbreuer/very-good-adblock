@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.4...v0.2.5)
+
+## 🐛 Bug Fixes
+
+- **popups**: preserve address-bar searches ([b1cbd41](https://github.com/chrisbbreuer/very-good-adblock/commit/b1cbd41)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.3...v0.2.4)
 
 ## 🐛 Bug Fixes
