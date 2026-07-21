@@ -6,6 +6,8 @@ import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost } from '../rules/blocked-hosts'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
+import { isOriginalPopupDestination, rememberInitialPopupUrl } from './popup-candidate'
+import type { PopupCandidate } from './popup-candidate'
 import {
   defaultSettings,
   getActiveTabState,
@@ -60,7 +62,7 @@ let pageStatsPersistTimer: ReturnType<typeof setTimeout> | undefined
 // Tabs opened by another tab (target=_blank clicks, scripted window.open that
 // the page-level guard let through), remembered briefly so a network-blocked
 // pop-under can be attributed to the page that spawned it and closed.
-const popupCandidates = new Map<number, { openerTabId: number, openedAt: number }>()
+const popupCandidates = new Map<number, PopupCandidate>()
 const popupCandidateMaxAgeMs = 30_000
 const maxCosmeticSelectors = 24
 // Per-tab log of what was blocked on the current page visit, powering the
@@ -272,6 +274,9 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  const popupCandidate = popupCandidates.get(tabId)
+  if (popupCandidate) rememberInitialPopupUrl(popupCandidate, changeInfo.url ?? tab.pendingUrl ?? tab.url)
+
   if (changeInfo.status === 'loading' || changeInfo.url) {
     pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
@@ -300,7 +305,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onCreated.addListener((tab) => {
   if (tab.id === undefined || tab.openerTabId === undefined) return
-  popupCandidates.set(tab.id, { openerTabId: tab.openerTabId, openedAt: Date.now() })
+  const candidate: PopupCandidate = { openerTabId: tab.openerTabId, openedAt: Date.now() }
+  rememberInitialPopupUrl(candidate, tab.pendingUrl ?? tab.url)
+  popupCandidates.set(tab.id, candidate)
 })
 
 // Live network-block feedback in unpacked/dev installs. Packed installs count
@@ -376,6 +383,11 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   const targetHostname = hostnameFromUrl(details.url)
   const blockedByUs = isBlockedHost(targetHostname) || siteMatches(targetHostname, settings.blockedSites)
   if (!blockedByUs) return false
+
+  // An opener relationship alone does not prove this is a pop-under. Keep a
+  // legitimate tab (for example, a user-opened YouTube link) alive if a later
+  // top-level redirect happens to touch a blocked advertising host.
+  if (!isOriginalPopupDestination(candidate, details.url)) return false
 
   const opener = pageBadgeStats.get(candidate.openerTabId)
   const openerHostname = opener?.url ? hostnameFromUrl(opener.url) : ''
