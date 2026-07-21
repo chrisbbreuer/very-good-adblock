@@ -2430,6 +2430,8 @@ h1 {
   .hero-visual {
     order: 0;
     min-height: auto;
+    /* Keep the deliberately oversized glow from widening narrow viewports. */
+    overflow: hidden;
   }
 
   .hero-shield {
