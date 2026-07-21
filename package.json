@@ -71,6 +71,7 @@
     "validate:extension:safari": "bun --bun resources/scripts/validate-extension.ts --target=safari",
     "validate:rules": "bun --bun resources/scripts/validate-rules.ts",
     "test": "bun run cache:youtube-fixture && bun test --parallel=1 ./test/*.test.ts",
+    "test:e2e": "bun test test/popup-guard-e2e.test.ts",
     "lint": "bunx --bun pickier .",
     "lint:fix": "bunx --bun pickier . --fix",
     "typecheck": "bun --bun tsc --noEmit",
@@ -87,6 +88,7 @@
     "@types/chrome": "^0.2.2",
     "adblockpluscore": "^0.11.1",
     "better-dx": "^0.2.19",
+    "very-happy-dom": "^0.1.10",
     "web-ext": "^10.4.0"
   },
   "git-hooks": {
