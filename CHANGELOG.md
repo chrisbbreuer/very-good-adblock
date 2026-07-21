@@ -1,5 +1,20 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.3...v0.2.4)
+
+## 🐛 Bug Fixes
+
+- **marketing**: contain mobile hero glow ([ae723c5](https://github.com/chrisbbreuer/very-good-adblock/commit/ae723c5)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popups**: preserve user-opened tabs ([f649968](https://github.com/chrisbbreuer/very-good-adblock/commit/f649968)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ✅ Tests
+
+- **marketing**: keep CTA regression CI-safe ([45bb838](https://github.com/chrisbbreuer/very-good-adblock/commit/45bb838)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.2...v0.2.3)
 
 ## 🐛 Bug Fixes
