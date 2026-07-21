@@ -36,6 +36,7 @@ function installPopupGuard(): void {
   let gestureAt = 0
   let gestureKind: 'anchor' | 'control' | 'other' = 'other'
   let gestureHref = ''
+  let gestureIsolationFeatures = ''
   const gestureEvents = ['pointerdown', 'mousedown', 'click', 'keydown', 'touchstart']
   for (const type of gestureEvents) {
     window.addEventListener(type, (event) => {
@@ -43,6 +44,7 @@ function installPopupGuard(): void {
       gestureAt = timestamp()
       gestureKind = info.kind
       gestureHref = info.href
+      gestureIsolationFeatures = info.isolationFeatures
     }, { capture: true, passive: true })
   }
 
@@ -58,7 +60,15 @@ function installPopupGuard(): void {
     const sameOriginPage = openOrigin !== '' && openOrigin === window.location.origin
     const browserActivated = navigator.userActivation?.isActive === true
     const withGesture = now - gestureAt < 1000 || browserActivated
-    const openerIsolated = isolatesOpener(target, features)
+    const blankOpen = isBlankOpen(url)
+    // Framework-managed anchors sometimes create about:blank first, then set
+    // the child location. Carry the clicked anchor's rel isolation into that
+    // window.open call so allowing the temporary blank context cannot expose
+    // the opener, even when the framework omitted the features argument.
+    const effectiveFeatures = blankOpen && gestureKind === 'anchor' && target === '_blank'
+      ? mergeFeatures(features, gestureIsolationFeatures)
+      : features
+    const openerIsolated = isolatesOpener(target, effectiveFeatures)
 
     let allow: boolean
     if (!withGesture) {
@@ -70,7 +80,9 @@ function installPopupGuard(): void {
       // (or stays same-origin). A pop-up to a different ad domain is a pop-under
       // piggybacking on the click, even though a real link was clicked.
       const linkOrigin = originOf(gestureHref)
-      allow = sameOriginPage || (openOrigin !== '' && openOrigin === linkOrigin)
+      allow = sameOriginPage
+        || (openOrigin !== '' && openOrigin === linkOrigin)
+        || (blankOpen && target === '_blank' && openerIsolated)
     }
     else if (gestureKind === 'control') {
       // A real button/input — OAuth, share, payment pop-ups live here.
@@ -97,7 +109,7 @@ function installPopupGuard(): void {
     }
 
     recentOpens.push(now)
-    return original.call(window, url as string, target, features)
+    return original.call(window, url as string, target, effectiveFeatures)
   }
 
   ;(guarded as { __vgaGuarded?: boolean }).__vgaGuarded = true
@@ -110,6 +122,17 @@ function isolatesOpener(target?: string, features?: string): boolean {
   return (features ?? '')
     .split(/[\s,]+/)
     .some(feature => feature.toLowerCase() === 'noopener' || feature.toLowerCase() === 'noreferrer')
+}
+
+function isBlankOpen(url?: string | URL): boolean {
+  const value = url == null ? '' : String(url).trim().toLowerCase()
+  return value === '' || value === 'about:blank'
+}
+
+function mergeFeatures(features?: string, required?: string): string | undefined {
+  if (!required) return features
+  if (!features) return required
+  return `${features},${required}`
 }
 
 /**
@@ -131,6 +154,7 @@ function reportBlock(): void {
 interface GestureInfo {
   kind: 'anchor' | 'control' | 'other'
   href: string
+  isolationFeatures: string
 }
 
 /** Walk up from the event target to classify what the user actually clicked. */
@@ -145,17 +169,21 @@ function classifyGesture(node: EventTarget | null): GestureInfo {
       // pop-up with that statically declared URL, just as we do for a normal
       // href. We deliberately do not execute or broadly trust javascript:
       // links; an unrelated destination remains blocked.
-      return { kind: 'anchor', href: popupHrefFromJavascript(href) || resolve(href) }
+      const isolationFeatures = (element.getAttribute('rel') ?? '')
+        .split(/\s+/)
+        .filter(value => value === 'noopener' || value === 'noreferrer')
+        .join(',')
+      return { kind: 'anchor', href: popupHrefFromJavascript(href) || resolve(href), isolationFeatures }
     }
-    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '' }
-    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '' }
+    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '', isolationFeatures: '' }
+    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '', isolationFeatures: '' }
     if (tag === 'INPUT') {
       const type = (element.getAttribute('type') ?? '').toLowerCase()
-      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '' }
+      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '', isolationFeatures: '' }
     }
     element = element.parentElement
   }
-  return { kind: 'other', href: '' }
+  return { kind: 'other', href: '', isolationFeatures: '' }
 }
 
 /** Extract a literal first argument from a javascript: open() link, if present. */
