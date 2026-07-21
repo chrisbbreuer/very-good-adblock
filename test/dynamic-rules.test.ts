@@ -69,4 +69,10 @@ describe('buildHostRefreshRules', () => {
     expect(rules).toHaveLength(10)
     expect(rules.at(-1)?.id).toBe(60009)
   })
+
+  it('rejects browser search providers from refreshed block lists', () => {
+    const rules = buildHostRefreshRules(['google.com', 'search.brave.com', 'ads.example.com'])
+
+    expect(rules.map(rule => rule.condition?.urlFilter)).toEqual(['||ads.example.com^'])
+  })
 })

@@ -6,6 +6,7 @@ import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost } from '../rules/blocked-hosts'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
+import { isSearchResultsUrl } from '../shared/search-navigation'
 import { isOriginalPopupDestination, rememberInitialPopupUrl } from './popup-candidate'
 import type { PopupCandidate } from './popup-candidate'
 import {
@@ -374,6 +375,12 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
 
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled || !settings.popupBlocking) return false
+
+  // Chromium-family browsers can assign an opener to a new window created by
+  // an address-bar search. That is browser navigation, never a pop-under: keep
+  // the results window even if stale rules or another blocker report a failed
+  // top-level request during startup.
+  if (isSearchResultsUrl(candidate.initialUrl) || isSearchResultsUrl(details.url)) return false
 
   // ERR_BLOCKED_BY_CLIENT is shared by every blocker in the browser. Some
   // browsers also give searches opened from their command bar an opener tab,

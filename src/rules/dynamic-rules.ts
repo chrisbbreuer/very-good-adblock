@@ -1,5 +1,6 @@
 import { dynamicRuleEndId, dynamicRuleStartId, maxRefreshRules, refreshRuleStartId } from '../shared/constants'
 import { normalizeHostname } from '../shared/domain'
+import { isProtectedSearchHost } from '../shared/search-navigation'
 import type { ExtensionSettings } from '../shared/types'
 
 let syncQueue = Promise.resolve()
@@ -38,7 +39,7 @@ export function buildHostRefreshRules(hosts: string[], options: HostRefreshOptio
 
   for (const raw of hosts) {
     const host = raw.trim().toLowerCase()
-    if (!isBlockableHost(host) || seen.has(host) || exclude?.has(host)) continue
+    if (!isBlockableHost(host) || isProtectedSearchHost(host) || seen.has(host) || exclude?.has(host)) continue
     seen.add(host)
     rules.push({
       id: startId + rules.length,

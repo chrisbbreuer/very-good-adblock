@@ -41,4 +41,12 @@ describe('blocked-hosts matcher', () => {
     expect(isBlockedHost('refresh-test.invalid')).toBe(true)
     expect(isBlockedHost('sub.refresh-test.invalid')).toBe(true)
   })
+
+  it('never learns browser search providers as ad hosts', () => {
+    addBlockedHosts(['google.com', 'search.brave.com'])
+
+    expect(isBlockedHost('google.com')).toBe(false)
+    expect(isBlockedHost('www.google.com')).toBe(false)
+    expect(isBlockedHost('search.brave.com')).toBe(false)
+  })
 })

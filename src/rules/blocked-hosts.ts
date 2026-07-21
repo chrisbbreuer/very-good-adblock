@@ -1,5 +1,6 @@
 import generatedNetworkHosts from './generated/network-hosts.json'
 import { normalizeHostname } from '../shared/domain'
+import { isProtectedSearchHost } from '../shared/search-navigation'
 import { curatedRuleSeeds } from './static-rules'
 
 /**
@@ -34,6 +35,8 @@ function hostOfUrlFilter(urlFilter: string): string {
 /** Whether our network rules block this hostname (or one of its parents). */
 export function isBlockedHost(hostname: string): boolean {
   let current = normalizeHostname(hostname)
+  if (isProtectedSearchHost(current)) return false
+
   while (current) {
     if (blockedHosts.has(current)) return true
     const dot = current.indexOf('.')
@@ -49,6 +52,6 @@ export function isBlockedHost(hostname: string): boolean {
  */
 export function addBlockedHosts(hosts: readonly string[]): void {
   for (const host of hosts) {
-    if (host) blockedHosts.add(host.trim().toLowerCase())
+    if (host && !isProtectedSearchHost(host)) blockedHosts.add(host.trim().toLowerCase())
   }
 }

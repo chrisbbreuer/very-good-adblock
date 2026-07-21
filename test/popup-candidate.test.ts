@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { isOriginalPopupDestination, rememberInitialPopupUrl } from '../src/background/popup-candidate'
+import { isSearchResultsUrl } from '../src/shared/search-navigation'
 import type { PopupCandidate } from '../src/background/popup-candidate'
 
 function candidate(initialUrl?: string): PopupCandidate {
@@ -32,5 +33,12 @@ describe('popup tab candidates', () => {
 
   it('does not auto-close a tab whose original destination is unknown', () => {
     expect(isOriginalPopupDestination(candidate(), 'https://doubleclick.net/pop')).toBe(false)
+  })
+
+  it('recognizes Google address-bar search results as protected navigation', () => {
+    expect(isSearchResultsUrl('https://www.google.com/search?q=HQ+logo&sourceid=chrome&ie=UTF-8')).toBe(true)
+    expect(isSearchResultsUrl('https://google.co.uk/search?q=HQ+logo')).toBe(true)
+    expect(isSearchResultsUrl('https://www.google.com/')).toBe(false)
+    expect(isSearchResultsUrl('https://google.com.evil.example/search?q=HQ+logo')).toBe(false)
   })
 })
