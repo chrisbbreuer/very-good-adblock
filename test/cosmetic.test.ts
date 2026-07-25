@@ -12,6 +12,29 @@ const base: CosmeticContext = {
   aggressive: false,
 }
 
+describe('generic ad-slot selectors', () => {
+  it('hides reserved ad boxes that survive network blocking', () => {
+    const generic = activeCosmeticGroups(base).find(group => group.source === 'cosmetic')
+
+    // Ströer's slot library sizes its box before the ad request is made, so
+    // blocking the request alone leaves a banner-sized hole and a spinner.
+    expect(generic?.selectors).toContain('[id^="sdgSlotContainer-"]')
+    expect(generic?.selectors).toContain('.sdgSpinner')
+    // German publishers ship the "Werbung" placement wrapper in their HTML.
+    expect(generic?.selectors).toContain('div.werbung')
+    expect(generic?.selectors).toContain('.ad-placement-note')
+  })
+
+  it('leaves the short, guessable slot ids to the aggressive tier', () => {
+    const off = activeCosmeticGroups(base).find(group => group.source === 'cosmetic')
+    const on = activeCosmeticGroups({ ...base, aggressive: true }).find(group => group.source === 'cosmetic')
+
+    expect(off?.selectors).not.toContain('#superbanner')
+    expect(on?.selectors).toContain('#superbanner')
+    expect(on?.selectors).toContain('[id^="banner_btf"]')
+  })
+})
+
 describe('activeCosmeticGroups cookie-consent gating', () => {
   it('omits the consent group by default', () => {
     const groups = activeCosmeticGroups(base)
