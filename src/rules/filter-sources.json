@@ -1,12 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "generatedAt": "",
-  "maxHostsPerSource": 12000,
+  "maxHosts": 29000,
   "sources": [
     {
       "name": "EasyList general block",
       "repository": "easylist/easylist",
-      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "revision": "dd919bdfab68724bda077066fe4aff161589ac56",
       "path": "easylist/easylist_general_block.txt",
       "license": "GPL-3.0-or-later",
       "homepage": "https://github.com/easylist/easylist"
@@ -14,23 +14,32 @@
     {
       "name": "EasyList ad servers",
       "repository": "easylist/easylist",
-      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "revision": "dd919bdfab68724bda077066fe4aff161589ac56",
       "path": "easylist/easylist_adservers.txt",
       "license": "GPL-3.0-or-later",
-      "homepage": "https://github.com/easylist/easylist"
+      "homepage": "https://github.com/easylist/easylist",
+      "longTail": true
     },
     {
       "name": "EasyList third party",
       "repository": "easylist/easylist",
-      "revision": "aa448a5141b46a7d0be84a99d70a71d665e45c99",
+      "revision": "dd919bdfab68724bda077066fe4aff161589ac56",
       "path": "easylist/easylist_thirdparty.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/easylist/easylist"
+    },
+    {
+      "name": "EasyPrivacy third party",
+      "repository": "easylist/easylist",
+      "revision": "dd919bdfab68724bda077066fe4aff161589ac56",
+      "path": "easyprivacy/easyprivacy_thirdparty.txt",
       "license": "GPL-3.0-or-later",
       "homepage": "https://github.com/easylist/easylist"
     },
     {
       "name": "AdGuard Base ad servers",
       "repository": "AdguardTeam/AdguardFilters",
-      "revision": "86b3ee2d051d760f1e9f1d7e0c26a7a6e1d3f8d6",
+      "revision": "2a51a0687cca41a25fbecbebdc3515a8862abafc",
       "path": "BaseFilter/sections/adservers.txt",
       "license": "GPL-3.0-or-later",
       "homepage": "https://github.com/AdguardTeam/AdguardFilters"
@@ -38,8 +47,16 @@
     {
       "name": "AdGuard Base general URL",
       "repository": "AdguardTeam/AdguardFilters",
-      "revision": "86b3ee2d051d760f1e9f1d7e0c26a7a6e1d3f8d6",
+      "revision": "2a51a0687cca41a25fbecbebdc3515a8862abafc",
       "path": "BaseFilter/sections/general_url.txt",
+      "license": "GPL-3.0-or-later",
+      "homepage": "https://github.com/AdguardTeam/AdguardFilters"
+    },
+    {
+      "name": "AdGuard Spyware tracking servers",
+      "repository": "AdguardTeam/AdguardFilters",
+      "revision": "2a51a0687cca41a25fbecbebdc3515a8862abafc",
+      "path": "SpywareFilter/sections/tracking_servers.txt",
       "license": "GPL-3.0-or-later",
       "homepage": "https://github.com/AdguardTeam/AdguardFilters"
     }

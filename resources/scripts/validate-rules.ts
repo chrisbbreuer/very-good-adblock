@@ -14,15 +14,20 @@ if (generatedNetworkHosts.totalHosts < 1000) {
   throw new Error(`Generated host ruleset is too small: ${generatedNetworkHosts.totalHosts}`)
 }
 
+// The host budget is deliberately sized to spend most of this allowance, so a
+// percentage-based warning would fire on every build. What is worth flagging is
+// the headroom left for new curated rules before the budget has to come down.
+const CURATED_HEADROOM = 500
+
 if (rules.length > GUARANTEED_MINIMUM_STATIC_RULES) {
   throw new Error(
     `Static ruleset has ${rules.length} rules, over Chrome's guaranteed static-rule limit of ${GUARANTEED_MINIMUM_STATIC_RULES}; the overflow may not load. `
-    + 'Lower maxHostsPerSource in src/rules/filter-sources.json or split into additional rulesets.',
+    + 'Lower maxHosts in src/rules/filter-sources.json or split into additional rulesets.',
   )
 }
 
-if (rules.length > GUARANTEED_MINIMUM_STATIC_RULES * 0.9) {
-  console.warn(`Warning: static ruleset is at ${rules.length}/${GUARANTEED_MINIMUM_STATIC_RULES} rules — approaching Chrome's guaranteed limit.`)
+if (rules.length > GUARANTEED_MINIMUM_STATIC_RULES - CURATED_HEADROOM) {
+  console.warn(`Warning: static ruleset is at ${rules.length}/${GUARANTEED_MINIMUM_STATIC_RULES} rules — fewer than ${CURATED_HEADROOM} rules of headroom left; lower maxHosts in src/rules/filter-sources.json before adding curated rules.`)
 }
 
 for (const rule of rules) {
