@@ -58,6 +58,25 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   { id: 29, name: 'Twitter ads pixel', category: 'script', urlFilter: '||ads-twitter.com^', resourceTypes: blockedHostTypes },
   { id: 30, name: 'Bing ad tracker', category: 'xhr', urlFilter: '||bat.bing.com^', resourceTypes: blockedHostTypes },
   { id: 31, name: 'LinkedIn ads pixel', category: 'script', urlFilter: '||px.ads.linkedin.com^', resourceTypes: blockedHostTypes },
+  // European ad stack that the English-language filter lists still miss. These
+  // are the head of the chain on German/EU publishers (transfermarkt.de,
+  // t-online.de and the rest of the Ströer network): the Ströer slot library
+  // and its Yieldlove prebid wrapper request every downstream SSP, so blocking
+  // them stops the auction before it starts.
+  // Ströer's CDN also serves non-ad assets, so only the ad tag path is blocked
+  // — the same scoping uBlock Origin uses for it.
+  { id: 32, name: 'Ströer ad tag', category: 'script', urlFilter: '||stroeerdigitalgroup.de/metatag/', resourceTypes: [resourceType('script'), resourceType('xmlhttprequest'), resourceType('sub_frame')] },
+  { id: 33, name: 'Nativendo', category: 'script', urlFilter: '||nativendo.de^', resourceTypes: blockedHostTypes },
+  { id: 34, name: 'DSPX', category: 'xhr', urlFilter: '||dspx.tv^', resourceTypes: blockedHostTypes },
+  { id: 35, name: 'Presage', category: 'xhr', urlFilter: '||presage.io^', resourceTypes: blockedHostTypes },
+  { id: 36, name: 'InMobi', category: 'xhr', urlFilter: '||inmobi.com^', resourceTypes: blockedHostTypes },
+  { id: 37, name: 'Viralize', category: 'media', urlFilter: '||viralize.tv^', resourceTypes: blockedHostTypes },
+  { id: 38, name: 'Benelph creatives', category: 'image', urlFilter: '||benelph.de^', resourceTypes: blockedHostTypes },
+  { id: 39, name: 'Adobe tag manager', category: 'script', urlFilter: '||adobedtm.com^', resourceTypes: blockedHostTypes },
+  // Push-notification opt-in spam: SDKs whose only job is the "allow
+  // notifications" nag that ad networks resell as a channel.
+  { id: 40, name: 'NotifPush', category: 'script', urlFilter: '||notifpush.com^', resourceTypes: blockedHostTypes },
+  { id: 41, name: 'PushAddict', category: 'script', urlFilter: '||pushaddict.com^', resourceTypes: blockedHostTypes },
 ]
 
 export interface RedirectRuleSeed {

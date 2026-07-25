@@ -26,6 +26,51 @@ describe('rules', () => {
     expect(redirects.every(rule => rule.action.redirect?.extensionPath?.startsWith('/stubs/'))).toBe(true)
   })
 
+  it('covers the programmatic ad stack across the whole alphabet', () => {
+    // The generated list is budget-capped, and it used to be capped by slicing
+    // a *sorted* list — which silently dropped every ad network from the cut
+    // letter onward. These are real hosts observed serving ads on European
+    // publishers, spread past the old cut point, so an alphabetical truncation
+    // regression fails here instead of shipping.
+    const hosts = new Set(generatedNetworkHosts.hosts)
+    const covered = (host: string): boolean => {
+      const parts = host.split('.')
+      for (let index = 0; index < parts.length - 1; index++) {
+        if (hosts.has(parts.slice(index).join('.'))) return true
+      }
+      return false
+    }
+
+    for (const host of [
+      'ap.lijit.com',
+      'btlr.sharethrough.com',
+      'cdn-a.yieldlove.com',
+      'g2.gumgum.com',
+      'hbx.media.net',
+      'ih.adscale.de',
+      'prebid.smilewanted.com',
+      's.seedtag.com',
+      's2s.yieldlove-ad-serving.net',
+      'sync.smartadserver.com',
+      'sync.srv.stackadapt.com',
+      't.visx.net',
+      'a.teads.tv',
+      'x.bidswitch.net',
+    ]) {
+      expect(covered(host)).toBe(true)
+    }
+  })
+
+  it('keeps a curated floor under the European ad stack', () => {
+    const filters = curatedRuleSeeds.map(seed => seed.urlFilter)
+
+    // Not in any upstream list we ship, but the head of the chain on German
+    // publishers — losing these means every downstream SSP gets called.
+    expect(filters).toContain('||stroeerdigitalgroup.de/metatag/')
+    expect(filters).toContain('||nativendo.de^')
+    expect(filters).toContain('||notifpush.com^')
+  })
+
   it('builds bounded dynamic rules for allowed and blocked sites', () => {
     const rules = buildDynamicRules({
       ...defaultSettings,
