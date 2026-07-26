@@ -111,8 +111,28 @@ for (const htmlFile of ['popup.html', 'options.html']) {
   if (absoluteExtensionAsset.test(html)) throw new Error(`${htmlFile} contains a root-relative extension asset URL`)
 }
 
-const staticRules = await Bun.file(join(dist, 'rules/static.json')).json() as chrome.declarativeNetRequest.Rule[]
-if (!Array.isArray(staticRules) || staticRules.length < 1000) throw new Error('Static ruleset is too small')
+// addons.mozilla.org refuses to parse any non-binary file over 5 MB and fails
+// the whole submission with "File is too large to parse" — so an oversized
+// ruleset file is caught here, at build time, instead of at the store.
+const amoParseLimitBytes = 5 * 1024 * 1024
+const rulesetPaths = (manifest.declarative_net_request?.rule_resources ?? []).map(resource => resource.path)
+const staticRules: chrome.declarativeNetRequest.Rule[] = []
+
+for (const path of rulesetPaths) {
+  const file = Bun.file(join(dist, path))
+  if (file.size > amoParseLimitBytes) {
+    throw new Error(
+      `Ruleset ${path} is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the 5 MB file size addons.mozilla.org will parse. `
+      + 'Lower rulesPerRuleset in src/rules/static-rules.ts and add a matching ruleset entry in config/extension.ts.',
+    )
+  }
+
+  const rules = await file.json() as chrome.declarativeNetRequest.Rule[]
+  if (!Array.isArray(rules)) throw new Error(`Ruleset ${path} is not an array of rules`)
+  staticRules.push(...rules)
+}
+
+if (staticRules.length < 1000) throw new Error('Static ruleset is too small')
 
 const ruleIds = new Set<number>()
 for (const rule of staticRules) {

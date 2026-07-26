@@ -143,6 +143,29 @@ export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
   return [...curatedRules, ...redirectRules, ...generatedRules]
 }
 
+/**
+ * Rules per emitted ruleset file.
+ *
+ * The whole ruleset is one logical list, but it cannot ship as one file:
+ * addons.mozilla.org refuses to parse any file over 5 MB, and pretty-printed
+ * DNR rules run ~350 bytes each — so a single file crosses that limit at
+ * roughly 15k rules and the Firefox submission is rejected outright. Chunks of
+ * this size land near 3.5 MB, leaving room for rules to grow before another
+ * chunk is needed. Splitting costs nothing at runtime: every browser evaluates
+ * enabled rulesets as one set.
+ */
+export const rulesPerRuleset = 10_000
+
+/** The number of ruleset files `buildStaticRules()` currently needs. */
+export function staticRulesetCount(): number {
+  return Math.ceil(buildStaticRules().length / rulesPerRuleset)
+}
+
+/** The slice of the static ruleset that ruleset file `index` (0-based) holds. */
+export function buildStaticRuleset(index: number): chrome.declarativeNetRequest.Rule[] {
+  return buildStaticRules().slice(index * rulesPerRuleset, (index + 1) * rulesPerRuleset)
+}
+
 function resourceType(value: string): chrome.declarativeNetRequest.ResourceType {
   return value as chrome.declarativeNetRequest.ResourceType
 }

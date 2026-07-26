@@ -126,8 +126,14 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
   public: 'public',
   assets: { 'styles.css': 'resources/css/styles.css' },
 
+  // One logical ruleset, emitted across several files: addons.mozilla.org will
+  // not parse a file over 5 MB, and the full pretty-printed ruleset is well
+  // past that. Browsers evaluate all enabled rulesets together, so the split is
+  // invisible at runtime. Keep in sync with `rulesPerRuleset`.
   rules: [
-    { id: 'very_good_adblock_static_rules', path: 'rules/static.json', source: 'src/rules/static-rules.ts' },
+    { id: 'very_good_adblock_static_rules', path: 'rules/static.json', source: 'src/rules/ruleset-1.ts' },
+    { id: 'very_good_adblock_static_rules_2', path: 'rules/static-2.json', source: 'src/rules/ruleset-2.ts' },
+    { id: 'very_good_adblock_static_rules_3', path: 'rules/static-3.json', source: 'src/rules/ruleset-3.ts' },
   ],
 
   manifest: {

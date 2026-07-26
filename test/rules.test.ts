@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { dynamicRuleEndId, dynamicRuleStartId } from '../src/shared/constants'
 import { buildDynamicRules } from '../src/rules/dynamic-rules'
-import { buildStaticRules, curatedRuleSeeds, redirectRuleSeeds } from '../src/rules/static-rules'
+import { buildStaticRuleset, buildStaticRules, curatedRuleSeeds, redirectRuleSeeds, staticRulesetCount } from '../src/rules/static-rules'
+import extensionConfig from '../config/extension'
 import { defaultSettings } from '../src/shared/storage'
 import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
 
@@ -78,6 +79,31 @@ describe('rules', () => {
     // itself, so a broader rule here would take the page down with the ads.
     expect(proxy).toBeDefined()
     expect(proxy?.resourceTypes?.map(String)).toEqual(['image'])
+  })
+
+  it('splits the ruleset into files that cover every rule exactly once', () => {
+    const all = buildStaticRules()
+    const chunks = Array.from({ length: staticRulesetCount() }, (_, index) => buildStaticRuleset(index))
+    const rejoined = chunks.flat()
+
+    // A dropped or double-counted chunk is invisible at runtime until a rule
+    // silently stops blocking, so assert the split is lossless.
+    expect(rejoined).toHaveLength(all.length)
+    expect(rejoined.map(rule => rule.id)).toEqual(all.map(rule => rule.id))
+    expect(new Set(rejoined.map(rule => rule.id)).size).toBe(all.length)
+
+    // Every chunk must have a ruleset entry in the manifest config, or its
+    // rules never ship.
+    expect(extensionConfig.rules).toHaveLength(chunks.length)
+  })
+
+  it('keeps every ruleset file under the size addons.mozilla.org will parse', () => {
+    // AMO rejects the whole submission with "File is too large to parse" over
+    // 5 MB, which is how v0.2.7 failed to reach Firefox.
+    for (let index = 0; index < staticRulesetCount(); index++) {
+      const bytes = Buffer.byteLength(`${JSON.stringify(buildStaticRuleset(index), null, 2)}\n`)
+      expect(bytes).toBeLessThan(5 * 1024 * 1024)
+    }
   })
 
   it('builds bounded dynamic rules for allowed and blocked sites', () => {
