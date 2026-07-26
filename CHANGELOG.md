@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.8...v0.2.9)
+
+## 🐛 Bug Fixes
+
+- **stats**: attribute only our network blocks ([25cce13](https://github.com/chrisbbreuer/very-good-adblock/commit/25cce13)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.7...v0.2.8)
 
 ## 🐛 Bug Fixes
