@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.7...v0.2.8)
+
+## 🐛 Bug Fixes
+
+- **rules**: split the static ruleset across files Firefox will parse ([ed0b2c8](https://github.com/chrisbbreuer/very-good-adblock/commit/ed0b2c8)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.6...v0.2.7)
 
 ## ✨ Features
