@@ -15,6 +15,16 @@ import { curatedRuleSeeds } from './static-rules'
  * `||host^` urlFilter semantics of the rules themselves.
  */
 const blockedHosts = new Set<string>()
+const hostRuleRequestTypes = new Set([
+  'main_frame',
+  'script',
+  'image',
+  'xmlhttprequest',
+  'sub_frame',
+  'media',
+  'font',
+  'stylesheet',
+])
 
 for (const host of generatedNetworkHosts.hosts) {
   if (host) blockedHosts.add(host)
@@ -29,7 +39,8 @@ for (const seed of curatedRuleSeeds) {
 function hostOfUrlFilter(urlFilter: string): string {
   if (!urlFilter.startsWith('||')) return ''
   const caret = urlFilter.indexOf('^')
-  return urlFilter.slice(2, caret < 0 ? undefined : caret).toLowerCase()
+  const value = urlFilter.slice(2, caret < 0 ? undefined : caret).toLowerCase()
+  return value.includes('/') ? '' : value
 }
 
 /** Whether our network rules block this hostname (or one of its parents). */
@@ -43,6 +54,50 @@ export function isBlockedHost(hostname: string): boolean {
     if (dot < 0) return false
     current = current.slice(dot + 1)
   }
+  return false
+}
+
+/**
+ * Whether one of our shipped/refreshed block rules covers this exact request.
+ *
+ * Chromium reports every extension's cancellations as ERR_BLOCKED_BY_CLIENT,
+ * so the background cannot credit that error merely because it occurred. This
+ * matcher mirrors our host rules and the small set of curated path rules,
+ * including their resource-type scopes, before an error enters our stats.
+ */
+export function isBlockedRequest(url: string, type: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  }
+  catch {
+    return false
+  }
+
+  if (hostRuleRequestTypes.has(type) && isBlockedHost(parsed.hostname)) return true
+
+  return curatedRuleSeeds.some(seed =>
+    seed.resourceTypes.some(resourceType => String(resourceType) === type)
+    && matchesUrlFilter(parsed, seed.urlFilter),
+  )
+}
+
+function matchesUrlFilter(url: URL, urlFilter: string): boolean {
+  if (urlFilter.startsWith('||')) {
+    const caret = urlFilter.indexOf('^')
+    const value = urlFilter.slice(2, caret < 0 ? undefined : caret).toLowerCase()
+    const slash = value.indexOf('/')
+    const hostname = slash < 0 ? value : value.slice(0, slash)
+    const path = slash < 0 ? '' : value.slice(slash)
+    const requestHostname = normalizeHostname(url.hostname)
+    const hostMatches = requestHostname === hostname || requestHostname.endsWith(`.${hostname}`)
+    return hostMatches && (!path || `${url.pathname}${url.search}`.toLowerCase().startsWith(path))
+  }
+
+  if (urlFilter.startsWith('|')) {
+    return url.href.toLowerCase().startsWith(urlFilter.slice(1).toLowerCase())
+  }
+
   return false
 }
 

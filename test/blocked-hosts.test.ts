@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
-import { addBlockedHosts, isBlockedHost } from '../src/rules/blocked-hosts'
+import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../src/rules/blocked-hosts'
 
 describe('blocked-hosts matcher', () => {
   it('matches hosts from the generated network list', () => {
@@ -26,8 +26,25 @@ describe('blocked-hosts matcher', () => {
   it('rejects unrelated hosts', () => {
     expect(isBlockedHost('example.com')).toBe(false)
     expect(isBlockedHost('www.google.com')).toBe(false)
+    expect(isBlockedHost('pantry.dev')).toBe(false)
     expect(isBlockedHost('thestreameast.one')).toBe(false)
     expect(isBlockedHost('')).toBe(false)
+  })
+
+  it('does not attribute unrelated first-party font failures to our rules', () => {
+    expect(isBlockedRequest('https://pantry.dev/fonts/IBMPlexSans-Regular.woff2', 'font')).toBe(false)
+    expect(isBlockedRequest('https://pantry.dev/fonts/Lilex.woff2', 'font')).toBe(false)
+  })
+
+  it('matches host rules only for resource types they block', () => {
+    expect(isBlockedRequest('https://cdn.doubleclick.net/ad.js', 'script')).toBe(true)
+    expect(isBlockedRequest('https://cdn.doubleclick.net/event', 'ping')).toBe(false)
+  })
+
+  it('matches curated path rules without blocking the rest of the host', () => {
+    expect(isBlockedRequest('https://www.youtube.com/pagead/interaction/', 'xmlhttprequest')).toBe(true)
+    expect(isBlockedRequest('https://www.youtube.com/watch?v=abc', 'xmlhttprequest')).toBe(false)
+    expect(isBlockedRequest('https://www.youtube.com/pagead/interaction/', 'font')).toBe(false)
   })
 
   it('does not match sibling domains of a blocked host', () => {

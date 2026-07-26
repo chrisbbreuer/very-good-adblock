@@ -3,7 +3,7 @@ import generatedNetworkHosts from '../rules/generated/network-hosts.json'
 import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
-import { addBlockedHosts, isBlockedHost } from '../rules/blocked-hosts'
+import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../rules/blocked-hosts'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
 import { isSearchResultsUrl } from '../shared/search-navigation'
@@ -324,17 +324,23 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
 /**
  * Live network-block counting for packed installs. declarativeNetRequest raises
  * no event when it blocks a request, but the failed request still surfaces here
- * (and wakes the worker). Chrome reports extension blocks as
- * ERR_BLOCKED_BY_CLIENT, an error nothing else produces — blocks from other
- * extensions are indistinguishable from ours and count too. Firefox reports DNR
- * blocks as NS_ERROR_ABORT, which page-initiated aborts also fire (HLS seeks
- * cancel segment fetches constantly), so there a failure only counts when it
- * targets a host our rules actually block. Where onRuleMatchedDebug exists
- * (unpacked installs) it stays the counter and this listener stands down, so
- * the two never double count.
+ * (and wakes the worker). Chrome reports every extension's cancellations as
+ * ERR_BLOCKED_BY_CLIENT, and Firefox's NS_ERROR_ABORT also covers ordinary page
+ * aborts, so an error only counts when its URL and resource type match one of
+ * our own host, curated-path, or user block-list rules. Where
+ * onRuleMatchedDebug exists (unpacked installs) it stays the counter and this
+ * listener stands down, so the two never double count.
  */
 const hasRuleMatchDebug = typeof chrome.declarativeNetRequest.onRuleMatchedDebug !== 'undefined'
 chrome.webRequest?.onErrorOccurred.addListener(onRequestError, { urls: ['http://*/*', 'https://*/*'] })
+const manuallyBlockedRequestTypes = new Set([
+  'main_frame',
+  'sub_frame',
+  'script',
+  'image',
+  'xmlhttprequest',
+  'media',
+])
 
 function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void {
   if (details.tabId < 0) return
@@ -420,9 +426,13 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
 }
 
 function isOurBlock(details: chrome.webRequest.OnErrorOccurredDetails): boolean {
-  if (details.error === 'net::ERR_BLOCKED_BY_CLIENT') return true
-  if (details.error === 'NS_ERROR_ABORT') return isBlockedHost(hostnameFromUrl(details.url))
-  return false
+  if (details.error !== 'net::ERR_BLOCKED_BY_CLIENT' && details.error !== 'NS_ERROR_ABORT') return false
+
+  if (isBlockedRequest(details.url, details.type)) return true
+
+  const settings = cachedSettings ?? defaultSettings
+  return manuallyBlockedRequestTypes.has(details.type)
+    && siteMatches(hostnameFromUrl(details.url), settings.blockedSites)
 }
 
 chrome.alarms?.onAlarm.addListener((alarm) => {
