@@ -56,6 +56,13 @@ export const genericCosmetic: CosmeticGroup = {
     '.ad-placement-note',
     'div.werbung',
     'div.anzeige',
+    // The wrapper family around those slots — `werbung-skyscraper-container`,
+    // `werbung_superbanner_wrapper`, `werbung-rectangle1`. "Werbung" is German
+    // for advertising, so a class or id naming it is never page content, and
+    // these wrappers stay put even when the slot inside them is re-injected
+    // with randomised ids.
+    '[class*="werbung-"]',
+    '[id^="werbung"]',
   ],
   aggressive: [
     '[id*="ad-container"]',
@@ -64,13 +71,11 @@ export const genericCosmetic: CosmeticGroup = {
     '[data-ad-slot]',
     '[data-ad-unit]',
     '[id^="ad-position-"]',
-    // German ad-slot naming: Superbanner (leaderboard), "below the fold"
-    // banners, and skyscraper rails. Opt-in because the ids are short enough
-    // that a non-ad element could plausibly reuse them.
+    // German ad-slot naming: Superbanner (leaderboard) and "below the fold"
+    // banners. Opt-in because the ids are short enough that a non-ad element
+    // could plausibly reuse them.
     '#superbanner',
     '[id^="banner_btf"]',
-    '[id^="werbung"]',
-    '[class^="werbung-"]',
   ],
 }
 

@@ -71,6 +71,15 @@ describe('rules', () => {
     expect(filters).toContain('||notifpush.com^')
   })
 
+  it('blocks first-party ad-creative proxying without touching page images', () => {
+    const proxy = curatedRuleSeeds.find(seed => seed.urlFilter === '||transfermarkt.de/image/')
+
+    // Only images: the same origin serves the documents and APIs of the site
+    // itself, so a broader rule here would take the page down with the ads.
+    expect(proxy).toBeDefined()
+    expect(proxy?.resourceTypes).toEqual(['image'])
+  })
+
   it('builds bounded dynamic rules for allowed and blocked sites', () => {
     const rules = buildDynamicRules({
       ...defaultSettings,

@@ -25,6 +25,16 @@ describe('generic ad-slot selectors', () => {
     expect(generic?.selectors).toContain('.ad-placement-note')
   })
 
+  it('hides ad wrappers that outlive re-injected, randomised slot markup', () => {
+    // Publishers that re-inject ads past a blocker randomise the slot's own id
+    // and classes every load, so the only stable handle left is the wrapper
+    // naming itself "Werbung".
+    const generic = activeCosmeticGroups(base).find(group => group.source === 'cosmetic')
+
+    expect(generic?.selectors).toContain('[class*="werbung-"]')
+    expect(generic?.selectors).toContain('[id^="werbung"]')
+  })
+
   it('leaves the short, guessable slot ids to the aggressive tier', () => {
     const off = activeCosmeticGroups(base).find(group => group.source === 'cosmetic')
     const on = activeCosmeticGroups({ ...base, aggressive: true }).find(group => group.source === 'cosmetic')

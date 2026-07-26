@@ -77,6 +77,15 @@ export const curatedRuleSeeds: CuratedRuleSeed[] = [
   // notifications" nag that ad networks resell as a channel.
   { id: 40, name: 'NotifPush', category: 'script', urlFilter: '||notifpush.com^', resourceTypes: blockedHostTypes },
   { id: 41, name: 'PushAddict', category: 'script', urlFilter: '||pushaddict.com^', resourceTypes: blockedHostTypes },
+  // Transfermarkt proxies ad creatives through its own domain (an imgproxy
+  // path, `/image/<signature>/<encoded>.gif`) and drops them into containers
+  // whose ids and classes are randomised per page load. Neither host blocking
+  // nor a cosmetic selector can reach that, so the proxy path itself is the
+  // only stable handle. It is safe to block: the path appears nowhere in the
+  // server-rendered HTML of any page type — every editorial image is served
+  // from tmssl.akamaized.net / img.a.transfermarkt.technology instead — and
+  // only images are matched, so no document or API request is affected.
+  { id: 42, name: 'Transfermarkt creative proxy', category: 'image', urlFilter: '||transfermarkt.de/image/', resourceTypes: [resourceType('image')] },
 ]
 
 export interface RedirectRuleSeed {
