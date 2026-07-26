@@ -1,5 +1,30 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.6...v0.2.7)
+
+## ✨ Features
+
+- **cosmetic**: hide reserved ad slots that survive network blocking ([b58de8a](https://github.com/chrisbbreuer/very-good-adblock/commit/b58de8a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **rules**: block the European ad stack at the head of the chain ([27728db](https://github.com/chrisbbreuer/very-good-adblock/commit/27728db)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **test**: compare DNR resource types as strings ([cae60c1](https://github.com/chrisbbreuer/very-good-adblock/commit/cae60c1)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **rules**: block first-party ad-creative proxying on transfermarkt ([f795d03](https://github.com/chrisbbreuer/very-good-adblock/commit/f795d03)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **rules**: rank filter hosts by value instead of clipping them alphabetically ([ad9a1fe](https://github.com/chrisbbreuer/very-good-adblock/commit/ad9a1fe)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📝 Documentation
+
+- link the community as stacksjs.com/discord ([7670a5a](https://github.com/chrisbbreuer/very-good-adblock/commit/7670a5a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **rules**: regenerate network hosts (14,387 -> 29,000) ([5ba8a6e](https://github.com/chrisbbreuer/very-good-adblock/commit/5ba8a6e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.5...v0.2.6)
 
 ## 🐛 Bug Fixes
