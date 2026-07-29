@@ -80,6 +80,7 @@ export const tsCloud: TsCloudConfig = {
         HOST: '127.0.0.1',
         PORT: '3010',
         APP_ENV: 'production',
+        NODE_ENV: 'production',
         DB_CONNECTION: 'sqlite',
         DB_DATABASE_PATH: 'storage/subscribers.sqlite',
       },
