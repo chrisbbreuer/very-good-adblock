@@ -1,5 +1,23 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.9...v0.2.10)
+
+## 🐛 Bug Fixes
+
+- pin production runtime environment ([812d4ec](https://github.com/chrisbbreuer/very-good-adblock/commit/812d4ec)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ⚡ Performance Improvements
+
+- bypass Buddy for the production API ([d8a39c7](https://github.com/chrisbbreuer/very-good-adblock/commit/d8a39c7)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- update deployment runtime ([d2ac988](https://github.com/chrisbbreuer/very-good-adblock/commit/d2ac988)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.8...v0.2.9)
 
 ## 🐛 Bug Fixes
