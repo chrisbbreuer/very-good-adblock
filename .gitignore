@@ -21,6 +21,10 @@ bench/fixtures
 .zed
 .cursor
 /pantry
+/storage/cloud/
+/storage/framework/runtime/
+/storage/framework/stx/
+/storage/logs/
 
 # Safari app: synced extension payload, Xcode build products, user state
 safari/*/Resources/*

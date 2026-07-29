@@ -69,7 +69,7 @@ export const tsCloud: TsCloudConfig = {
       root: '.',
       path: '/api',
       domain: env.APP_DOMAIN || 'verygoodadblock.org',
-      start: 'bun node_modules/@stacksjs/buddy/dist/cli.js serve:api',
+      start: 'bun node_modules/@stacksjs/actions/dist/serve/api.js',
       port: 3010,
       preStart: [
         'bun install --frozen-lockfile',
