@@ -80,7 +80,9 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "stacks": "^0.70.150"
+    "@stacksjs/buddy": "^0.70.218",
+    "@stacksjs/ts-cloud": "^0.7.87",
+    "stacks": "^0.70.218"
   },
   "devDependencies": {
     "@ghostery/adblocker": "^2.18.1",
