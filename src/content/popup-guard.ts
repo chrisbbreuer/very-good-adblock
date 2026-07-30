@@ -36,7 +36,9 @@ function installPopupGuard(): void {
   let gestureAt = 0
   let gestureKind: 'anchor' | 'control' | 'other' = 'other'
   let gestureHref = ''
+  let gestureTarget = ''
   let gestureIsolationFeatures = ''
+  let trustedAnchorOpenConsumed = true
   const gestureEvents = ['pointerdown', 'mousedown', 'click', 'keydown', 'touchstart']
   for (const type of gestureEvents) {
     window.addEventListener(type, (event) => {
@@ -44,7 +46,9 @@ function installPopupGuard(): void {
       gestureAt = timestamp()
       gestureKind = info.kind
       gestureHref = info.href
+      gestureTarget = info.target
       gestureIsolationFeatures = info.isolationFeatures
+      trustedAnchorOpenConsumed = false
     }, { capture: true, passive: true })
   }
 
@@ -62,13 +66,25 @@ function installPopupGuard(): void {
     const withGesture = now - gestureAt < 1000 || browserActivated
     const blankOpen = isBlankOpen(url)
     // Framework-managed anchors sometimes create about:blank first, then set
-    // the child location. Carry the clicked anchor's rel isolation into that
-    // window.open call so allowing the temporary blank context cannot expose
-    // the opener, even when the framework omitted the features argument.
-    const effectiveFeatures = blankOpen && gestureKind === 'anchor' && target === '_blank'
+    // the child location. Carry the clicked anchor's target and rel isolation
+    // into that window.open call so allowing the temporary blank context cannot
+    // expose the opener, even when the framework omitted those arguments.
+    const blankTargetFromAnchor = blankOpen
+      && gestureKind === 'anchor'
+      && gestureTarget === '_blank'
+    const effectiveTarget = blankTargetFromAnchor && !target ? '_blank' : target
+    const effectiveFeatures = blankTargetFromAnchor
       ? mergeFeatures(features, gestureIsolationFeatures)
       : features
-    const openerIsolated = isolatesOpener(target, effectiveFeatures)
+    const openerIsolated = isolatesOpener(effectiveTarget, effectiveFeatures)
+    const declaredLinkNavigation = gestureKind === 'anchor'
+      && (matchesUrl(url, gestureHref) || isPageOwnedRedirectTo(url, gestureHref))
+    const isolatedBlankLink = blankTargetFromAnchor && openerIsolated
+    // A real anchor gets one guaranteed open for the URL (or isolated blank
+    // context) it declared. This keeps rapid UI activity elsewhere on the page
+    // from exhausting the generic pop-up flood budget before the user's click.
+    const trustedAnchorOpen = !trustedAnchorOpenConsumed
+      && (declaredLinkNavigation || isolatedBlankLink)
 
     let allow: boolean
     if (!withGesture) {
@@ -81,8 +97,9 @@ function installPopupGuard(): void {
       // piggybacking on the click, even though a real link was clicked.
       const linkOrigin = originOf(gestureHref)
       allow = sameOriginPage
+        || declaredLinkNavigation
         || (openOrigin !== '' && openOrigin === linkOrigin)
-        || (blankOpen && target === '_blank' && openerIsolated)
+        || isolatedBlankLink
     }
     else if (gestureKind === 'control') {
       // A real button/input — OAuth, share, payment pop-ups live here.
@@ -101,15 +118,16 @@ function installPopupGuard(): void {
 
     // Never let a flood through, whatever the gesture was (a couple of legit
     // pop-ups in a row is fine; a burst is the pop-under signature).
-    if (recentOpens.length >= 3) allow = false
+    if (recentOpens.length >= 3 && !trustedAnchorOpen) allow = false
 
     if (!allow) {
       reportBlock()
       return decoyWindow()
     }
 
+    if (trustedAnchorOpen) trustedAnchorOpenConsumed = true
     recentOpens.push(now)
-    return original.call(window, url as string, target, effectiveFeatures)
+    return original.call(window, url as string, effectiveTarget, effectiveFeatures)
   }
 
   ;(guarded as { __vgaGuarded?: boolean }).__vgaGuarded = true
@@ -154,6 +172,7 @@ function reportBlock(): void {
 interface GestureInfo {
   kind: 'anchor' | 'control' | 'other'
   href: string
+  target: string
   isolationFeatures: string
 }
 
@@ -173,17 +192,22 @@ function classifyGesture(node: EventTarget | null): GestureInfo {
         .split(/\s+/)
         .filter(value => value === 'noopener' || value === 'noreferrer')
         .join(',')
-      return { kind: 'anchor', href: popupHrefFromJavascript(href) || resolve(href), isolationFeatures }
+      return {
+        kind: 'anchor',
+        href: popupHrefFromJavascript(href) || resolve(href),
+        target: (element.getAttribute('target') ?? '').toLowerCase(),
+        isolationFeatures,
+      }
     }
-    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '', isolationFeatures: '' }
-    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '', isolationFeatures: '' }
+    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '', target: '', isolationFeatures: '' }
+    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '', target: '', isolationFeatures: '' }
     if (tag === 'INPUT') {
       const type = (element.getAttribute('type') ?? '').toLowerCase()
-      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '', isolationFeatures: '' }
+      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '', target: '', isolationFeatures: '' }
     }
     element = element.parentElement
   }
-  return { kind: 'other', href: '', isolationFeatures: '' }
+  return { kind: 'other', href: '', target: '', isolationFeatures: '' }
 }
 
 /** Extract a literal first argument from a javascript: open() link, if present. */
@@ -200,6 +224,38 @@ function resolve(href: string): string {
   }
   catch {
     return ''
+  }
+}
+
+/** Whether a window.open URL is exactly the destination declared by a link. */
+function matchesUrl(url: string | URL | undefined, href: string): boolean {
+  if (url == null || !href) return false
+  return resolve(String(url)) === resolve(href)
+}
+
+/**
+ * Frameworks can route an outbound link through a first-party redirector while
+ * leaving the final destination in the anchor. Accept that shape only when the
+ * redirect host is the page host (or its subdomain) and a decoded query value
+ * exactly equals the URL the user clicked.
+ */
+function isPageOwnedRedirectTo(url: string | URL | undefined, href: string): boolean {
+  if (url == null || !href) return false
+
+  try {
+    const redirect = new URL(String(url), window.location.href)
+    const pageHostname = window.location.hostname.toLowerCase()
+    const redirectHostname = redirect.hostname.toLowerCase()
+    const pageOwned = redirectHostname === pageHostname
+      || redirectHostname.endsWith(`.${pageHostname}`)
+    if (!pageOwned) return false
+
+    const destination = resolve(href)
+    return [...redirect.searchParams.values()]
+      .some(value => resolve(value) === destination)
+  }
+  catch {
+    return false
   }
 }
 

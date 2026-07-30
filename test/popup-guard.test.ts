@@ -44,6 +44,8 @@ describe('built pop-up guard', () => {
         javascriptChatAllowed: boolean
         javascriptLinkMismatchBlocked: boolean
         isolatedUserPopupAllowed: boolean
+        declaredLinkAfterFloodAllowed: boolean
+        duplicateDeclaredLinkBlocked: boolean
         reported: number
       }>(`window.__guardTest`)
 
@@ -59,6 +61,8 @@ describe('built pop-up guard', () => {
       expect(result.javascriptChatAllowed).toBe(true)
       expect(result.javascriptLinkMismatchBlocked).toBe(true)
       expect(result.isolatedUserPopupAllowed).toBe(true)
+      expect(result.declaredLinkAfterFloodAllowed).toBe(true)
+      expect(result.duplicateDeclaredLinkBlocked).toBe(true)
       expect(result.reported).toBeGreaterThanOrEqual(1)
       expect(errors).toEqual([])
     }
@@ -171,6 +175,13 @@ function fixture(guardScript: string): string {
         var floodBlocked = false;
         for (var i = 0; i < 4; i++) { clickOn('signin'); var r = window.open('/x' + i); if (isDecoy(r)) floodBlocked = true; }
 
+        // A busy app can legitimately exhaust the generic short-window budget.
+        // The next explicit anchor destination still represents a fresh user
+        // choice and must not be miscounted as a pop-up.
+        clickOn('extlink');
+        var declaredLinkAfterFlood = window.open('https://legit.example/page', '_blank', 'noopener');
+        var duplicateDeclaredLink = window.open('https://legit.example/page', '_blank', 'noopener');
+
         setTimeout(function () {
           window.__guardTest = {
             blockedIsDecoy: isDecoy(blocked),
@@ -182,6 +193,8 @@ function fixture(guardScript: string): string {
             javascriptChatAllowed: !!(javascriptChat && javascriptChat.__stub),
             javascriptLinkMismatchBlocked: isDecoy(javascriptMismatch),
             isolatedUserPopupAllowed: !!(isolatedUserPopup && isolatedUserPopup.__stub),
+            declaredLinkAfterFloodAllowed: !!(declaredLinkAfterFlood && declaredLinkAfterFlood.__stub),
+            duplicateDeclaredLinkBlocked: isDecoy(duplicateDeclaredLink),
             reported: reported,
             done: true,
           };
