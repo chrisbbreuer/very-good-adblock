@@ -45,7 +45,7 @@
       </section>
 
       <section class="dashboard-grid">
-        <article class="glass-panel dashboard-panel">
+        <article class="glass-panel dashboard-panel history-panel">
           <div class="section-heading">
             <span>History</span>
             <strong>60 days</strong>

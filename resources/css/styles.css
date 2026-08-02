@@ -411,11 +411,15 @@ h1 {
   border-bottom: 1px solid var(--hairline);
 }
 
+/* The daily chart is the history panel's content, so it takes whatever height
+   the panel has rather than a fixed 190px. Paired with `.history-panel`
+   stretching to its grid row, that turns the gap left under a short chart into
+   taller bars — the row is as tall as the Protection panel either way. */
 .bar-chart.large {
   grid-template-columns: repeat(60, 1fr);
-  flex: none;
-  height: 190px;
-  min-height: 0;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 190px;
   gap: 2px;
 }
 
@@ -429,7 +433,8 @@ h1 {
 .chart-empty-note {
   display: grid;
   place-items: center;
-  height: 190px;
+  flex: 1 1 auto;
+  min-height: 190px;
   margin: 0;
   padding: 0 24px;
   color: rgba(var(--text-rgb), 0.5);
@@ -853,6 +858,14 @@ h1 {
 .dashboard-panel {
   display: flex;
   flex-direction: column;
+}
+
+/* The one panel worth stretching to its row. Its content is a chart, and a
+   chart gains from the height; every other panel is a list of rows that would
+   only grow a gap under itself — which is what `align-items: start` above is
+   there to prevent. */
+.dashboard-grid .history-panel {
+  align-self: stretch;
 }
 
 .toggle-row {
