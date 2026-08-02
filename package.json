@@ -83,16 +83,15 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/buddy": "^0.70.234",
+    "@stacksjs/buddy": "^0.70.236",
     "@stacksjs/ts-cloud": "^0.7.93",
-    "stacks": "^0.70.234"
+    "stacks": "^0.70.236"
   },
   "devDependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@ghostery/adblocker": "^2.18.1",
     "@gorhill/ubo-core": "^0.1.30",
-    "@stacksjs/actions": "^0.70.234",
-    "@stacksjs/image": "^0.70.234",
+    "@stacksjs/image": "^0.70.236",
     "@types/chrome": "^0.2.5",
     "adblockpluscore": "^0.11.1",
     "better-dx": "^0.2.22",
