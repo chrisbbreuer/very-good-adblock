@@ -70,50 +70,59 @@ const images: ImagesConfig = {
     // visibly, which is what sent us here.
     presets: ['og', 'square', 'portrait'],
     foreground: 'dist/captures/popup.png',
+    // Copy here is measured, not estimated. The renderer caps a title at three
+    // lines and a subtitle at one and drops the rest with no ellipsis and no
+    // warning, and the 1.91:1 card gives the text only 492px beside the
+    // product shot — so "Blocked before the request completes." shipped for
+    // months as "Blocked before the request". `bun run validate:social-copy`
+    // measures every string against the real font and fails on an overflow;
+    // it runs as part of `site:build`. Check it before editing these.
     pages: [
       {
         path: '/',
         title: 'Ads gone before the page loads.',
-        eyebrow: 'Chrome · Firefox · Safari',
+        eyebrow: 'Chrome, Firefox and Safari',
         subtitle: 'No account, no telemetry, no bloat.',
       },
       {
         path: '/features',
-        title: 'Every defense, in one extension.',
+        title: 'Four layers, one blocker.',
         eyebrow: 'Features',
-        subtitle: 'Network, cosmetic, pop-up, and video ad blocking.',
+        subtitle: 'Network, cosmetic, pop-up, video.',
       },
       {
         path: '/features/network-blocking',
-        title: 'Blocked before the request completes.',
+        title: 'Blocked before the request.',
         eyebrow: 'Network blocking',
-        subtitle: '14,000+ ad, tracker, and annoyance hosts.',
+        subtitle: '14,000+ ad and tracker hosts.',
       },
       {
         path: '/features/youtube-twitch',
-        title: 'YouTube and Twitch, without the ads.',
+        title: 'YouTube and Twitch, ad-free.',
         eyebrow: 'Video',
-        subtitle: 'Stripped from the player response, not skipped after the fact.',
+        subtitle: 'Stripped from the player response.',
       },
       {
         path: '/features/popups',
         title: 'Pop-ups that never open.',
         eyebrow: 'Pop-ups',
-        subtitle: 'Including the ones fired from inside a player iframe.',
+        subtitle: 'Even the ones fired from an iframe.',
       },
       {
         path: '/features/controls',
         title: 'Pause any site in one click.',
         eyebrow: 'Controls',
-        subtitle: 'Allowlists, per-site stats, and a local-only dashboard.',
+        subtitle: 'Allowlists, per-site stats, local only.',
         foreground: 'dist/captures/popup-paused.png',
       },
       {
         path: '/privacy',
-        title: 'Nothing about your browsing leaves the device.',
+        title: 'Nothing leaves your device.',
         eyebrow: 'Privacy',
-        subtitle: 'No accounts, no analytics, no telemetry.',
-        foreground: 'dist/captures/dashboard.png',
+        subtitle: 'No accounts, no analytics, no logs.',
+        // The panel, not the whole dashboard: a card draws the product about
+        // 440px wide and the full 1180px page is illegible at that size.
+        foreground: 'dist/captures/dashboard-protection.png',
       },
     ],
   },
