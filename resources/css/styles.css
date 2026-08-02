@@ -1521,10 +1521,6 @@ h1 {
     grid-template-columns: 1fr;
     gap: 22px;
   }
-
-  .cta-inner {
-    padding: 40px 22px;
-  }
 }
 
 /* Email capture: posts to the Stacks subscribe endpoint (SubscriberEmailAction). */
@@ -1610,12 +1606,6 @@ h1 {
 
 .subscribe-status[data-kind="pending"] {
   color: rgba(var(--text-rgb), 0.62);
-}
-
-@media (max-width: 560px) {
-  .subscribe-form {
-    flex-direction: column;
-  }
 }
 
 .section-kicker {
@@ -2477,28 +2467,59 @@ h1 {
   color: var(--text);
 }
 
-@media (max-width: 1024px) {
+
+/* ── Responsive ───────────────────────────────────────────────────
+   Ordered widest to narrowest so later blocks win without !important.
+   Every multi-column grid on the page declares its collapse here; nothing
+   relies on "it will probably wrap". */
+
+/* Four feature cards stop being readable well before the tablet break. */
+@media (max-width: 1100px) {
   .feature-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 860px) {
-  .feature-detail,
-  .browsers-band {
+/* Split heroes and two-column bands go single-column while there is still
+   room for the copy to keep its measure. */
+@media (max-width: 940px) {
+  .marketing-hero {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 40px;
+    padding-top: 40px;
+  }
+
+  .hero-copy {
+    max-width: none;
+  }
+
+  /* Copy (with the install button) leads on narrow viewports; the product card
+     follows it rather than being pushed off the first screen. Centred, because
+     on a tablet the card is narrower than the column and hugging the left edge
+     left half the row empty. On a phone it fills the column either way. */
+  .hero-visual {
+    order: 1;
+    justify-items: center;
+    /* The glow is deliberately wider than the card; clipping it here keeps it
+       from adding horizontal scroll on a phone. */
+    overflow: hidden;
+  }
+
+  .stats-showcase,
+  .privacy-band,
+  .browsers-band,
+  .feature-detail {
+    grid-template-columns: 1fr;
+    gap: 32px;
   }
 
   .feature-detail.reverse .feature-detail-copy {
     order: 0;
   }
 
-  .feature-points {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-index {
+  .feature-points,
+  .feature-index,
+  .other-features .feature-index {
     grid-template-columns: 1fr;
   }
 
@@ -2509,12 +2530,219 @@ h1 {
   }
 }
 
-@media (max-width: 560px) {
-  .defuse-panel {
-    grid-template-columns: 1fr;
+/* Phone and small tablet. The rhythm and gutter tokens step down here, which
+   is what moves every band at once instead of each one being retuned. */
+@media (max-width: 760px) {
+  :root {
+    --section-y: 60px;
+    --gutter: 20px;
+  }
+
+  .marketing-nav-inner {
+    min-height: 62px;
+  }
+
+  /* The ambient wash is a single soft corner on a phone: the two-radial
+     desktop version banded visibly across a 390px screen. */
+  .marketing-shell {
+    background:
+      radial-gradient(circle at 84% 4%, rgba(var(--accent-rgb), 0.14), transparent 44%),
+      var(--app-bg);
+  }
+
+  /* The inline links, the GitHub icon and "Read docs" all move into the
+     disclosure panel; the bar keeps the brand, the theme toggle and the menu,
+     which is what fits on a 390px row without crowding. */
+  .marketing-nav nav,
+  .nav-controls .nav-icon,
+  .nav-controls .nav-action {
+    display: none;
+  }
+
+  .nav-disclosure {
+    display: block;
+  }
+
+  /* The two controls left in the bar are the only ones a thumb has to hit, so
+     both clear 44px rather than the 40-42px they inherit from the desktop row. */
+  .nav-toggle,
+  .theme-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .marketing-hero {
+    gap: 32px;
+    padding-top: 32px;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(32px, 8.6vw, 44px);
+  }
+
+  .hero-lede {
+    font-size: 16.5px;
+  }
+
+  /* Every tap target clears 44px. The pills flex rather than sitting in a
+     fixed 2-up grid, so an odd count fills its row instead of leaving a hole
+     beside the last one. */
+  .hero-actions {
+    gap: 10px;
+  }
+
+  .hero-actions .primary-link,
+  .hero-actions .secondary-link,
+  .hero-how {
+    flex: 1 0 100%;
+  }
+
+  /* 150px is deliberate: two pills plus the gap fit a 390px screen and a third
+     does not, so "Manual download" drops to its own full-width row instead of
+     being squeezed into a third of one and wrapping onto two lines. */
+  .hero-actions .download-pill {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+
+  .hero-actions .primary-link,
+  .hero-actions .secondary-link,
+  .hero-actions .download-pill {
+    min-height: 46px;
+  }
+
+  .hero-device {
+    max-height: 420px;
+  }
+
+  .feature-grid,
+  .browser-buttons {
+    gap: 10px;
+  }
+
+  /* Stacked one per row, the icon-over-title layout spent 58px of every card
+     on an empty line. On a phone the tile sits on the heading's line instead,
+     which takes roughly a screen out of this section. */
+  .feature-card {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: center;
+    padding: 18px;
+  }
+
+  .feature-card .feature-icon {
+    grid-row: 1;
+  }
+
+  /* One per row on a phone, so nothing needs reserving for a second line. */
+  .feature-card h3 {
+    grid-column: 2;
+    margin: 0;
+    min-height: 0;
+    font-size: 18px;
+  }
+
+  .feature-card p,
+  .feature-card .feature-more {
+    grid-column: 2;
+  }
+
+  .feature-card p {
+    margin-top: 10px;
+    font-size: 15px;
+  }
+
+  .feature-card .feature-more {
+    margin-top: 12px;
+  }
+
+  /* Four stats stay a 2x2 block. Stacked, they were four full-width slabs and
+     roughly a screen and a half of scrolling for four numbers. */
+  .stat-wall {
+    gap: 10px;
+  }
+
+  .stat-wall article {
+    min-height: 108px;
+    padding: 18px 16px;
+  }
+
+  .stats-showcase p,
+  .privacy-band p {
+    font-size: 16.5px;
+  }
+
+  .how-band > h2 {
+    margin-bottom: 28px;
+  }
+
+  /* Standalone text links are the page's smallest targets: 17-22px tall on a
+     phone. The extra block padding gets each one over 44px without changing
+     where the text sits, since the margins absorb it. */
+  .section-link,
+  .feature-back,
+  .feature-doc-link,
+  .feature-more {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .section-link,
+  .feature-back,
+  .feature-doc-link {
+    display: inline-flex;
+  }
+
+  /* Inside a card the link is the last row, so the height is padding under the
+     text rather than a gap the card has to grow for. */
+  .feature-card .feature-more {
+    display: flex;
+    margin-top: 4px;
+  }
+
+  .cta-inner {
+    padding: 40px 22px;
+  }
+
+  .marketing-footer {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 18px;
+    min-height: 0;
+    padding: 26px 0;
+  }
+
+  .marketing-footer span {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+
+  .marketing-footer a {
+    margin-left: 0;
   }
 }
 
+/* Narrow phones. One column for anything still paired. */
+@media (max-width: 560px) {
+  .feature-grid,
+  .defuse-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .subscribe-form {
+    flex-direction: column;
+  }
+
+  .subscribe-form input[type="email"],
+  .subscribe-form button {
+    width: 100%;
+  }
+}
+
+/* ── Dashboard (extension options page) ───────────────────────────
+   Kept separate from the marketing breakpoints above: the dashboard is a
+   fixed-width extension surface and does not share the site's grid. */
 @media (max-width: 760px) {
   .dashboard-shell {
     padding: 16px;
@@ -2529,102 +2757,5 @@ h1 {
 
   .dashboard-header h1 {
     font-size: 32px;
-  }
-
-  /* Constrain the inner rows, not `.marketing-nav` itself — the bar (background
-     + hairline) stays edge to edge; only its content row is gutter-padded. */
-  .marketing-nav-inner,
-  .marketing-hero,
-  .marketing-band,
-  .stats-showcase,
-  .privacy-band,
-  .subscribe-band,
-  .marketing-footer {
-    width: min(100% - 28px, 1180px);
-  }
-
-  .marketing-nav {
-    min-height: 66px;
-  }
-
-  .marketing-shell {
-    background:
-      radial-gradient(circle at 82% 8%, rgba(var(--accent-rgb), 0.16), transparent 46%),
-      var(--app-bg);
-  }
-
-  .marketing-nav nav {
-    display: none;
-  }
-
-  .nav-action {
-    min-height: 38px;
-    padding: 0 12px;
-    font-size: 13px;
-  }
-
-  .marketing-hero,
-  .stats-showcase,
-  .privacy-band {
-    grid-template-columns: 1fr;
-  }
-
-  .marketing-hero {
-    gap: 18px;
-    min-height: auto;
-    padding: 34px 0 30px;
-  }
-
-  .hero-lede {
-    font-size: 17px;
-  }
-
-  /* Copy (with the Install button) comes first on mobile; the popup sits below. */
-  .hero-visual {
-    order: 0;
-    min-height: auto;
-    /* Keep the deliberately oversized glow from widening narrow viewports. */
-    overflow: hidden;
-  }
-
-  .hero-shield {
-    width: min(180px, 52%);
-  }
-
-  .marketing-band,
-  .stats-showcase,
-  .privacy-band {
-    padding: 46px 0;
-  }
-
-  .feature-grid,
-  .stat-wall {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-grid article,
-  .feature-card,
-  .stat-wall article {
-    min-height: auto;
-  }
-
-  /* Single-column stat cards read better as a centered number + label than as a
-     tall box with the text stuck in the top-left corner. */
-  .stat-wall article {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 26px 22px;
-  }
-
-  .marketing-footer {
-    flex-wrap: wrap;
-    gap: 14px;
-    padding: 24px 0;
-  }
-
-  .marketing-footer a {
-    margin-left: 0;
   }
 }
