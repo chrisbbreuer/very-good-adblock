@@ -46,6 +46,13 @@ Features:
 • Local blocking and savings statistics
 
 Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Extensions on iPhone or iPad, or Safari > Settings > Extensions on Mac.`,
+    // App Review wants to know what changed in an update, and without this the
+    // version localization carries whatever the previous submission said.
+    // Written for the people reading the listing, so it covers what they can
+    // see or feel — not the build pipeline behind it.
+    whatsNew: `• Links that pass through a redirector — sign-in flows, newsletter and search result links — now open normally instead of being caught by the pop-up guard.
+• The dashboard's 60-day history chart fills its panel, so the bars are readable at a glance.
+• Consistent typography across the popup and dashboard on every device.`,
     keywords: 'ad blocker,privacy,tracker blocker,popups,Safari,YouTube,Twitch,cookie banners',
     supportUrl: 'https://github.com/chrisbbreuer/very-good-adblock/issues',
     marketingUrl: 'https://verygoodadblock.org',
