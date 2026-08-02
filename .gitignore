@@ -17,6 +17,7 @@ lib-cov
 logs
 node_modules
 temp
+tmp
 bench/fixtures
 .zed
 .cursor

@@ -19,6 +19,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8099", "--directory", "dist/site"],
       "port": 8099
+    },
+    {
+      "name": "marketing-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--bun", "resources/scripts/serve-site.ts"],
+      "port": 8124
     }
   ]
 }

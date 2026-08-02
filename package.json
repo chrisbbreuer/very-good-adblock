@@ -63,6 +63,8 @@
     "changelog": "bunx --bun buddy changelog",
     "capture": "bun --bun resources/scripts/capture-surfaces.ts",
     "preview:surfaces": "bun --bun resources/scripts/preview-surfaces.ts",
+    "preview:site": "bun --bun resources/scripts/serve-site.ts",
+    "shots": "bun --bun resources/scripts/shoot-site.ts",
     "og": "bun run build && bun run capture && bun node_modules/@stacksjs/buddy/dist/cli.js generate:og",
     "screenshots": "bun run build && bun --bun resources/scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun resources/scripts/generate-marketing-preview.ts",
