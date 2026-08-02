@@ -22,8 +22,16 @@
     <meta property="og:url" content="https://verygoodadblock.org/features/">
     <meta property="og:title" content="Features — Very Good AdBlock">
     <meta property="og:description" content="Four layers of protection: network blocking, YouTube and Twitch ad removal at the source, pop-up defusing, and one-click local controls.">
-    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Every defense, in one extension.">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-square.jpg">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-portrait.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://verygoodadblock.org/social/features.jpg">
+    <meta name="twitter:image:alt" content="Every defense, in one extension.">
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
     <title>Features — Very Good AdBlock</title>

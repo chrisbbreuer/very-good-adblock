@@ -22,8 +22,16 @@
     <meta property="og:url" content="https://verygoodadblock.org/features/network-blocking/">
     <meta property="og:title" content="Network blocking — Very Good AdBlock">
     <meta property="og:description" content="A Manifest V3 declarativeNetRequest ruleset stops 14,387 ad, tracker, and annoyance hosts before the request completes, with zero per-request JavaScript.">
-    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-network-blocking.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Blocked before the request completes.">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-network-blocking-square.jpg">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-network-blocking-portrait.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://verygoodadblock.org/social/features-network-blocking.jpg">
+    <meta name="twitter:image:alt" content="Blocked before the request completes.">
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
     <title>Network blocking — Very Good AdBlock</title>

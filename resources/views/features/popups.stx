@@ -22,8 +22,16 @@
     <meta property="og:url" content="https://verygoodadblock.org/features/popups/">
     <meta property="og:title" content="Pop-ups and pop-unders — Very Good AdBlock">
     <meta property="og:description" content="A MAIN-world guard wraps window.open and blocks the abusive click-hijack pattern streaming and file-host sites rely on, while letting the pop-ups you asked for through.">
-    <meta property="og:image" content="https://verygoodadblock.org/icons/icon-128.png">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-popups.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Pop-ups that never open.">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-popups-square.jpg">
+    <meta property="og:image" content="https://verygoodadblock.org/social/features-popups-portrait.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://verygoodadblock.org/social/features-popups.jpg">
+    <meta name="twitter:image:alt" content="Pop-ups that never open.">
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
     <title>Pop-ups and pop-unders — Very Good AdBlock</title>
