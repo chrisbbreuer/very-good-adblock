@@ -1048,16 +1048,29 @@ h1 {
   text-decoration: none;
 }
 
+/* One container for every band on every marketing page. Sections used to opt
+   in individually, which is how `.subscribe-band` ended up with a width but no
+   auto margin (flush left on phones) and `.how-band` ended up on a 20px gutter
+   next to the hero's 14px. Adding a section means adding it here, not
+   inventing another width. */
 .marketing-hero,
 .marketing-band,
 .how-band,
 .stats-showcase,
 .privacy-band,
 .cta-band,
+.subscribe-band,
+.browsers-band,
+.features-hero,
+.feature-page-hero,
+.feature-index,
+.other-features,
+.feature-detail,
+.feature-editorial,
 .marketing-nav-inner,
 .marketing-footer {
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
+  width: min(1180px, calc(100% - var(--gutter) * 2));
+  margin-inline: auto;
 }
 
 /* The bar spans the full viewport (background + hairline edge to edge); only the
@@ -1374,16 +1387,23 @@ h1 {
   background: rgba(var(--text-rgb), 0.04);
 }
 
+/* Rhythm is bottom-only, so the gap between any two bands is exactly one
+   --section-y. Paired top-and-bottom padding meant every seam was two
+   sections' worth of space and the page read as a list of islands. */
 .marketing-band,
+.browsers-band,
+.how-band,
 .stats-showcase,
-.privacy-band {
-  padding: 76px 0;
+.privacy-band,
+.cta-band,
+.subscribe-band {
+  padding: 0 0 var(--section-y);
 }
 
 /* How it works: a 3-step timeline (accent top-rule + number), deliberately not
    another boxed card grid so the page's section layouts stay varied. */
 .how-band {
-  padding: 20px 0 68px;
+  padding: 0 0 var(--section-y);
 }
 
 .how-band > h2 {
@@ -1436,7 +1456,7 @@ h1 {
 
 /* Closing call to action: one blue-lit panel, centered, primary CTA repeated. */
 .cta-band {
-  padding: 16px 0 84px;
+  padding: 0 0 var(--section-y);
 }
 
 .cta-inner {
@@ -1503,7 +1523,7 @@ h1 {
 
 /* Email capture: posts to the Stacks subscribe endpoint (SubscriberEmailAction). */
 .subscribe-band {
-  padding: 8px 0 88px;
+  padding: 0 0 var(--section-y);
   text-align: center;
 }
 
@@ -1908,24 +1928,16 @@ h1 {
   text-decoration: underline;
 }
 
-/* ── Browsers band: Chrome + Firefox store links ──────────────── */
-.browsers-band,
-.features-hero,
-.feature-page-hero,
-.feature-index,
-.other-features,
-.feature-detail,
-.feature-editorial {
-  width: min(1180px, calc(100% - 40px));
-  margin: 0 auto;
-}
-
 /* ── Features hub + per-feature page scaffolding ──────────────── */
+
+/* Same bottom-only rhythm as the home page. The one exception is the sections
+   that carry a border-top: a rule needs air on both sides, so those pad top
+   and bottom and the section above them stops at zero. */
 .feature-index {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-  padding-bottom: 8px;
+  padding-bottom: var(--section-y);
 }
 
 .feature-index-card {
@@ -1964,7 +1976,7 @@ h1 {
 
 /* Per-feature page hero: back link, larger icon tile, title + lede. */
 .feature-page-hero {
-  padding: 40px 0 30px;
+  padding: 56px 0 var(--section-y);
 }
 
 .feature-back {
@@ -2009,9 +2021,10 @@ h1 {
   max-width: 60ch;
 }
 
+/* The nested .feature-index supplies the bottom rhythm, so this pads the top
+   only and the two do not stack into a double gap. */
 .other-features {
-  margin-top: 8px;
-  padding: 56px 0 20px;
+  padding: var(--section-y) 0 0;
   border-top: 1px solid var(--line);
 }
 
@@ -2030,9 +2043,9 @@ h1 {
 .browsers-band {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1fr);
-  gap: 40px;
+  gap: 44px;
   align-items: center;
-  padding: 30px 0 76px;
+  padding: 0 0 var(--section-y);
 }
 
 .browsers-copy h2 {
@@ -2101,7 +2114,7 @@ h1 {
 
 /* ── Features page ────────────────────────────────────────────── */
 .features-hero {
-  padding: 64px 0 34px;
+  padding: 56px 0 var(--section-y);
 }
 
 .features-hero h1 {
@@ -2148,7 +2161,7 @@ h1 {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   gap: 54px;
   align-items: center;
-  padding: 60px 0;
+  padding: var(--section-y) 0;
   border-top: 1px solid var(--line);
 }
 
@@ -2257,7 +2270,7 @@ h1 {
 }
 
 .feature-editorial {
-  padding: 60px 0;
+  padding: var(--section-y) 0;
   border-top: 1px solid var(--line);
 }
 
@@ -2348,9 +2361,9 @@ h1 {
 
 /* ── Legal / prose pages (privacy) ────────────────────────────── */
 .legal {
-  width: min(760px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 52px 0 76px;
+  width: min(760px, calc(100% - var(--gutter) * 2));
+  margin-inline: auto;
+  padding: 56px 0 var(--section-y);
 }
 
 .legal h1 {
