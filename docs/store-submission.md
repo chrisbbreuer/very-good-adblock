@@ -137,9 +137,17 @@ class.
 ## Social cards
 
 `bun run og` writes the link-preview cards to `public/social/` — a 1200x630
-primary plus square and 4:5 crops per page — and `bun run site:build` runs it
-and then fails if any card a template declares was never generated. The pages
-and their copy live in `social.pages` in `config/images.ts`.
+primary plus square and 4:5 crops per page. The pages and their copy live in
+`social.pages` in `config/images.ts`.
+
+`bun run site:build` regenerates them itself before assembling the site, so a
+deploy ships cards describing the build being deployed rather than whatever was
+last committed. That works on CI as well as a laptop: capturing the popup goes
+through `Bun.WebView`, which uses WKWebView on macOS and drives an installed
+Chrome elsewhere, and the `ubuntu-latest` runner image ships Chrome. The cards
+are committed too, so a checkout has them without a build. After assembling,
+the build fails if a template declares a card that was never generated, or if a
+configured page no template references.
 
 ## Firefox notes
 

@@ -15,6 +15,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import process from 'node:process'
 import { startPreviewServer } from './lib/preview-server'
 
 const dist = resolve('dist')
@@ -52,8 +53,34 @@ const surfaces: Surface[] = [
   { name: 'dashboard', path: '/options.html', width: 1180, height: 820 },
 ]
 
+/**
+ * Chrome flags shared by every capture.
+ *
+ * `Bun.WebView` uses WKWebView on macOS and drives an installed Chrome
+ * everywhere else; the GitHub runner images ship Chrome, so this runs on the
+ * deploy runner as well as a laptop. The sandbox and /dev/shm flags are the
+ * two that a headless Linux CI reliably needs and that cost nothing on macOS,
+ * where they are simply not passed.
+ *
+ * A device scale factor of 2 keeps the capture sharp when it is later drawn at
+ * 780px wide on a 1290px phone frame: downsampling is free, and there is no
+ * way to recover detail that was never captured.
+ */
+function chromeArgv(scaleFactor: 1 | 2): string[] {
+  // The scale factor is always stated, never inherited: left to the display,
+  // a measuring pass runs at the machine's own DPR and reports a different
+  // content height on a Retina laptop than on a CI runner, which lands as a
+  // differently-cropped capture.
+  const argv = ['--proxy-server=direct://', '--proxy-bypass-list=*', `--force-device-scale-factor=${scaleFactor}`]
+  if (process.platform === 'linux')
+    argv.push('--no-sandbox', '--disable-dev-shm-usage')
+
+  return argv
+}
+
 // Scrollbars are chrome, not product. A capture that carries one puts a grey
 // gutter down the right of every store screenshot and social card.
+//
 // Wrapped in an IIFE: `evaluate` takes an expression, and a bare `const`
 // declaration is a statement.
 const HIDE_SCROLLBARS = `(() => {
@@ -87,10 +114,7 @@ async function capture(surface: Surface): Promise<void> {
     backend: {
       type: 'chrome',
       url: false,
-      // A device scale factor of 2 keeps the capture sharp when it is drawn at
-      // 780px wide on a 1290px phone frame; downsampling is free, and there is
-      // no way to recover detail that was never captured.
-      argv: ['--proxy-server=direct://', '--proxy-bypass-list=*', '--force-device-scale-factor=2'],
+      argv: chromeArgv(2),
     },
   })
 
@@ -132,7 +156,7 @@ async function measure(surface: Surface): Promise<number> {
   const view = new Bun.WebView({
     width: surface.width,
     height: 200,
-    backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*', '--force-device-scale-factor=1'] },
+    backend: { type: 'chrome', url: false, argv: chromeArgv(1) },
   })
 
   try {

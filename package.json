@@ -51,7 +51,7 @@
     "safari:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish",
     "safari:validate": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:safari:publish --validate-only",
     "dev:firefox": "bun run build:firefox && web-ext run --source-dir=dist-firefox",
-    "site:build": "bun run build && bun run docs:build && bun --bun resources/scripts/build-site.ts",
+    "site:build": "bun run build && bun run capture && bun node_modules/@stacksjs/buddy/dist/cli.js generate:og && bun run docs:build && bun --bun resources/scripts/build-site.ts",
     "deploy": "bunx --bun buddy deploy",
     "dns:diff": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:diff verygoodadblock.org",
     "dns:sync": "bun node_modules/@stacksjs/buddy/dist/cli.js dns:sync verygoodadblock.org",
