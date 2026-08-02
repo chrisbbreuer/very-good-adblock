@@ -50,6 +50,16 @@ export function injectShim(markup: string, shim: string): string {
 export function dashboardState(): DashboardState {
   const now = new Date('2026-07-02T18:24:00.000Z')
   const iso = now.toISOString()
+
+  // Per-site timestamps are anchored to the real clock rather than to `now`.
+  //
+  // The chart reads its buckets positionally, so a fixed date renders the same
+  // shape forever — but the popup renders `lastBlockedAt` as "Xd ago", against
+  // whatever today is. Pinned to 2026-07-02 that counter climbs by one every
+  // day, so regenerating the cards produced a new set of bytes each morning and
+  // the diff said something had changed when nothing had. Anchoring the offset
+  // instead of the instant keeps the rendered string fixed at "30d ago".
+  const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString()
   const bucket = (offsetHours: number, value: number) => ({ key: new Date(now.getTime() - offsetHours * 3600_000).toISOString().slice(0, 13), adsBlocked: value, bytesSaved: value * 240_000, videoSecondsSaved: 0 })
   const hourly = [4, 9, 6, 12, 8, 14, 7, 18, 11, 22, 16, 27, 19, 31, 24, 38, 29, 44, 33, 52, 41, 63, 47, 76].map((v, i) => bucket(23 - i, v))
   const daily = Array.from({ length: 60 }, (_, i) => ({ key: new Date(now.getTime() - (59 - i) * 86_400_000).toISOString().slice(0, 10), adsBlocked: 300 + Math.round(500 * Math.abs(Math.sin(i * 0.7))) + (i % 7 === 0 ? 260 : 0), bytesSaved: 0, videoSecondsSaved: 0 }))
@@ -67,9 +77,9 @@ export function dashboardState(): DashboardState {
         { hostname: 'footybite.app', source: 'popup', category: 'other', count: 12, occurredAt: iso },
       ],
       sites: {
-        'youtube.com': { hostname: 'youtube.com', adsBlocked: 4_812, bytesSaved: 3_400_000_000, videoSecondsSaved: 41_200, lastBlockedAt: iso },
-        'theverge.com': { hostname: 'theverge.com', adsBlocked: 1_944, bytesSaved: 880_000_000, videoSecondsSaved: 0, lastBlockedAt: iso },
-        'x.com': { hostname: 'x.com', adsBlocked: 1_207, bytesSaved: 120_000_000, videoSecondsSaved: 0, lastBlockedAt: iso },
+        'youtube.com': { hostname: 'youtube.com', adsBlocked: 4_812, bytesSaved: 3_400_000_000, videoSecondsSaved: 41_200, lastBlockedAt: daysAgo(2) },
+        'theverge.com': { hostname: 'theverge.com', adsBlocked: 1_944, bytesSaved: 880_000_000, videoSecondsSaved: 0, lastBlockedAt: daysAgo(30) },
+        'x.com': { hostname: 'x.com', adsBlocked: 1_207, bytesSaved: 120_000_000, videoSecondsSaved: 0, lastBlockedAt: daysAgo(5) },
       },
     },
     cloudSync: { available: true, syncedAt: iso, dailyBuckets: 60, siteRollups: 3 },
