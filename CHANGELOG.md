@@ -1,5 +1,32 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.10...HEAD)
+
+## 🚀 Features
+
+- **ui**: ship Inter instead of asking for it ([311a73f](https://github.com/chrisbbreuer/very-good-adblock/commit/311a73f)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: regenerate the social cards during the site build ([1601a17](https://github.com/chrisbbreuer/very-good-adblock/commit/1601a17)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **app-store**: ship a multi-slide screenshot set ([afc7282](https://github.com/chrisbbreuer/very-good-adblock/commit/afc7282)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: generate real link-preview cards ([120216c](https://github.com/chrisbbreuer/very-good-adblock/commit/120216c)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **scripts**: capture the extension surfaces raw ([d15be5e](https://github.com/chrisbbreuer/very-good-adblock/commit/d15be5e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **fixture**: stop the per-site timestamps drifting with the clock ([064fcbd](https://github.com/chrisbbreuer/very-good-adblock/commit/064fcbd)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: write bun.lock in the format CI can read ([668e131](https://github.com/chrisbbreuer/very-good-adblock/commit/668e131)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **dashboard**: let the history chart fill its panel ([4cbec0c](https://github.com/chrisbbreuer/very-good-adblock/commit/4cbec0c)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popups**: allow trusted link redirectors ([9e48890](https://github.com/chrisbbreuer/very-good-adblock/commit/9e48890)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- **app-store**: add release notes and take the publish fix ([2f54b78](https://github.com/chrisbbreuer/very-good-adblock/commit/2f54b78)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: move to Stacks 0.70.236 ([096d2a3](https://github.com/chrisbbreuer/very-good-adblock/commit/096d2a3)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: move to Stacks 0.70.234 for the image generators ([52ed67e](https://github.com/chrisbbreuer/very-good-adblock/commit/52ed67e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.9...v0.2.10)
 
 ## 🐛 Bug Fixes
