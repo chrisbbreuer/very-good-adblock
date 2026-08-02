@@ -1111,7 +1111,7 @@ h1 {
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   padding: 0 16px;
   font-weight: 800;
 }
@@ -1255,7 +1255,7 @@ h1 {
   min-height: 42px;
   padding: 0 15px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--panel-strong);
   color: var(--text);
   font-weight: 800;
@@ -1532,7 +1532,7 @@ h1 {
   min-width: 0;
   min-height: 48px;
   padding: 0 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hairline);
   background: var(--panel-strong);
   color: var(--text);
@@ -1615,7 +1615,7 @@ h1 {
   display: block;
   width: 40px;
   height: 40px;
-  border-radius: 11px;
+  border-radius: var(--radius-inner);
   background: rgba(var(--accent-rgb), 0.14);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.28);
 }
@@ -1761,7 +1761,7 @@ h1 {
   width: 340px;
   padding: 8px;
   border: 1px solid var(--hairline);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   /* Opaque: the panel tint composited over the solid page background so the
      hero underneath never bleeds through (a translucent bg read as a z-index
      bug). Layered gradient keeps the subtle elevation without transparency. */
@@ -1788,7 +1788,7 @@ h1 {
   display: flex;
   gap: 12px;
   padding: 11px 12px;
-  border-radius: 11px;
+  border-radius: var(--radius-inner);
   transition: background 130ms ease;
 }
 
@@ -1802,7 +1802,7 @@ h1 {
   flex: none;
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: var(--radius-inner);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.14);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.26);
@@ -1978,7 +1978,7 @@ h1 {
   width: 52px;
   height: 52px;
   margin: 22px 0 20px;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.14);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.28);
@@ -2267,7 +2267,7 @@ h1 {
 .feature-point {
   padding: 22px;
   border: 1px solid var(--hairline);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   background: rgba(var(--text-rgb), 0.04);
 }
 
@@ -2292,7 +2292,7 @@ h1 {
 .defuse-col {
   padding: 22px;
   border: 1px solid var(--hairline);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   background: rgba(var(--text-rgb), 0.04);
 }
 
