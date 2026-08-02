@@ -38,11 +38,25 @@
      glow (never UI). */
   --accent: #ef4444;
   --accent-soft: #ff9a9a;
+  /* Accent as *text*, which is a different job from accent as a fill. The
+     brand red is only ~3:1 against the light theme's pale surfaces, so every
+     accent-coloured label ("Learn more", section links, the CTA badge) reads
+     this token instead and each theme picks a value that clears WCAG AA. */
+  --accent-ink: #ff9a9a;
   --accent-2: #ff7a4d;
   --accent-rgb: 239, 68, 68;
   --wash-rgb: 255, 122, 77;
   --danger: #ff5c7a;
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  /* Elevation, three steps, tinted to the surface rather than pure black.
+     A black shadow under the light theme's pink page reads as a grey smudge
+     around the card instead of depth, so both themes get their own values and
+     every marketing surface pulls from here. Flat groupings (feature cards,
+     the stat wall, the privacy list) take a hairline and a surface tint and no
+     shadow at all — only things that genuinely float get one. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 26px -14px rgba(0, 0, 0, 0.68);
+  --shadow-lg: 0 30px 60px -28px rgba(0, 0, 0, 0.8);
+  --shadow: var(--shadow-md);
   --nav-bg: rgba(22, 8, 9, 0.86);
   --text-rgb: 251, 243, 243;
   /* Themeable surface backgrounds (overridden wholesale in light mode). */
@@ -54,12 +68,20 @@
     radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.16), transparent 16rem),
     radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.2), transparent 18rem),
     rgba(22, 8, 9, 0.72);
-  /* One radius scale: panels > cards > inner controls > pills. */
+  /* One radius scale: panels > cards > buttons and inputs > inner chips >
+     pills. Every rounded corner on the site resolves to one of these, so a
+     16px card cannot end up next to an 18px one. */
   --radius-panel: 16px;
   --radius-card: 14px;
+  --radius-control: 12px;
   --radius-inner: 10px;
   --radius-pill: 999px;
   --press: transform 120ms ease;
+  /* One vertical rhythm and one gutter for every marketing band, so sections
+     cannot drift apart the way per-section paddings did. Both step down in the
+     small-viewport block at the end of this file. */
+  --section-y: 88px;
+  --gutter: 24px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -78,7 +100,10 @@
     --text: #241012;
     --muted: rgba(36, 16, 18, 0.66);
     --line: rgba(120, 20, 24, 0.16);
-    --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
+    --accent-ink: #a3161a;
+    --shadow-sm: 0 1px 2px rgba(120, 20, 24, 0.08);
+    --shadow-md: 0 10px 26px -14px rgba(120, 20, 24, 0.34);
+    --shadow-lg: 0 30px 60px -28px rgba(120, 20, 24, 0.42);
     --nav-bg: rgba(255, 255, 255, 0.82);
     --text-rgb: 36, 16, 18;
     --app-bg:
@@ -101,7 +126,10 @@
   --text: #241012;
   --muted: rgba(36, 16, 18, 0.66);
   --line: rgba(120, 20, 24, 0.16);
-  --shadow: 0 24px 70px rgba(120, 20, 24, 0.16);
+  --accent-ink: #a3161a;
+  --shadow-sm: 0 1px 2px rgba(120, 20, 24, 0.08);
+  --shadow-md: 0 10px 26px -14px rgba(120, 20, 24, 0.34);
+  --shadow-lg: 0 30px 60px -28px rgba(120, 20, 24, 0.42);
   --nav-bg: rgba(255, 255, 255, 0.82);
   --text-rgb: 36, 16, 18;
   --app-bg:
