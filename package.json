@@ -61,6 +61,9 @@
     "release:minor": "bun node_modules/@stacksjs/buddy/dist/cli.js release --bump minor",
     "release:major": "bun node_modules/@stacksjs/buddy/dist/cli.js release --bump major",
     "changelog": "bunx --bun buddy changelog",
+    "capture": "bun --bun resources/scripts/capture-surfaces.ts",
+    "preview:surfaces": "bun --bun resources/scripts/preview-surfaces.ts",
+    "og": "bun run build && bun run capture && bun node_modules/@stacksjs/buddy/dist/cli.js generate:og",
     "screenshots": "bun run build && bun --bun resources/scripts/store-screenshots.ts",
     "preview:marketing": "bun run build && bun --bun resources/scripts/generate-marketing-preview.ts",
     "smoke:chrome": "bun run build && bun --bun resources/scripts/smoke-extension.ts",
@@ -80,18 +83,22 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/buddy": "^0.70.218",
-    "@stacksjs/ts-cloud": "^0.7.87",
-    "stacks": "^0.70.218"
+    "@stacksjs/buddy": "^0.70.234",
+    "@stacksjs/ts-cloud": "^0.7.93",
+    "stacks": "^0.70.234"
   },
   "devDependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@ghostery/adblocker": "^2.18.1",
     "@gorhill/ubo-core": "^0.1.30",
-    "@types/chrome": "^0.2.2",
+    "@stacksjs/actions": "^0.70.234",
+    "@stacksjs/image": "^0.70.234",
+    "@types/chrome": "^0.2.5",
     "adblockpluscore": "^0.11.1",
-    "better-dx": "^0.2.19",
+    "better-dx": "^0.2.22",
+    "ts-images": "^0.2.6",
     "very-happy-dom": "^0.1.10",
-    "web-ext": "^10.4.0"
+    "web-ext": "^10.5.0"
   },
   "git-hooks": {
     "pre-commit": {
