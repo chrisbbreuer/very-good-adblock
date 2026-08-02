@@ -37,7 +37,9 @@ For local validation, build the same store artifacts directly:
 bun run package          # → very-good-adblock-<version>-chrome.zip    (Chrome)
 bun run package:firefox  # → very-good-adblock-<version>-firefox.zip   (Firefox)
 bun run package:safari   # → very-good-adblock-<version>-safari.zip    (Safari source bundle)
-bun run screenshots      # → dist/store/{popup,dashboard,controls}.png (1280x800)
+bun run capture          # → dist/captures/*.png       (raw surfaces, no framing)
+bun run screenshots      # → every store's set (see Screenshots below)
+bun run og               # → public/social/*.jpg       (link-preview cards)
 ```
 
 ## Basics
@@ -102,11 +104,42 @@ to `none` in the generated manifest.
 
 ## Screenshots
 
-Generate with `bun run screenshots` (writes 1280x800 PNGs to `dist/store/`):
+Every store's set comes from one declaration in `config/images.ts`. `bun run
+screenshots` runs three steps:
 
-1. `popup.png` - the toolbar popup: blocked-on-this-page count, 24h chart, per-site controls.
-2. `dashboard.png` - the dashboard: lifetime stats, history, protection toggles.
-3. `controls.png` - the popup mid-pause, showing per-site control.
+1. **Capture.** `resources/scripts/capture-surfaces.ts` shoots the real popup
+   and dashboard at 2x against the seeded fixture — raw, with no frame,
+   caption, or bezel — into `dist/captures/`.
+2. **Compose.** `buddy generate:app-store` frames those captures for every
+   device class listed in `config/images.ts` and writes
+   `resources/app-store/screenshots/<display-type>-<nn>.png` at Apple's exact
+   dimensions.
+3. **Downscale.** The Mac frames are resampled to the 1280x800 the Chrome Web
+   Store and AMO accept, into `dist/store/`.
+
+The slides are the copy in `config/images.ts`, not this document — change them
+there and every store's set follows:
+
+1. The toolbar popup: blocked-on-this-page count, 24h chart, per-site stats.
+2. The popup mid-pause, showing per-site control and the resume countdown.
+3. The dashboard: lifetime stats, 60 days of history, protection toggles. iPad
+   and Mac only — it is a wide surface, and on a 1290x2796 phone frame the
+   slack reads as empty background.
+
+`config/extension.ts` points `safariAppStore.screenshots` at those generated
+paths, and `extension:safari:publish` regenerates them before uploading, so the
+set that ships describes the build that ships.
+
+Adding a slide means adding one entry to `appStore.slides`; adding a device
+class means one entry in `appStore.displays`. Apple accepts up to ten per
+class.
+
+## Social cards
+
+`bun run og` writes the link-preview cards to `public/social/` — a 1200x630
+primary plus square and 4:5 crops per page — and `bun run site:build` runs it
+and then fails if any card a template declares was never generated. The pages
+and their copy live in `social.pages` in `config/images.ts`.
 
 ## Firefox notes
 
