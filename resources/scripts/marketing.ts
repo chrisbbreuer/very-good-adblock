@@ -17,6 +17,15 @@ for (const link of document.querySelectorAll<HTMLElement>('[data-browser-store]'
   link.hidden = !alternateStores.includes(link.dataset.browserStore as 'chrome' | 'firefox' | 'safari')
 }
 
+// The phone nav is a <details>, so it opens and closes without this. The one
+// case markup cannot cover is a same-page anchor (#how, #privacy): the browser
+// jumps but the panel stays open over the target, so close it on the way out.
+const navDisclosure = document.getElementById('nav-disclosure') as HTMLDetailsElement | null
+navDisclosure?.querySelector('.nav-panel')?.addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('a'))
+    navDisclosure.open = false
+})
+
 const form = document.getElementById('subscribe-form') as HTMLFormElement | null
 const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null
 const status = document.getElementById('subscribe-status')

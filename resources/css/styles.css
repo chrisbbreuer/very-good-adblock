@@ -1151,6 +1151,124 @@ h1 {
   gap: 10px;
 }
 
+/* ── Phone navigation (a <details> disclosure) ─────────────────────
+   Hidden above 760px, where the inline <nav> carries the links. Below it the
+   toggle is the only route to Features / How it works / Privacy, so it is
+   markup-driven rather than scripted and works with JavaScript off. */
+.nav-disclosure {
+  display: none;
+  position: static;
+}
+
+.nav-toggle {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel-strong);
+  cursor: pointer;
+  list-style: none;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.nav-toggle::-webkit-details-marker {
+  display: none;
+}
+
+/* Three bars drawn from one element: the middle is the box's own border, the
+   outer two are shadows offset above and below it. */
+.nav-toggle-glyph,
+.nav-toggle-glyph::before,
+.nav-toggle-glyph::after {
+  display: block;
+  width: 17px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentcolor;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.nav-toggle-glyph {
+  position: relative;
+}
+
+.nav-toggle-glyph::before,
+.nav-toggle-glyph::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.nav-toggle-glyph::before {
+  top: -6px;
+}
+
+.nav-toggle-glyph::after {
+  top: 6px;
+}
+
+/* Open state folds the bars into a cross. */
+.nav-disclosure[open] .nav-toggle {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.nav-disclosure[open] .nav-toggle-glyph {
+  background: transparent;
+}
+
+.nav-disclosure[open] .nav-toggle-glyph::before {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.nav-disclosure[open] .nav-toggle-glyph::after {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Positioned against .marketing-nav, which is sticky and therefore the nearest
+   positioned ancestor, so the panel spans the bar rather than the button. */
+.nav-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: grid;
+  max-height: calc(100dvh - 62px);
+  overflow-y: auto;
+  padding: 4px var(--gutter) 16px;
+  border-bottom: 1px solid var(--line);
+  /* Opaque. A translucent panel let the hero scroll through it and read as a
+     z-index fault, so the tint is composited over the page background. */
+  background: linear-gradient(0deg, var(--panel), var(--panel)), var(--bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.nav-panel a {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid var(--hairline);
+  color: rgba(var(--text-rgb), 0.86);
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.nav-panel a:last-child {
+  border-bottom: 0;
+}
+
+.nav-panel-label {
+  margin: 14px 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .theme-toggle,
 .nav-icon {
   display: inline-grid;

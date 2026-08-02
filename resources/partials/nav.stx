@@ -38,6 +38,27 @@
         <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </button>
       <a class="nav-action" href="/docs/">Read docs</a>
+      <!-- Phone navigation. A <details> rather than a scripted menu so the
+           links stay reachable with JavaScript off; below 760px the inline
+           <nav> above is hidden and this is the only route to them. -->
+      <details class="nav-disclosure" id="nav-disclosure">
+        <summary class="nav-toggle" aria-label="Menu" title="Menu">
+          <span class="nav-toggle-glyph" aria-hidden="true"></span>
+        </summary>
+        <div class="nav-panel">
+          <p class="nav-panel-label">Features</p>
+          <a href="/features/network-blocking/">Network blocking</a>
+          <a href="/features/youtube-twitch/">YouTube and Twitch</a>
+          <a href="/features/popups/">Pop-ups and pop-unders</a>
+          <a href="/features/controls/">Control and privacy</a>
+          <a href="/features/">All features</a>
+          <p class="nav-panel-label">More</p>
+          <a href="/#how">How it works</a>
+          <a href="/#privacy">Privacy</a>
+          <a href="/docs/">Read docs</a>
+          <a href="https://github.com/chrisbbreuer/very-good-adblock" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </details>
     </div>
   </div>
 </header>
