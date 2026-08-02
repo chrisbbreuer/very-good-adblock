@@ -1185,14 +1185,30 @@ h1 {
   display: block;
 }
 
+/* The one genuinely raised control on the page. It had a gradient, an accent
+   glow, a drop shadow and a text shadow all at once; a single inset highlight
+   plus the smallest elevation step is enough to read as pressable, and the
+   ink is a warm near-black off the brand rather than the navy it was. */
 .marketing-shell .primary-link {
-  border: 1px solid rgba(var(--accent-rgb), 0.74);
-  color: #04101f;
-  background: linear-gradient(180deg, #ffc9c9 0%, #f2555a 100%);
-  box-shadow: 0 8px 20px -6px rgba(var(--accent-rgb), 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.32);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  color: #2a0709;
+  background: linear-gradient(180deg, #ff9d9f 0%, #f0484d 100%);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  transition: filter 140ms ease, var(--press);
 }
 
+.marketing-shell .primary-link:hover {
+  filter: brightness(1.05);
+}
+
+.marketing-shell .primary-link:active {
+  transform: translateY(1px);
+}
+
+/* Copy leads, product card answers. The columns are top-aligned rather than
+   centered: centering a 370px copy block against a 520px card left a void
+   above the eyebrow and another below the buttons, which read as the hero
+   having failed to load rather than as deliberate space. */
 .marketing-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.78fr);
@@ -1339,13 +1355,15 @@ h1 {
   min-height: 0;
 }
 
+/* Grouping surfaces, not floating ones. These sit flat on the page, so they
+   get a hairline and a faint surface tint and no shadow — the 70px black blur
+   they used to carry was a grey halo on the light theme and stacked into a
+   muddy band wherever two of them met. */
 .feature-grid article,
 .feature-card,
-.stat-wall article,
-.privacy-list {
+.stat-wall article {
   border: 1px solid var(--hairline);
   background: rgba(var(--text-rgb), 0.04);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 .marketing-band,
@@ -1391,7 +1409,7 @@ h1 {
   border-radius: var(--radius-pill);
   font-size: 14px;
   font-weight: 800;
-  color: #04101f;
+  color: #2a0709;
   background: linear-gradient(180deg, var(--accent-soft), var(--accent));
 }
 
@@ -1420,9 +1438,12 @@ h1 {
   border-radius: var(--radius-panel);
   padding: 56px 40px;
   text-align: center;
+  /* The same surface tint every other panel uses, lifted by one accent glow
+     from above. It used to sit on --panel-bg, which is near-white in the light
+     theme and read as a foreign slab dropped onto the pink page. */
   background:
-    radial-gradient(72% 130% at 50% -12%, rgba(var(--accent-rgb), 0.24), transparent 70%),
-    var(--panel-bg);
+    radial-gradient(78% 130% at 50% -14%, rgba(var(--accent-rgb), 0.16), transparent 68%),
+    rgba(var(--text-rgb), 0.04);
 }
 
 .cta-badge {
@@ -1745,7 +1766,7 @@ h1 {
      hero underneath never bleeds through (a translucent bg read as a z-index
      bug). Layered gradient keeps the subtle elevation without transparency. */
   background: linear-gradient(0deg, var(--panel-strong), var(--panel-strong)), var(--bg);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+  box-shadow: var(--shadow-lg);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1905,9 +1926,8 @@ h1 {
   min-height: 210px;
   padding: 26px;
   border: 1px solid var(--hairline);
-  border-radius: 18px;
+  border-radius: var(--radius-panel);
   background: rgba(var(--text-rgb), 0.04);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
   transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
@@ -2029,11 +2049,10 @@ h1 {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 18px 20px;
+  padding: 16px 18px;
   border: 1px solid var(--hairline);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   background: rgba(var(--text-rgb), 0.04);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.26);
   transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
@@ -2214,8 +2233,8 @@ h1 {
   width: 100%;
   height: auto;
   border: 1px solid var(--hairline);
-  border-radius: 18px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md);
 }
 
 .feature-detail-copy code,
