@@ -50,7 +50,7 @@
     <main id="top">
       <section class="marketing-hero">
         <div class="hero-copy">
-          <p class="eyebrow">Chrome · Firefox · Safari for Mac, iPhone &amp; iPad</p>
+          <p class="eyebrow">Chrome, Firefox, and Safari for Mac, iPhone and iPad</p>
           <h1>Ads gone before the page loads.</h1>
           <p class="hero-lede">
             Very Good AdBlock removes ads, pop-ups, and YouTube and Twitch interruptions at the source,
@@ -74,8 +74,8 @@
               <img class="download-logo" src="https://cdn.simpleicons.org/github" alt="" width="20" height="20" loading="lazy">
               <span>Manual download</span>
             </a>
+            <a class="hero-how" href="#how">How it works →</a>
           </div>
-          <a class="hero-how" href="#how">How it works →</a>
         </div>
 
         <div class="hero-visual">

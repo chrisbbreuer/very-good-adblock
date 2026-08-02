@@ -1232,13 +1232,10 @@ h1 {
    having failed to load rather than as deliberate space. */
 .marketing-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.78fr);
-  gap: 52px;
-  align-items: center;
-  /* No tall min-height: the product card sets the row height and the copy
-     centers against it, so there is no floating void above the headline. */
-  min-height: 540px;
-  padding: 36px 0 56px;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.8fr);
+  gap: 56px;
+  align-items: start;
+  padding: 56px 0 var(--section-y);
 }
 
 .hero-copy {
@@ -1248,24 +1245,28 @@ h1 {
 }
 
 .hero-copy h1 {
-  font-size: clamp(38px, 5.2vw, 66px);
-  line-height: 1.03;
-  letter-spacing: -0.025em;
+  font-size: clamp(36px, 5vw, 62px);
+  line-height: 1.04;
+  letter-spacing: -0.028em;
   font-weight: 800;
+  text-wrap: balance;
 }
 
 .hero-lede {
-  max-width: 540px;
-  margin: 22px 0 0;
+  max-width: 46ch;
+  margin: 20px 0 0;
   color: rgba(var(--text-rgb), 0.82);
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1.55;
 }
 
+/* The row holds the primary CTA, the store pills, and the "How it works" link
+   together, so the hero stays one block of copy plus one block of action
+   instead of a stack that keeps adding rows. */
 .hero-actions {
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 30px;
+  gap: 10px;
+  margin-top: 28px;
 }
 
 /* Store and manual-download buttons in the cross-browser hero. */
@@ -1309,10 +1310,12 @@ h1 {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
 }
 
+/* Sits inside .hero-actions as a tertiary text link, level with the buttons. */
 .hero-how {
   display: inline-flex;
   align-items: center;
-  margin-top: 16px;
+  min-height: 44px;
+  padding: 0 4px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 600;
@@ -1326,19 +1329,20 @@ h1 {
 .hero-visual {
   position: relative;
   display: grid;
-  place-items: center;
-  min-height: 420px;
+  place-items: start center;
 }
 
-/* A soft blue spotlight shaped to the card, so it reads as a deliberate glow
-   rather than a flat void behind the product shot. */
+/* A soft spotlight shaped to the card, so it reads as a deliberate glow rather
+   than a flat void behind the product shot. Kept well under the card's own
+   footprint: at full strength it fought the page's ambient wash and turned the
+   whole top-right quadrant pink. */
 .hero-visual::before {
   content: "";
   position: absolute;
-  inset: -6% -4%;
+  inset: -4% -3%;
   border-radius: 44px;
-  background: radial-gradient(58% 56% at 52% 42%, rgba(var(--accent-rgb), 0.4), transparent 72%);
-  filter: blur(52px);
+  background: radial-gradient(56% 54% at 52% 40%, rgba(var(--accent-rgb), 0.24), transparent 72%);
+  filter: blur(56px);
 }
 
 /* The real popup component (build-time inlined from the shipping popup), floated
@@ -1347,21 +1351,23 @@ h1 {
 .hero-device {
   position: relative;
   margin: 0;
-  width: min(384px, 96%);
-  max-height: min(70vh, 588px);
-  border-radius: 24px;
+  width: min(384px, 100%);
+  /* Cut above the "Top sources" list rather than through it. The old 588px
+     landed mid-row and the fade took the numbers with it, which read as a
+     rendering fault instead of a crop. */
+  max-height: 496px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
   /* Follows the page theme — light popup in light mode, dark in dark — by
      inheriting the page tokens and mirroring the popup's own body backdrop. */
   background: var(--app-bg);
   border: 1px solid var(--line);
-  box-shadow:
-    0 50px 100px -24px rgba(0, 0, 0, 0.72),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-  /* Fade the cropped bottom edge so it reads as "more below", not a hard cut. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
+  box-shadow: var(--shadow-lg);
+  /* Fade the cropped bottom edge so it reads as "more below", not a hard cut.
+     The ramp is long and starts well above the edge: a short one left the last
+     row half-legible, which looks like a paint bug rather than a crop. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 76%, rgba(0, 0, 0, 0.2) 93%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 76%, rgba(0, 0, 0, 0.2) 93%, transparent 100%);
 }
 
 /* Neutralize the popup's window-level sizing (it renders as a full window in the
