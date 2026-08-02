@@ -6,16 +6,36 @@
  */
 import type { DashboardState } from '../../../src/shared/types'
 
-/** A chrome.runtime mock that answers the popup/options message calls. */
+/**
+ * A chrome.runtime mock that answers the popup/options message calls.
+ *
+ * It answers every message the UI sends, not just the two it needs to paint
+ * once. A shim that returns `true` for `pause-protection` hands the popup a
+ * boolean where a dashboard should be, and the whole surface renders empty —
+ * which is exactly what a screenshot of the paused state used to capture.
+ */
 export function shimScript(state: DashboardState): string {
   return `<script>(function(){
   var state = ${JSON.stringify(state)};
   var clone = function(v){ return JSON.parse(JSON.stringify(v)); };
+  var reply = function(){ return { ok: true, data: clone(state) }; };
   window.chrome = { runtime: {
     openOptionsPage: function(){},
     sendMessage: async function(m){
-      if (m.type === 'get-dashboard') return { ok: true, data: clone(state) };
-      if (m.type === 'set-settings') { state.settings = Object.assign({}, state.settings, m.settings); return { ok: true, data: clone(state) }; }
+      if (m.type === 'get-dashboard') return reply();
+      if (m.type === 'set-settings') { state.settings = Object.assign({}, state.settings, m.settings); return reply(); }
+      if (m.type === 'pause-protection') {
+        state.settings = Object.assign({}, state.settings, { enabled: false, resumeAt: Date.now() + m.minutes * 60000 });
+        return reply();
+      }
+      if (m.type === 'toggle-site') {
+        var allowed = state.settings.allowedSites.filter(function(h){ return h !== m.hostname; });
+        if (m.allowed) allowed.push(m.hostname);
+        state.settings = Object.assign({}, state.settings, { allowedSites: allowed });
+        if (state.activeTab && state.activeTab.hostname === m.hostname)
+          state.activeTab = Object.assign({}, state.activeTab, { allowed: Boolean(m.allowed) });
+        return reply();
+      }
       return { ok: true, data: true };
     }
   } };

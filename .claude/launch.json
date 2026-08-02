@@ -9,6 +9,12 @@
       "autoPort": true
     },
     {
+      "name": "extension-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--bun", "resources/scripts/preview-surfaces.ts"],
+      "port": 8123
+    },
+    {
       "name": "site-preview",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8099", "--directory", "dist/site"],
