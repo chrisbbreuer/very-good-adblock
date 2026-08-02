@@ -58,7 +58,11 @@ const images: ImagesConfig = {
 
   social: {
     enabled: true,
-    outputDir: 'public/social',
+    // Not `public/`: the extension build copies that directory wholesale into
+    // its payload, so cards written there would ship 2 MB of marketing JPEGs
+    // to every Chrome, Firefox and Safari user. They are site assets, and the
+    // site build copies them in from here.
+    outputDir: 'resources/social',
     publicPath: '/social',
     // 1.91:1 is the primary and keeps the bare filename. The square and
     // portrait crops exist for the consumers that reserve a taller slot and

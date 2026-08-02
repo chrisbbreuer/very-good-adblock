@@ -21,6 +21,13 @@ const siteOnly = [
   'youtube-twitch.html',
   'popups.html',
   'controls.html',
+  // Generated imagery, when a capture or screenshot run has left it in dist.
+  // Nothing in the extension reads these, and a store package that carries a
+  // few megabytes of its own marketing screenshots is paying for them on every
+  // install. Excluded by pattern rather than by remembering to clean first.
+  'captures/*',
+  'store/*',
+  'social/*',
 ]
 await Bun.$`cd ${dist} && zip -qr ../${archive} . ${siteOnly.flatMap(f => ['-x', f])}`
 

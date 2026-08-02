@@ -1,3 +1,27 @@
+/* Inter, shipped rather than hoped for.
+ *
+ * Every rule below asks for Inter first and then falls through to the system
+ * stack. Nothing loaded it, so nobody ever saw Inter: macOS rendered SF Pro,
+ * Linux rendered its own sans, and the store screenshots and social cards
+ * inherited whichever machine happened to build them — the same page, two
+ * different typefaces, depending on the runner.
+ *
+ * One variable file covers the whole 100-900 range at 48 KB for the Latin
+ * subset, which is a twentieth of what the four static weights this design
+ * uses would have cost. `swap` keeps first paint immediate; the URL is
+ * relative to this stylesheet, so it resolves under both the extension
+ * (dist/) and the site (dist/site/), which serve it from their own root.
+ *
+ * Licensed under the SIL Open Font License 1.1 — see public/fonts/.
+ */
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin-variable.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark light;
   /* ── Dark theme (default) ── */

@@ -3,7 +3,7 @@ import { socialCardName } from '@stacksjs/image'
 
 const siteOut = './dist/site'
 const docsOut = './dist/docs/.bunpress'
-const socialSrc = './public/social'
+const socialSrc = './resources/social'
 
 // Dedicated per-feature pages: the extension build names each output by its
 // template basename, so dist/<slug>.html → /features/<slug>/.
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   await ensureExists(docsOut, 'Bunpress output is missing. Run bun run docs:build first.')
 
   await Bun.$`rm -rf ${siteOut}`
-  await Bun.$`mkdir -p ${siteOut}/icons ${siteOut}/docs ${siteOut}/features ${siteOut}/screenshots`
+  await Bun.$`mkdir -p ${siteOut}/icons ${siteOut}/docs ${siteOut}/features ${siteOut}/screenshots ${siteOut}/fonts`
 
   // Home page is served at the site root, where the extension build's
   // page-relative asset refs (styles.css, marketing.js) already resolve.
@@ -40,6 +40,10 @@ async function main(): Promise<void> {
   await Bun.write(`${siteOut}/styles.css`, await Bun.file('./dist/styles.css').arrayBuffer())
   await Bun.write(`${siteOut}/marketing.js`, await Bun.file('./dist/marketing.js').arrayBuffer())
   await Bun.$`cp -R ./dist/icons/. ${siteOut}/icons/`
+  // Inter, referenced by styles.css relative to itself, so it has to sit next
+  // to the stylesheet here exactly as it does in the extension's dist.
+  await Bun.$`mkdir -p ${siteOut}/fonts`
+  await Bun.$`cp -R ./dist/fonts/. ${siteOut}/fonts/`
   // Product screenshots used by the marketing + feature pages (also live under /docs).
   await Bun.$`cp ./docs/public/screenshots/popup.png ./docs/public/screenshots/dashboard.png ${siteOut}/screenshots/`
   await Bun.$`cp -R ${docsOut}/. ${siteOut}/docs/`
@@ -48,7 +52,7 @@ async function main(): Promise<void> {
   // the popup needs a Chrome for `Bun.WebView` to drive, and the runner images
   // ship one — so by the time we get here they describe the build being
   // deployed rather than whatever was last committed.
-  await ensureExists(socialSrc, 'public/social is missing. Run `bun run og` first.')
+  await ensureExists(socialSrc, 'resources/social is missing. Run `bun run og` first.')
   await Bun.$`mkdir -p ${siteOut}/social`
   await Bun.$`cp -R ${socialSrc}/. ${siteOut}/social/`
 

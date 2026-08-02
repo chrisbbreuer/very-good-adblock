@@ -186,5 +186,11 @@ async function settle(view: Bun.WebView): Promise<void> {
       break
     await Bun.sleep(120)
   }
+
+  // The stylesheet loads Inter with `font-display: swap`, so the surface paints
+  // in the fallback face first and reflows when the real one arrives. Shooting
+  // on DOM-ready alone catches whichever of the two won the race — which is the
+  // machine-dependent typography this was meant to remove.
+  await view.evaluate(`document.fonts.ready.then(() => true)`).catch(() => false)
   await Bun.sleep(500)
 }

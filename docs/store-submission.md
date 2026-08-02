@@ -39,7 +39,7 @@ bun run package:firefox  # → very-good-adblock-<version>-firefox.zip   (Firefo
 bun run package:safari   # → very-good-adblock-<version>-safari.zip    (Safari source bundle)
 bun run capture          # → dist/captures/*.png       (raw surfaces, no framing)
 bun run screenshots      # → every store's set (see Screenshots below)
-bun run og               # → public/social/*.jpg       (link-preview cards)
+bun run og               # → resources/social/*.jpg    (link-preview cards)
 ```
 
 ## Basics
@@ -136,7 +136,7 @@ class.
 
 ## Social cards
 
-`bun run og` writes the link-preview cards to `public/social/` — a 1200x630
+`bun run og` writes the link-preview cards to `resources/social/` — a 1200x630
 primary plus square and 4:5 crops per page. The pages and their copy live in
 `social.pages` in `config/images.ts`.
 
