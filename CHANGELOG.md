@@ -1,5 +1,40 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.11...v0.2.12)
+
+## ✨ Features
+
+- **site**: add a phone navigation disclosure ([fedf12c](https://github.com/chrisbbreuer/very-good-adblock/commit/fedf12c)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **social**: take the card layout fix and stop re-deriving the measure ([79b4f2e](https://github.com/chrisbbreuer/very-good-adblock/commit/79b4f2e)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deploy**: stop deploying past missing DNS credentials ([33a7e7c](https://github.com/chrisbbreuer/very-good-adblock/commit/33a7e7c)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **social**: stop the cards shipping truncated copy ([d672683](https://github.com/chrisbbreuer/very-good-adblock/commit/d672683)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **capture**: crop each surface and shoot it at 2x ([83c3751](https://github.com/chrisbbreuer/very-good-adblock/commit/83c3751)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: rebuild the responsive breakpoints ([7a70647](https://github.com/chrisbbreuer/very-good-adblock/commit/7a70647)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: let the section surfaces read as content, not boxes ([dc92311](https://github.com/chrisbbreuer/very-good-adblock/commit/dc92311)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: rebalance the hero ([a2ea2e6](https://github.com/chrisbbreuer/very-good-adblock/commit/a2ea2e6)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **site**: give every band one container and one rhythm ([0d0335a](https://github.com/chrisbbreuer/very-good-adblock/commit/0d0335a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **a11y**: make accent text and small targets meet AA ([014ccb4](https://github.com/chrisbbreuer/very-good-adblock/commit/014ccb4)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **ui**: tint elevation to the theme instead of pure black ([d81a304](https://github.com/chrisbbreuer/very-good-adblock/commit/d81a304)) _(by Chris <chrisbreuer93@gmail.com>)_ ([#04101](https://github.com/chrisbbreuer/very-good-adblock/issues/04101))
+
+## ♻️ Code Refactoring
+
+- **ui**: resolve every corner to the radius scale ([df95d51](https://github.com/chrisbbreuer/very-good-adblock/commit/df95d51)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **ui**: put elevation, ink, radius and rhythm on tokens ([9284fba](https://github.com/chrisbbreuer/very-good-adblock/commit/9284fba)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **social**: regenerate the cards and store screenshots ([86aea75](https://github.com/chrisbbreuer/very-good-adblock/commit/86aea75)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: move to Stacks 0.70.241 for cloud-signed Safari archives ([881c67f](https://github.com/chrisbbreuer/very-good-adblock/commit/881c67f)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **social**: regenerate the cards off the softer popup ([7b49814](https://github.com/chrisbbreuer/very-good-adblock/commit/7b49814)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **scripts**: preview and screenshot the marketing site locally ([42e1939](https://github.com/chrisbbreuer/very-good-adblock/commit/42e1939)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.10...HEAD)
 
 ## 🚀 Features
