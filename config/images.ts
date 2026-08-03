@@ -64,11 +64,15 @@ const images: ImagesConfig = {
     // site build copies them in from here.
     outputDir: 'resources/social',
     publicPath: '/social',
-    // 1.91:1 is the primary and keeps the bare filename. The square and
-    // portrait crops exist for the consumers that reserve a taller slot and
-    // letterbox a wide card into it — Apple's link previews in Messages most
-    // visibly, which is what sent us here.
-    presets: ['og', 'square', 'portrait'],
+    // One card, at the 1.91:1 every scraper understands.
+    //
+    // Square and portrait crops were generated too and declared alongside it,
+    // on the theory that a consumer reserving a taller slot would pick the one
+    // that fits. It does not work that way: repeated og:image is a gallery,
+    // not a fallback list, and Discord rendered all three side by side with
+    // each cropped to a sliver. One card that every consumer draws whole beats
+    // three that one of them collages.
+    presets: ['og'],
     foreground: 'dist/captures/popup.png',
     // Copy here is measured, not estimated. The renderer caps a title at three
     // lines and a subtitle at one and drops the rest with no ellipsis and no
