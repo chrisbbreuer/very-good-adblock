@@ -1,0 +1,46 @@
+name: Listing assets
+
+# Store listing imagery, separate from a release.
+#
+# Screenshots go stale on their own schedule — a UI change, a new slide, copy
+# that got shorter — and none of that needs a new extension version. Cutting a
+# release to fix a picture means a store submission and, on Apple, a queue
+# behind whatever is already in review.
+#
+# Only Firefox is here because only Firefox can be: Apple takes screenshots
+# with a version's metadata during `extension:safari:publish`, and the Chrome
+# Web Store API has no endpoint for listing images at all — those are uploaded
+# by hand from `resources/web-store/`.
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Report what would change without touching the listing
+        type: boolean
+        default: false
+
+concurrency:
+  group: listing-assets-verygoodadblock
+  cancel-in-progress: false
+
+jobs:
+  firefox-previews:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Pantry
+        uses: home-lang/pantry/packages/action@main
+        with:
+          install: 'false'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Sync Firefox listing screenshots
+        run: |
+          bun node_modules/@stacksjs/buddy/dist/cli.js extension:firefox:previews \
+            ${{ inputs.dry-run && '--dry-run' || '' }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
