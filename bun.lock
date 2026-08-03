@@ -14,6 +14,7 @@
         "@fontsource-variable/inter": "^5.3.0",
         "@ghostery/adblocker": "^2.18.1",
         "@gorhill/ubo-core": "^0.1.30",
+        "@stacksjs/browser-extension": "^0.70.250",
         "@stacksjs/image": "^0.70.246",
         "@types/chrome": "^0.2.5",
         "adblockpluscore": "^0.11.1",
@@ -131,7 +132,7 @@
 
     "@stacksjs/browser": ["@stacksjs/browser@0.70.248", "", { "dependencies": { "@stacksjs/composables": "0.70.248", "@stacksjs/stx": "^0.2.148", "bun-query-builder": "^0.2.4" }, "peerDependencies": { "@stripe/stripe-js": "^9.10.0" }, "optionalPeers": ["@stripe/stripe-js"] }, "sha512-C9v8v3dQTpSIGMBSJZ8jUnETRbbnAQlt2XMHdH6B4FyFLKqzl/MeDToyJCP8BhHX5Pc1b9+8lkUCqj4Dsv7Tcw=="],
 
-    "@stacksjs/browser-extension": ["@stacksjs/browser-extension@0.70.248", "", { "dependencies": { "ts-pantry": "^0.11.0" }, "peerDependencies": { "web-ext": ">=8" }, "optionalPeers": ["web-ext"] }, "sha512-TS65wj6e6mFX7+Hza/8RNz4hpcNML6/SbMk4r2H1FKlJTH6EiB7rUrczzEW04pZ8Sjl6JfzDUN2PTIOTNmjSaw=="],
+    "@stacksjs/browser-extension": ["@stacksjs/browser-extension@0.70.250", "", { "dependencies": { "ts-pantry": "^0.11.0" }, "peerDependencies": { "web-ext": ">=8" }, "optionalPeers": ["web-ext"] }, "sha512-A7fwkfOBKcaa5ThLzh9N/qcIqpP+gxY3i9XUJ9GpC9SW7rY3GpefzhdwGBTQn0WQOuXOkJZ+3qNkBdCHb1wTjQ=="],
 
     "@stacksjs/buddy": ["@stacksjs/buddy@0.70.248", "", { "dependencies": { "@stacksjs/actions": "^0.70.248", "@stacksjs/ai": "^0.70.248", "@stacksjs/alias": "^0.70.248", "@stacksjs/arrays": "^0.70.248", "@stacksjs/auth": "^0.70.248", "@stacksjs/build": "^0.70.248", "@stacksjs/cache": "^0.70.248", "@stacksjs/clapp": "^0.2.12", "@stacksjs/cli": "^0.70.248", "@stacksjs/cloud": "^0.70.248", "@stacksjs/collections": "^0.70.248", "@stacksjs/config": "^0.70.248", "@stacksjs/database": "^0.70.248", "@stacksjs/desktop-build": "^0.70.248", "@stacksjs/dns": "^0.70.248", "@stacksjs/dnsx": "^0.2.3", "@stacksjs/email": "^0.70.248", "@stacksjs/enums": "^0.70.248", "@stacksjs/error-handling": "^0.70.248", "@stacksjs/events": "^0.70.248", "@stacksjs/git": "^0.70.248", "@stacksjs/gitit": "^0.2.5", "@stacksjs/health": "^0.70.248", "@stacksjs/httx": "^0.1.10", "@stacksjs/image": "^0.70.248", "@stacksjs/lint": "^0.70.248", "@stacksjs/logging": "^0.70.248", "@stacksjs/notifications": "^0.70.248", "@stacksjs/objects": "^0.70.248", "@stacksjs/orm": "^0.70.248", "@stacksjs/path": "^0.70.248", "@stacksjs/payments": "^0.70.248", "@stacksjs/realtime": "^0.70.248", "@stacksjs/router": "^0.70.248", "@stacksjs/rpx": "^0.11.42", "@stacksjs/search-engine": "^0.70.248", "@stacksjs/security": "^0.70.248", "@stacksjs/server": "^0.70.248", "@stacksjs/skills": "^0.70.248", "@stacksjs/storage": "^0.70.248", "@stacksjs/strings": "^0.70.248", "@stacksjs/testing": "^0.70.248", "@stacksjs/ts-cloud": "^0.7.92", "@stacksjs/tunnel": "^0.70.248", "@stacksjs/types": "^0.70.248", "@stacksjs/ui": "^0.70.248", "@stacksjs/utils": "^0.70.248", "@stacksjs/validation": "^0.70.248", "ajv": "^8.20.0", "ajv-formats": "^3.0.1", "ts-pantry": "^0.11.0" }, "bin": { "stacks": "dist/cli.js", "buddy": "dist/cli.js", "bud": "dist/cli.js" } }, "sha512-/Fojm0ANvDn8cUM6tcBXtnHfYopACLGLPuWCnpSCCY2NZbRWmczATmv5dwoSK6cj+4Pl+YNSiFrTziKBnxQbkg=="],
 
@@ -1116,6 +1117,8 @@
     "rc/ini": ["ini@1.3.8", "", {}, "sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew=="],
 
     "rc/strip-json-comments": ["strip-json-comments@2.0.1", "", {}, "sha512-4gB8na07fecVVkOI6Rs4e7T6NOTki5EmL7TUduTs6bu3EdnSycntVJ4re8kgZA+wx9IueI2Y11bfbgwtzuE0KQ=="],
+
+    "stacks/@stacksjs/browser-extension": ["@stacksjs/browser-extension@0.70.248", "", { "dependencies": { "ts-pantry": "^0.11.0" }, "peerDependencies": { "web-ext": ">=8" }, "optionalPeers": ["web-ext"] }, "sha512-TS65wj6e6mFX7+Hza/8RNz4hpcNML6/SbMk4r2H1FKlJTH6EiB7rUrczzEW04pZ8Sjl6JfzDUN2PTIOTNmjSaw=="],
 
     "stacks/@stacksjs/image": ["@stacksjs/image@0.70.248", "", { "dependencies": { "@stacksjs/types": "0.70.248", "ts-images": "^0.2.7" } }, "sha512-oNcSrz6YZzKw5oUjqcXAY3HSIgK7ip1OKtQLkNUUcP5sZJ21WPU5v1z6kGmXkIl8dRia97YVqCyTWN1ebNS7jg=="],
 
