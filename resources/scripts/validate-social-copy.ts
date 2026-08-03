@@ -14,16 +14,17 @@
  */
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
-import { layoutText, loadFont } from 'ts-images'
+import { decode, layoutText, loadFont, socialCardMetrics } from 'ts-images'
 import config from '../../config/images'
 
-// Mirrors the renderer's own arithmetic: the margin is 6.5% of the width, the
-// title 6.2%, the subtitle 2.45%, and a card with a product shot gives its
-// text `textWidth` (0.54 by default) of the canvas minus both margins.
+// The column is asked for, not re-derived. It used to be spelled out here as
+// `width * 0.54 - margin * 2`, which was exactly right until the renderer
+// stopped reserving a fixed column and started sizing the shot off its own
+// height — at which point this would have kept rejecting copy that now fits.
+// It also varies per page: a tall popup leaves the headline more room than a
+// wide dashboard panel does.
 const WIDTH = 1200
-const MARGIN = Math.round(WIDTH * 0.065)
-const TEXT_WIDTH = (config.social?.device as { textWidth?: number } | undefined)?.textWidth ?? 0.54
-const BOX = WIDTH * TEXT_WIDTH - MARGIN * 2
+const HEIGHT = 630
 const TITLE_SIZE = Math.round(WIDTH * 0.062)
 const SUBTITLE_SIZE = Math.round(WIDTH * 0.0245)
 const TITLE_LINES = 3
@@ -41,12 +42,25 @@ if (!config.fonts?.title)
 const titleFont = await font(config.fonts.title)
 const bodyFont = config.fonts.body ? await font(config.fonts.body) : titleFont
 
-function lines(text: string, options: { font: ReturnType<typeof loadFont>, size: number, tracking?: number }): string[] {
+/** The measure a page's copy actually gets, given the shot beside it. */
+async function columnFor(shot: string | undefined): Promise<number> {
+  if (!shot)
+    return socialCardMetrics({ width: WIDTH, height: HEIGHT }).textWidth
+
+  const image = await decode(new Uint8Array(await readFile(shot)))
+  return socialCardMetrics({
+    width: WIDTH,
+    height: HEIGHT,
+    foreground: { aspect: image.width / image.height, scale: config.social?.device?.scale },
+  }).textWidth
+}
+
+function lines(text: string, box: number, options: { font: ReturnType<typeof loadFont>, size: number, tracking?: number }): string[] {
   return layoutText({
     text,
     font: options.font,
     size: options.size,
-    maxWidth: BOX,
+    maxWidth: box,
     lineHeight: 1.14,
     letterSpacing: options.tracking,
     // Deliberately unbounded: the question is how many lines the string wants,
@@ -57,25 +71,31 @@ function lines(text: string, options: { font: ReturnType<typeof loadFont>, size:
 
 const failures: string[] = []
 
+let narrowest = Number.POSITIVE_INFINITY
+
 for (const page of config.social?.pages ?? []) {
-  const title = lines(page.title, { font: titleFont, size: TITLE_SIZE, tracking: -0.018 })
+  const box = await columnFor(page.foreground ?? config.social?.foreground)
+  narrowest = Math.min(narrowest, box)
+
+  const title = lines(page.title, box, { font: titleFont, size: TITLE_SIZE, tracking: -0.018 })
   if (title.length > TITLE_LINES)
     failures.push(`${page.path} title needs ${title.length} lines, ${TITLE_LINES} render: "${title.slice(0, TITLE_LINES).join(' ')}" (dropped "${title.slice(TITLE_LINES).join(' ')}")`)
 
   if (!page.subtitle)
     continue
 
-  const subtitle = lines(page.subtitle, { font: bodyFont, size: SUBTITLE_SIZE })
+  const subtitle = lines(page.subtitle, box, { font: bodyFont, size: SUBTITLE_SIZE })
   if (subtitle.length > SUBTITLE_LINES)
     failures.push(`${page.path} subtitle needs ${subtitle.length} lines, ${SUBTITLE_LINES} renders: "${subtitle.slice(0, SUBTITLE_LINES).join(' ')}" (dropped "${subtitle.slice(SUBTITLE_LINES).join(' ')}")`)
 }
 
 if (failures.length) {
-  console.error(`Social card copy overflows its ${Math.round(BOX)}px column:\n`)
+  console.error('Social card copy overflows its column:\n')
   for (const failure of failures)
     console.error(`  ${failure}`)
   console.error('\nShorten the strings in config/images.ts.')
   process.exit(1)
 }
 
-console.log(`Social card copy fits: ${config.social?.pages?.length ?? 0} pages measured against a ${Math.round(BOX)}px column.`)
+const measured = config.social?.pages?.length ?? 0
+console.log(`Social card copy fits: ${measured} page(s), narrowest column ${Number.isFinite(narrowest) ? Math.round(narrowest) : 0}px.`)
