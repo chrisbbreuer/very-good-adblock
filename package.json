@@ -87,9 +87,9 @@
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i"
   },
   "dependencies": {
-    "@stacksjs/buddy": "^0.70.246",
+    "@stacksjs/buddy": "^0.70.247",
     "@stacksjs/ts-cloud": "^0.7.93",
-    "stacks": "^0.70.246"
+    "stacks": "^0.70.247"
   },
   "devDependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

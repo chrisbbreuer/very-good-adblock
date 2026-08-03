@@ -24,7 +24,11 @@ import { join, resolve } from 'node:path'
 import { decode, encode, resize } from 'ts-images'
 
 const appStoreDir = resolve('resources/app-store/screenshots')
-const webStoreDir = resolve('dist/store')
+// Committed, not left in dist/: the release workflow never runs a capture, so
+// the Firefox preview sync has to find these in the checkout — and the Chrome
+// Web Store has no API for listing images at all, so a human needs a stable
+// path to upload from.
+const webStoreDir = resolve('resources/web-store')
 
 // The Chrome Web Store requires exactly 1280x800 (or 640x400); AMO accepts the
 // same file.

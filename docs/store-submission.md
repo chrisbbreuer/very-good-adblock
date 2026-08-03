@@ -115,7 +115,9 @@ screenshots` runs three steps:
    `resources/app-store/screenshots/<display-type>-<nn>.png` at Apple's exact
    dimensions.
 3. **Downscale.** The Mac frames are resampled to the 1280x800 the Chrome Web
-   Store and AMO accept, into `dist/store/`.
+   Store and AMO accept, into `resources/web-store/`. Committed, because the
+   release workflow never runs a capture: the Firefox sync reads them from the
+   checkout, and the Chrome upload is done by hand from there.
 
 The slides are the copy in `config/images.ts`, not this document — change them
 there and every store's set follows:
@@ -129,6 +131,14 @@ there and every store's set follows:
 `config/extension.ts` points `safariAppStore.screenshots` at those generated
 paths, and `extension:safari:publish` regenerates them before uploading, so the
 set that ships describes the build that ships.
+
+### What each store will accept
+
+| Store | Screenshots |
+| --- | --- |
+| App Store | Uploaded with the version's metadata by `extension:safari:publish`. |
+| Firefox AMO | Synced by `extension:firefox:publish` from `firefoxAddons.screenshots`, or on demand with `buddy extension:firefox:previews --dry-run`. |
+| Chrome Web Store | **By hand.** The API publishes packages only — it has no endpoint for listing images. Upload `resources/web-store/*.png` (1280x800) in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) under Store listing → Screenshots. |
 
 Adding a slide means adding one entry to `appStore.slides`; adding a device
 class means one entry in `appStore.displays`. Apple accepts up to ten per
