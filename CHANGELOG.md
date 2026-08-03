@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.12...v0.2.13)
+
+## ✨ Features
+
+- **firefox**: declare the listing screenshots AMO will sync ([d8aaace](https://github.com/chrisbbreuer/very-good-adblock/commit/d8aaace)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.11...v0.2.12)
 
 ## ✨ Features
