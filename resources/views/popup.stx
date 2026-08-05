@@ -21,6 +21,14 @@
         </button>
       </section>
 
+      <section id="safari-notice" class="safari-notice" hidden>
+        <p class="safari-notice-text">
+          <strong>Asked for permission on every site?</strong>
+          <span>Safari asks once per site until you allow it everywhere. In the prompt, choose <b>Always Allow&hellip;</b> and then <b>Always Allow on Every Website</b>.</span>
+        </p>
+        <button id="safari-notice-dismiss" class="safari-notice-dismiss" type="button">Got it</button>
+      </section>
+
       <div id="pause-row" class="pause-row" hidden>
         <span id="pause-label" class="muted">Pause protection</span>
         <div class="pause-buttons">

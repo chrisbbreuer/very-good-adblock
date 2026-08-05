@@ -4,6 +4,7 @@ import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
 import { reportAdThatGotThrough } from './report'
+import { dismissSafariSiteAccessNotice, shouldShowSafariSiteAccessNotice } from './safari-notice'
 import { normalizeDashboardState } from './state'
 
 /** Every worker response passes through the normalizer (see state.ts). */
@@ -39,11 +40,14 @@ const elements = {
   openOptions: byId<HTMLButtonElement>('open-options'),
   reportAd: byId<HTMLButtonElement>('report-ad'),
   reportHint: byId('report-hint'),
+  safariNotice: byId('safari-notice'),
+  safariNoticeDismiss: byId<HTMLButtonElement>('safari-notice-dismiss'),
 }
 
 let state: DashboardState | undefined
 
 void refresh()
+void showSafariNoticeIfNeeded()
 
 // Keep the live counts (blocked-on-this-page, running totals) ticking while the
 // popup is open. This refreshes text only — the 24h chart and category list are
@@ -122,6 +126,27 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-pause]'
 elements.resumeBtn.addEventListener('click', async () => {
   state = await request({ type: 'set-settings', settings: { enabled: true } })
   render(state)
+})
+
+/**
+ * Non-Safari builds resolve to `false` and never touch the DOM, so this costs
+ * every other browser one manifest read. Failures stay silent: an unshown hint
+ * is not worth replacing the popup with an error.
+ */
+async function showSafariNoticeIfNeeded(): Promise<void> {
+  try {
+    elements.safariNotice.hidden = !(await shouldShowSafariSiteAccessNotice())
+  }
+  catch {
+    // Leave it hidden.
+  }
+}
+
+elements.safariNoticeDismiss.addEventListener('click', () => {
+  // Hide first, persist second. A storage failure should still close the notice
+  // for this session rather than leave the button looking dead.
+  elements.safariNotice.hidden = true
+  void dismissSafariSiteAccessNotice().catch(() => {})
 })
 
 async function refresh(): Promise<void> {
