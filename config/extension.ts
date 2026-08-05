@@ -180,7 +180,11 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
   ],
 
   manifest: {
-    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'webRequest', 'storage', 'tabs', 'alarms'],
+    // No `tabs`: the `chrome.tabs` API itself never needed it, and the sensitive
+    // fields we do read (`url`, `pendingUrl`, `favIconUrl`) are already granted by
+    // the http/https host permissions below. Every read is http(s)-gated, so the
+    // permission bought nothing but a scarier install warning.
+    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback', 'webRequest', 'storage', 'alarms'],
     hostPermissions: ['http://*/*', 'https://*/*'],
     minimumChromeVersion: '111',
     firefoxMinVersion: '142.0',

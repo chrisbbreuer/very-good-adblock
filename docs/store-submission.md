@@ -86,9 +86,8 @@ bun run og               # → resources/social/*.jpg    (link-preview cards)
 | `declarativeNetRequestFeedback` | Show the number of items blocked on the current page as the toolbar badge. It only reports which of the extension's own rules matched in the active tab; it does not read browsing history. |
 | `webRequest` | Observe failed requests (the `onErrorOccurred` event only) so the per-page blocked count updates live in packed installs. The extension never reads request or response content and cannot modify requests with it. |
 | `storage` | Save your settings and local statistics, and sync compact totals across your own installs. |
-| `tabs` | Read the active tab's URL and favicon to show per-site stats and the per-site allow/pause toggle. |
 | `alarms` | Schedule the daily filter-list refresh and the timer that resumes protection after a pause. |
-| `host_permissions` (`<http://*/*>`, `<https://*/*>`) | Apply cosmetic hiding, source-level ad pruning, and pop-up blocking on the pages you choose to visit. Nothing is read or sent off-device. |
+| `host_permissions` (`<http://*/*>`, `<https://*/*>`) | Apply cosmetic hiding, source-level ad pruning, and pop-up blocking on the pages you choose to visit, and read the active tab's URL and favicon for the per-site stats and allow/pause toggle. Nothing is read or sent off-device. |
 
 ## Data collection disclosure
 
