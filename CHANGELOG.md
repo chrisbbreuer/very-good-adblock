@@ -1,5 +1,29 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.13...v0.2.14)
+
+## ✨ Features
+
+- **popup**: tell Safari users to allow every website ([9e5db16](https://github.com/chrisbbreuer/very-good-adblock/commit/9e5db16)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **storage**: persist one-time popup notice dismissals ([3dfae5c](https://github.com/chrisbbreuer/very-good-adblock/commit/3dfae5c)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **permissions**: drop the redundant tabs permission ([2605ac9](https://github.com/chrisbbreuer/very-good-adblock/commit/2605ac9)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **og**: declare one card, not three ([760a794](https://github.com/chrisbbreuer/very-good-adblock/commit/760a794)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 💚 Continuous Integration
+
+- **listing**: sync Firefox screenshots without cutting a release ([ac79001](https://github.com/chrisbbreuer/very-good-adblock/commit/ac79001)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: take the Firefox caption reconciliation ([c6bc8a7](https://github.com/chrisbbreuer/very-good-adblock/commit/c6bc8a7)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.12...v0.2.13)
 
 ## ✨ Features
