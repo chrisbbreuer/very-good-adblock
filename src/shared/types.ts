@@ -2,6 +2,9 @@ export type ResourceCategory = 'document' | 'script' | 'image' | 'media' | 'styl
 
 export type BlockSource = 'dnr' | 'twitch' | 'video' | 'manual' | 'cosmetic' | 'youtube' | 'x' | 'consent' | 'popup'
 
+/** Ids for the one-time popup notices tracked by `isNoticeDismissed`. */
+export type NoticeId = 'safari-site-access'
+
 export interface ExtensionSettings {
   enabled: boolean
   badgeEnabled: boolean

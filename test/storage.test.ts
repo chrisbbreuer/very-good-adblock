@@ -4,10 +4,12 @@ import {
   cloudStatsSnapshotBytes,
   defaultLifetimeStats,
   defaultLocalStats,
+  dismissNotice,
   getLifetimeStats,
   getLocalStats,
   getSettings,
   hydrateLocalStatsFromCloud,
+  isNoticeDismissed,
   mergeLifetimeStats,
   migrateStatsSchema,
   setSettings,
@@ -218,6 +220,82 @@ describe('cloud stats sync', () => {
       const again = await getLifetimeStats()
       expect(again.bytesSaved).toBe(2_000_000)
       expect(again.videoSecondsSaved).toBe(2_000)
+    }
+    finally {
+      Object.defineProperty(globalThis, 'chrome', {
+        configurable: true,
+        value: originalChrome,
+      })
+    }
+  })
+})
+
+describe('one-time notices', () => {
+  it('records a dismissal without disturbing other notices', async () => {
+    const originalChrome = globalThis.chrome
+    const store: Record<string, unknown> = {}
+
+    Object.defineProperty(globalThis, 'chrome', {
+      configurable: true,
+      value: {
+        storage: {
+          local: {
+            async get(key: string) {
+              return { [key]: store[key] }
+            },
+            async set(values: Record<string, unknown>) {
+              Object.assign(store, values)
+            },
+          },
+        },
+      } as unknown as typeof chrome,
+    })
+
+    try {
+      expect(await isNoticeDismissed('safari-site-access')).toBe(false)
+
+      await dismissNotice('safari-site-access')
+      expect(await isNoticeDismissed('safari-site-access')).toBe(true)
+      expect(store.dismissedNotices).toEqual(['safari-site-access'])
+
+      // Dismissing twice must not duplicate the id.
+      await dismissNotice('safari-site-access')
+      expect(store.dismissedNotices).toEqual(['safari-site-access'])
+    }
+    finally {
+      Object.defineProperty(globalThis, 'chrome', {
+        configurable: true,
+        value: originalChrome,
+      })
+    }
+  })
+
+  it('treats a corrupt dismissal list as nothing dismissed', async () => {
+    const originalChrome = globalThis.chrome
+    const store: Record<string, unknown> = { dismissedNotices: 'safari-site-access' }
+
+    Object.defineProperty(globalThis, 'chrome', {
+      configurable: true,
+      value: {
+        storage: {
+          local: {
+            async get(key: string) {
+              return { [key]: store[key] }
+            },
+            async set(values: Record<string, unknown>) {
+              Object.assign(store, values)
+            },
+          },
+        },
+      } as unknown as typeof chrome,
+    })
+
+    try {
+      // A bare string is not a list; reading it as one would make `includes`
+      // match on substrings and silently swallow the notice.
+      expect(await isNoticeDismissed('safari-site-access')).toBe(false)
+      await dismissNotice('safari-site-access')
+      expect(store.dismissedNotices).toEqual(['safari-site-access'])
     }
     finally {
       Object.defineProperty(globalThis, 'chrome', {

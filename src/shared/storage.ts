@@ -1,7 +1,7 @@
 import { maxRecentEvents } from './constants'
 import { hostnameFromUrl, isHttpUrl, normalizeHostname, siteMatches } from './domain'
 import { compactBuckets, eventTotals, localDayKey } from './metrics'
-import type { ActiveTabState, BlockEvent, CloudStatsSnapshot, ExtensionSettings, LifetimeStats, LocalStats, SiteStats, StatBucket } from './types'
+import type { ActiveTabState, BlockEvent, CloudStatsSnapshot, ExtensionSettings, LifetimeStats, LocalStats, NoticeId, SiteStats, StatBucket } from './types'
 
 const syncKeys = {
   settings: 'settings',
@@ -12,6 +12,7 @@ const syncKeys = {
 
 const localKeys = {
   stats: 'stats',
+  dismissedNotices: 'dismissedNotices',
 } as const
 
 const cloudStatsSchemaVersion = 1
@@ -127,6 +128,28 @@ export async function getLocalStats(): Promise<LocalStats> {
 
 export async function setLocalStats(stats: LocalStats): Promise<void> {
   await chrome.storage.local.set({ [localKeys.stats]: stats })
+}
+
+/**
+ * One-time popup notices, stored as a list of ids so a second notice needs no
+ * schema change. Local rather than synced on purpose: every notice so far
+ * explains a per-device browser permission, and a dismissal on the Mac says
+ * nothing about the iPhone.
+ */
+export async function isNoticeDismissed(id: NoticeId): Promise<boolean> {
+  return (await readDismissedNotices()).includes(id)
+}
+
+export async function dismissNotice(id: NoticeId): Promise<void> {
+  const dismissed = await readDismissedNotices()
+  if (dismissed.includes(id)) return
+  await chrome.storage.local.set({ [localKeys.dismissedNotices]: [...dismissed, id] })
+}
+
+async function readDismissedNotices(): Promise<NoticeId[]> {
+  const result = await chrome.storage.local.get(localKeys.dismissedNotices)
+  const dismissed = result[localKeys.dismissedNotices]
+  return Array.isArray(dismissed) ? dismissed.filter((id): id is NoticeId => typeof id === 'string') : []
 }
 
 export async function initializeStorage(): Promise<void> {
