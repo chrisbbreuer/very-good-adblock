@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocked by Very Good AdBlock</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="blocked-shell">
+    <main class="blocked-frame glass-panel">
+      <header class="blocked-head">
+        <!-- The shield inline (public/icons/icon.svg): a linked image would be
+             resolved and hashed by the page bundler, and this page has to say
+             whose block this is at a glance. -->
+        <svg class="blocked-mark" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="shield" x1="20" y1="12" x2="104" y2="118" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#ff9a9a"></stop>
+              <stop offset=".52" stop-color="#ef4444"></stop>
+              <stop offset="1" stop-color="#ff7a4d"></stop>
+            </linearGradient>
+          </defs>
+          <path fill="url(#shield)" d="M64 13c17 10 32 13 47 15v31c0 31-18 52-47 62-29-10-47-31-47-62V28c15-2 30-5 47-15Z"></path>
+          <path fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" d="m43 63 14 15 31-36"></path>
+        </svg>
+        <p class="eyebrow">Very Good AdBlock</p>
+      </header>
+
+      <h1 id="blocked-title">This page was blocked</h1>
+      <p class="blocked-lede" id="blocked-lede">
+        The extension stopped this page before it loaded.
+      </p>
+
+      <section class="blocked-target" aria-label="Blocked address">
+        <strong id="blocked-host">&nbsp;</strong>
+        <span id="blocked-url" class="blocked-url"></span>
+      </section>
+
+      <div class="blocked-actions">
+        <button id="continue-once" class="accent-button" type="button">Continue anyway</button>
+        <button id="allow-always" class="soft-button" type="button">Always allow this site</button>
+        <button id="go-back" class="ghost-button" type="button">Go back</button>
+      </div>
+
+      <p class="blocked-note" id="blocked-note"></p>
+      <p class="blocked-status" id="blocked-status" role="status"></p>
+
+      <p class="blocked-footnote">
+        Blocked by mistake?
+        <a id="report-link" href="https://github.com/chrisbbreuer/very-good-adblock/issues" rel="noreferrer">Report it</a>
+        so the filter list can be fixed for everyone.
+      </p>
+    </main>
+    <script type="module" src="/blocked.js"></script>
+  </body>
+</html>

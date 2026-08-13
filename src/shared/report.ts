@@ -1,4 +1,4 @@
-import { adReportLabel, extensionName, newIssueUrl } from './constants'
+import { adReportLabel, extensionName, falsePositiveLabel, newIssueUrl } from './constants'
 import { formatBytes, formatMinutes } from './metrics'
 import type { DashboardState } from './types'
 
@@ -47,6 +47,52 @@ export function buildAdReport(state: DashboardState, context: ReportContext = {}
   }
 
   return { title, body, labels, url }
+}
+
+export interface FalsePositiveContext {
+  /** The blocked host, as shown on the interstitial. */
+  hostname: string
+  /** The blocked address; its query string and hash are stripped before filing. */
+  url: string
+  version: string
+  browser?: string
+}
+
+/**
+ * The mirror of `buildAdReport` for the other kind of mistake: a page a filter
+ * list stopped that it should not have. Filed from the blocked-page
+ * interstitial, where the only diagnostics that exist are the address itself —
+ * and its query string is dropped, since a link that arrives by text or email
+ * carries a per-recipient token there.
+ */
+export function buildFalsePositiveReport(context: FalsePositiveContext): IssueReport {
+  const title = `Blocked in error: ${context.hostname}`
+  const labels = [falsePositiveLabel]
+  const address = sanitizeUrl(context.url) ?? context.url
+
+  const body = [
+    `${extensionName} blocked a page that looks like it should have loaded.`,
+    '',
+    '**What were you trying to open?**',
+    '<!-- e.g. a link from a text message, a newsletter, a search result -->',
+    '',
+    '',
+    '**What did you expect to see?**',
+    '',
+    '',
+    '---',
+    '',
+    '| Field | Value |',
+    '| --- | --- |',
+    `| Blocked host | ${escapeCell(context.hostname)} |`,
+    `| Address | ${escapeCell(address)} |`,
+    `| Extension | ${extensionName} v${context.version} |`,
+    ...(context.browser ? [`| Browser | ${escapeCell(context.browser)} |`] : []),
+    '',
+    `_Filed from the ${extensionName} blocked-page notice._`,
+  ].join('\n')
+
+  return { title, body, labels, url: issueUrl(title, body, labels) }
 }
 
 /** Compose the GitHub "new issue" URL with title/body/labels query params. */

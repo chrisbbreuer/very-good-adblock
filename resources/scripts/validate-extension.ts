@@ -15,10 +15,12 @@ const manifest = await Bun.file(manifestPath).json() as BuildManifestResult
 const requiredFiles = new Set<string>([
   'popup.html',
   'options.html',
+  'blocked.html',
   'background.js',
   'content.js',
   'popup.js',
   'options.js',
+  'blocked.js',
   'styles.css',
   'rules/static.json',
 ])
@@ -74,7 +76,7 @@ else if (target === 'safari') {
   // shipped bundle is a build-pipeline bug. `[?.]` also catches optional-
   // chained namespaces (`chrome.alarms?.`).
   const chromeApiLeft = /\bchrome\.(?:runtime|tabs|declarativeNetRequest|storage|action|alarms)[?.]/
-  for (const bundle of ['background.js', 'content.js', 'popup.js', 'options.js']) {
+  for (const bundle of ['background.js', 'content.js', 'popup.js', 'options.js', 'blocked.js']) {
     const code = await Bun.file(join(dist, bundle)).text()
     if (chromeApiLeft.test(code)) throw new Error(`${bundle} still uses the chrome.* namespace — run bun run build:safari`)
   }
@@ -98,7 +100,7 @@ for (const [size, icon] of Object.entries(icons)) {
 // pages (marketing/features + per-feature) are built here for the site build but
 // served on the web, where root-relative links are correct and expected — they
 // are excluded from the store package (see package-extension.ts).
-for (const htmlFile of ['popup.html', 'options.html']) {
+for (const htmlFile of ['popup.html', 'options.html', 'blocked.html']) {
   const html = await Bun.file(join(dist, htmlFile)).text()
   const inlineScript = /<script(?![^>]+\bsrc=)[^>]*>/i
   const inlineStyle = /<style\b/i

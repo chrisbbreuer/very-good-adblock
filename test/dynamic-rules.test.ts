@@ -13,6 +13,31 @@ describe('buildDynamicRules', () => {
     expect(rules.some(rule => rule.action.type === 'allowAllRequests' && !rule.condition?.initiatorDomains)).toBe(false)
   })
 
+  // The allowAllRequests rule above is initiator-scoped, so on its own it never
+  // lets a user reach an allow-listed host that is itself on a filter list —
+  // which is exactly what "Always allow this site" on the blocked-page
+  // interstitial promises.
+  it('also allows navigation to an allow-listed host', () => {
+    const rules = buildDynamicRules({ ...defaultSettings, enabled: true, allowedSites: ['ekster.attn.tv'] })
+    const documentRule = rules.find(rule => rule.action.type === 'allow' && rule.condition?.requestDomains?.includes('ekster.attn.tv'))
+
+    expect(documentRule).toBeDefined()
+    expect(documentRule?.condition?.resourceTypes).toEqual(['main_frame', 'sub_frame'])
+  })
+
+  it('keeps allow, allow-document and block rule ids from colliding', () => {
+    const settings = {
+      ...defaultSettings,
+      enabled: true,
+      allowedSites: Array.from({ length: 200 }, (_, index) => `allow${index}.test`),
+      blockedSites: Array.from({ length: 200 }, (_, index) => `block${index}.test`),
+    }
+    const rules = buildDynamicRules(settings)
+
+    expect(new Set(rules.map(rule => rule.id)).size).toBe(rules.length)
+    expect(rules).toHaveLength(600)
+  })
+
   it('replaces all rules with a single global allow bypass when protection is off', () => {
     const rules = buildDynamicRules({ ...defaultSettings, enabled: false, allowedSites: ['example.com'], blockedSites: ['ads.test'] })
 

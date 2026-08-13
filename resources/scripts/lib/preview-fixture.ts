@@ -21,6 +21,7 @@ export function shimScript(state: DashboardState): string {
   var reply = function(){ return { ok: true, data: clone(state) }; };
   window.chrome = { runtime: {
     openOptionsPage: function(){},
+    getManifest: function(){ return { version: '0.0.0-preview' }; },
     sendMessage: async function(m){
       if (m.type === 'get-dashboard') return reply();
       if (m.type === 'set-settings') { state.settings = Object.assign({}, state.settings, m.settings); return reply(); }
@@ -36,6 +37,9 @@ export function shimScript(state: DashboardState): string {
           state.activeTab = Object.assign({}, state.activeTab, { allowed: Boolean(m.allowed) });
         return reply();
       }
+      // The blocked-page interstitial: hand back the destination it asked for,
+      // without navigating anywhere (a preview has nowhere to go).
+      if (m.type === 'bypass-block') return { ok: true, data: { url: m.url } };
       return { ok: true, data: true };
     }
   } };

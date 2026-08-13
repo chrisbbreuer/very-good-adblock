@@ -170,6 +170,10 @@ export type RuntimeMessage =
   | { type: 'refresh-filters' }
   | { type: 'pause-protection', minutes: number }
   | { type: 'export-data' }
+  /** "Continue anyway" on the blocked-page interstitial. */
+  | { type: 'bypass-block', url: string }
+  /** "Close tab" on the blocked-page interstitial, when there is nowhere back to. */
+  | { type: 'close-tab' }
 
 export interface RuntimeResponse<T = unknown> {
   ok: boolean

@@ -15,8 +15,16 @@ export const maxRecentEvents = 240
 export const refreshRuleStartId = 60000
 export const refreshRuleEndId = 89999
 export const maxRefreshRules = 25000
+// Reserved dynamic-rule range for the temporary "Continue anyway" bypasses
+// granted from the blocked-page interstitial. Disjoint from both ranges above,
+// so a settings sync or a filter refresh never drops a live bypass.
+export const bypassRuleStartId = 95000
+export const bypassRuleEndId = 95099
+export const maxBypasses = 20
+
 export const filterRefreshAlarm = 'very-good-adblock-filter-refresh'
 export const resumeAlarm = 'very-good-adblock-resume-protection'
+export const bypassSweepAlarm = 'very-good-adblock-bypass-sweep'
 export const filterRefreshUrl = 'https://raw.githubusercontent.com/chrisbbreuer/very-good-adblock/main/src/rules/generated/network-hosts.json'
 
 // GitHub project links, used by the one-click "report an ad that got through"
@@ -25,6 +33,9 @@ export const repositoryUrl = 'https://github.com/chrisbbreuer/very-good-adblock'
 export const issuesUrl: string = `${repositoryUrl}/issues`
 export const newIssueUrl: string = `${issuesUrl}/new`
 export const adReportLabel = 'ad-reached-user'
+// The other direction: a page the filter lists stopped that should have loaded,
+// reported from the blocked-page interstitial.
+export const falsePositiveLabel = 'blocked-in-error'
 
 export const protectedHosts = {
   youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],

@@ -93,6 +93,24 @@ export function buildDynamicRules(settings: ExtensionSettings): chrome.declarati
     },
   }))
 
+  // `allowAllRequests` above is initiator-scoped: it frees what an allow-listed
+  // page requests, but not the navigation *to* it. Without this companion rule,
+  // allow-listing a host that is itself on a filter list (an SMS or newsletter
+  // redirector, say) leaves it unreachable — the document request keeps dying,
+  // which is exactly what the blocked-page interstitial offers to fix.
+  const allowedDocumentRules = settings.allowedSites.slice(0, 200).map((hostname, index) => ({
+    id: ruleId(500 + index),
+    priority: 10,
+    action: { type: 'allow' as const },
+    condition: {
+      requestDomains: [normalizeHostname(hostname)],
+      resourceTypes: [
+        resourceType('main_frame'),
+        resourceType('sub_frame'),
+      ],
+    },
+  }))
+
   const blockedRules = settings.blockedSites.slice(0, 200).map((hostname, index) => ({
     id: ruleId(300 + index),
     priority: 20,
@@ -110,7 +128,7 @@ export function buildDynamicRules(settings: ExtensionSettings): chrome.declarati
     },
   }))
 
-  return [...allowedRules, ...blockedRules]
+  return [...allowedRules, ...allowedDocumentRules, ...blockedRules]
 }
 
 function resourceType(value: string): chrome.declarativeNetRequest.ResourceType {

@@ -27,6 +27,28 @@ Use the popup to:
   block counts auto-attached, with no browsing history) and copies a screenshot
   of the page to your clipboard to paste in.
 
+## When a whole page is blocked
+
+Most blocks are invisible — a request dies inside a page you are already
+reading. Sometimes the blocked address *is* the page: links in text messages,
+marketing emails and ads are usually routed through a click tracker first, and
+those trackers are on the filter lists. The browser's own answer to that is a
+blank `ERR_BLOCKED_BY_CLIENT` error suggesting you disable your extensions.
+
+Very Good AdBlock replaces it with its own notice, which names the blocked host
+and offers three ways out:
+
+- **Continue anyway** — opens the page and lets requests to that host through
+  for 15 minutes, then re-blocks it on its own. Ads and trackers on the page you
+  land on stay blocked.
+- **Always allow \<host\>** — adds it to your allowlist for good (the same list
+  the popup and dashboard manage).
+- **Go back**, or **Close tab** when the link opened a fresh one.
+
+If the page should never have been blocked, **Report it** opens a pre-filled
+GitHub issue with the host and the address minus its query string, so no
+per-recipient token from the link ends up in a public issue.
+
 ## Dashboard
 
 Use the options dashboard to:

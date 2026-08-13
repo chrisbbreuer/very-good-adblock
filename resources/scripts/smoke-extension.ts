@@ -51,6 +51,10 @@ const server = Bun.serve({
       return html(injectSmokeShim(await Bun.file(join(extensionPath, 'options.html')).text()))
     }
 
+    if (url.pathname === '/blocked.html') {
+      return html(injectSmokeShim(await Bun.file(join(extensionPath, 'blocked.html')).text()))
+    }
+
     if (url.pathname === '/watch') return html(contentFixture(youtubeFixture()))
     if (url.pathname === '/shorts/smoke') return html(contentFixture(youtubeFixture()))
     if (url.pathname === '/directory/category/smoke' || url.pathname === '/streamer') return html(contentFixture(twitchFixture()))
@@ -145,6 +149,21 @@ try {
   await assertPageClean(options, 'options')
   closeView(options)
 
+  // The blocked-page interstitial. Everything on it is written by its script
+  // from the query string, so a heading that still reads the template's default
+  // means the bundle threw before it painted.
+  const blocked = openView(900, 700)
+  await blocked.navigate(origin('example.test', '/blocked.html?url=http%3A%2F%2Fekster.attn.tv%2Fa477mZJ3GAHl&reason=filter'))
+  await waitFor(blocked, `document.querySelector('#blocked-host')?.textContent === 'ekster.attn.tv'`, 'blocked page host')
+  await waitFor(blocked, `document.querySelector('#blocked-title')?.textContent?.includes('blocked this page')`, 'blocked page title')
+  await waitFor(blocked, `document.querySelector('#report-link')?.href?.includes('Blocked+in+error')`, 'blocked page report link')
+  await assertNoHorizontalOverflow(blocked, 'blocked page')
+  await screenshot(blocked, 'blocked.png')
+  await blocked.resize(430, 900)
+  await assertNoHorizontalOverflow(blocked, 'blocked page mobile')
+  await assertPageClean(blocked, 'blocked page')
+  closeView(blocked)
+
   const marketing = openView(1280, 900)
   await marketing.navigate(origin('example.test', '/marketing.html'))
   await waitFor(marketing, `document.querySelector('.marketing-hero h1')?.textContent?.includes('Ads gone')`, 'marketing ready state')
@@ -164,6 +183,7 @@ try {
     `twitch=${twitchHidden}`,
     `popup=${pageBlocked}`,
     `dashboard=${dashboardBlocked}`,
+    'blocked=ok',
     'marketing=ok',
     `screenshots=${screenshotDir}`,
   ].join(' '))
@@ -242,6 +262,7 @@ function uiShimScript(): string {
     const uniqueSites = sites => [...new Set(sites.map(normalize).filter(Boolean))].sort();
     window.chrome = {
       runtime: {
+        getManifest: () => ({ version: '${packageJson.version}' }),
         openOptionsPage: () => {
           window.__adblockOptionsOpened = true;
         },
@@ -262,6 +283,10 @@ function uiShimScript(): string {
             state.settings.allowedSites = uniqueSites([...allowed]);
             state.activeTab.allowed = state.settings.allowedSites.includes(state.activeTab.hostname);
             return { ok: true, data: clone(state) };
+          }
+          if (message.type === 'bypass-block') {
+            window.__adblockBypassed = message.url;
+            return { ok: true, data: { url: message.url } };
           }
           if (message.type === 'export-data') {
             window.__adblockSmokeExported = clone(state);

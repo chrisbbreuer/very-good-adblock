@@ -1,6 +1,9 @@
 import packageJson from '../../package.json'
 import generatedNetworkHosts from '../rules/generated/network-hosts.json'
-import { filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
+import { bypassSweepAlarm, filterRefreshAlarm, filterRefreshUrl, refreshRuleEndId, refreshRuleStartId, resumeAlarm } from '../shared/constants'
+import { blockedPageFile, blockedPageQuery } from '../shared/blocked-page'
+import type { BlockedReason } from '../shared/blocked-page'
+import { grantBypass, pruneBypasses } from './bypass'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../rules/blocked-hosts'
@@ -297,6 +300,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   cosmeticActivity.delete(tabId)
   pageBlockLog.delete(tabId)
   popupCandidates.delete(tabId)
+  blockedNoticeShownAt.delete(tabId)
   schedulePageStatsPersist()
   if (badgePollTabId === tabId) {
     badgePollTabId = undefined
@@ -351,6 +355,12 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   // window.open wrapper cannot see). This also runs where the debug listener
   // counts subresource blocks — the paths never overlap.
   if (details.frameId === 0 && handleBlockedPopupTab(details)) return
+
+  // Anything else that dies at the top level is a page the user asked for, so
+  // the browser's bare ERR_BLOCKED_BY_CLIENT ("try disabling your extensions")
+  // gets replaced with our own page: who blocked it, what was blocked, and a
+  // way through. The block itself is still counted below.
+  if (details.frameId === 0 && details.type === 'main_frame') showBlockedNotice(details)
 
   if (hasRuleMatchDebug) return
 
@@ -435,9 +445,42 @@ function isOurBlock(details: chrome.webRequest.OnErrorOccurredDetails): boolean 
     && siteMatches(hostnameFromUrl(details.url), settings.blockedSites)
 }
 
+// Redirect chains can raise more than one top-level error for what the user
+// experienced as a single click; the interstitial is shown once per tab per
+// short window so the second hop cannot overwrite the page mid-render.
+const blockedNoticeShownAt = new Map<number, number>()
+const blockedNoticeMinIntervalMs = 1_000
+
+/**
+ * Replace the browser's blocked-page error with ours. The failed navigation is
+ * already over by the time this runs (declarativeNetRequest cancels it without
+ * telling us in advance), so this is a navigation, not a redirect: the error
+ * page flashes and is replaced.
+ */
+function showBlockedNotice(details: chrome.webRequest.OnErrorOccurredDetails): void {
+  const settings = cachedSettings ?? defaultSettings
+  if (!settings.enabled) return
+
+  // A speculative prerender of a blocked URL fails in a hidden frame tree of a
+  // tab the user is still reading. Navigating that tab would yank the page out
+  // from under them for a click they never made.
+  const lifecycle = (details as { documentLifecycle?: string }).documentLifecycle
+  if (lifecycle && lifecycle !== 'active') return
+
+  const now = Date.now()
+  const shownAt = blockedNoticeShownAt.get(details.tabId) ?? 0
+  if (now - shownAt < blockedNoticeMinIntervalMs) return
+  blockedNoticeShownAt.set(details.tabId, now)
+
+  const reason: BlockedReason = siteMatches(hostnameFromUrl(details.url), settings.blockedSites) ? 'user' : 'filter'
+  const target = chrome.runtime.getURL(blockedPageFile) + blockedPageQuery(details.url, reason)
+  void chrome.tabs.update(details.tabId, { url: target }).catch(() => {})
+}
+
 chrome.alarms?.onAlarm.addListener((alarm) => {
   if (alarm.name === filterRefreshAlarm) void refreshFilters()
   if (alarm.name === resumeAlarm) void resumeProtection()
+  if (alarm.name === bypassSweepAlarm) void sweepBypasses()
 })
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -471,7 +514,20 @@ async function setup(): Promise<void> {
   await reconcilePause(settings.resumeAt)
   await updateBadge()
   chrome.alarms?.create(filterRefreshAlarm, { periodInMinutes: 24 * 60 })
+  void sweepBypasses()
   void refreshFilters()
+}
+
+/**
+ * Expire "Continue anyway" grants. Dynamic rules outlive the browser session,
+ * so this also runs at startup: a grant made minutes before the browser closed
+ * must not still be open the next morning. The sweep alarm retires itself once
+ * nothing is left to expire.
+ */
+async function sweepBypasses(): Promise<void> {
+  const remaining = await pruneBypasses()
+  if (remaining.length) chrome.alarms?.create(bypassSweepAlarm, { periodInMinutes: 1 })
+  else chrome.alarms?.clear(bypassSweepAlarm)
 }
 
 /** Pause protection for a bounded number of minutes; a resume alarm re-enables it. */
@@ -603,6 +659,15 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return getDashboard()
     case 'export-data':
       return getDashboard()
+    case 'bypass-block': {
+      const url = await grantBypass(message.url)
+      chrome.alarms?.create(bypassSweepAlarm, { periodInMinutes: 1 })
+      return { url }
+    }
+    case 'close-tab': {
+      if (sender.tab?.id !== undefined) await chrome.tabs.remove(sender.tab.id)
+      return true
+    }
     default:
       throw new Error('Unknown runtime message')
   }

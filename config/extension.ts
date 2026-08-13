@@ -145,6 +145,10 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
     // Only `marketing` carries the shared script bundle (theme toggle + subscribe
     // form); the site build injects `/marketing.js` into the other pages.
     extra: {
+      // Shown in place of the browser's ERR_BLOCKED_BY_CLIENT error when a
+      // top-level navigation is blocked (src/background/index.ts). Not
+      // web-accessible: only the background navigates a tab to it.
+      blocked: { template: 'resources/views/blocked.stx', script: 'src/ui/blocked.ts' },
       marketing: { template: 'resources/views/marketing.stx', script: 'resources/scripts/marketing.ts' },
       features: 'resources/views/features.stx',
       privacy: 'resources/views/privacy.stx',

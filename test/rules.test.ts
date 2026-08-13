@@ -113,7 +113,10 @@ describe('rules', () => {
       blockedSites: ['ads.example.com'],
     })
 
-    expect(rules).toHaveLength(2)
+    // Per allowed site: one initiator-scoped allowAllRequests plus the
+    // navigation allow that makes the host itself reachable. Per blocked site:
+    // one block rule.
+    expect(rules).toHaveLength(3)
     expect(rules.every(rule => rule.id >= dynamicRuleStartId && rule.id <= dynamicRuleEndId)).toBe(true)
   })
 })
