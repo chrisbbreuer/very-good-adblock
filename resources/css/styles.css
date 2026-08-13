@@ -205,6 +205,27 @@ button {
   padding: 12px 12px 12px;
 }
 
+/* The popup is a fixed 390px column, and as a toolbar popover it is handed
+   exactly that much room. Anywhere it opens in a window instead — Safari's
+   popup viewer, or popup.html opened directly — the canvas is far wider, and a
+   column anchored to the left edge leaves the rest of the window as bare
+   background: it reads as a page that failed to lay out rather than as a
+   panel. Past the design width the column centres itself.
+   Scoped to the body so the marketing hero's inlined copy, which is a div
+   sized by `.hero-device`, keeps its own sizing. */
+@media (min-width: 420px) {
+  body.popup-shell {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  body.popup-shell > .popup-frame {
+    flex: none;
+    width: 390px;
+  }
+}
+
 .glass-panel,
 .metric-card,
 .timeline-card,
