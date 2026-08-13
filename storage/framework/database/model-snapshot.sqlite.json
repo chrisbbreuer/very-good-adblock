@@ -1,0 +1,98 @@
+{
+  "plan": {
+    "dialect": "sqlite",
+    "tables": [
+      {
+        "table": "subscribers",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "email",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": true,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 255
+          },
+          {
+            "name": "status",
+            "type": "enum",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "subscribed",
+            "enumValues": [
+              "subscribed",
+              "unsubscribed",
+              "pending",
+              "bounced"
+            ]
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "homepage",
+            "maxLength": 100
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "uuid",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": true,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "subscribers_email_unique",
+            "columns": [
+              "email"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "subscribers_uuid_unique",
+            "columns": [
+              "uuid"
+            ],
+            "type": "unique"
+          }
+        ]
+      }
+    ]
+  },
+  "hash": "5d762388f8fadac2177ce555e301bed5e9a9bb91b5311fc260d55839f4855fc8",
+  "dialect": "sqlite",
+  "updatedAt": "2026-08-13T17:36:35.547Z"
+}

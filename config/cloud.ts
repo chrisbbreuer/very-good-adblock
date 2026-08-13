@@ -71,8 +71,20 @@ export const tsCloud: TsCloudConfig = {
       domain: env.APP_DOMAIN || 'verygoodadblock.org',
       start: 'bun node_modules/@stacksjs/actions/dist/serve/api.js',
       port: 3010,
+      // The backup is spelled out rather than left to buddy's deploy command,
+      // which since 0.70.371 splices its own pre-migration backup in front of
+      // any preStart that migrates — as
+      // `bun --conditions development storage/framework/core/buddy/src/cli.ts
+      // db:backup`, a path that only exists inside the Stacks monorepo. On a
+      // standalone app it is a module-not-found, so the whole preStart exits 1
+      // and the api release is never promoted (v0.2.15's deploy failed exactly
+      // here). The injection is skipped when a preStart entry already runs
+      // `db:backup`, so declaring our own both restores the deploy and keeps
+      // the backup it was trying to take. `--before-migrations` is what makes
+      // it quiet on a box that has no database yet.
       preStart: [
         'bun install --frozen-lockfile',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js db:backup --before-migrations',
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate --no-auth --force',
       ],
       exclude: ['node_modules', '.git', '.cache', '.qb', '.stx', 'dist', 'dist-firefox', '*.zip', 'pantry', 'bench'],
