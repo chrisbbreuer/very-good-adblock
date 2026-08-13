@@ -139,8 +139,20 @@ there and every store's set follows:
    slack reads as empty background.
 
 `config/extension.ts` points `safariAppStore.screenshots` at those generated
-paths, and `extension:safari:publish` regenerates them before uploading, so the
-set that ships describes the build that ships.
+paths. `extension:safari:publish` tries to regenerate them on the way to the
+upload, but composing them needs the captures in `dist/captures/` and the
+release workflow never runs a capture — so on CI it logs
+
+```
+[extension:safari:publish] using the committed screenshots — could not
+regenerate: [image] Capture for the "Ads gone before the page loads." slide
+not found: dist/captures/popup.png
+```
+
+and uploads the committed files instead. That is the intended path, not a
+failure. It does mean nothing keeps the listing in step with the build on its
+own: after a UI change, run `bun run screenshots` and commit the result, or the
+next release ships the previous version's pictures.
 
 ### What each store will accept
 
