@@ -1,5 +1,24 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.14...v0.2.15)
+
+## ✨ Features
+
+- **store**: compose the Chrome Web Store promo tiles ([9e468dd](https://github.com/chrisbbreuer/very-good-adblock/commit/9e468dd)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **blocking**: say who blocked the page, and offer a way through ([ee83a25](https://github.com/chrisbbreuer/very-good-adblock/commit/ee83a25)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **popup**: centre the column when the popup opens in a window ([964ee59](https://github.com/chrisbbreuer/very-good-adblock/commit/964ee59)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: take the macOS archive signing fix ([cbe74ae](https://github.com/chrisbbreuer/very-good-adblock/commit/cbe74ae)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.13...v0.2.14)
 
 ## ✨ Features
