@@ -104,7 +104,7 @@ to `none` in the generated manifest.
 ## Screenshots
 
 Every store's set comes from one declaration in `config/images.ts`. `bun run
-screenshots` runs three steps:
+screenshots` runs four steps:
 
 1. **Capture.** `resources/scripts/capture-surfaces.ts` shoots the real popup
    and dashboard at 2x against the seeded fixture — raw, with no frame,
@@ -117,6 +117,17 @@ screenshots` runs three steps:
    Store and AMO accept, into `resources/web-store/`. Committed, because the
    release workflow never runs a capture: the Firefox sync reads them from the
    checkout, and the Chrome upload is done by hand from there.
+4. **Compose the promo tiles.** `resources/scripts/lib/promo-tiles.ts` lays out
+   the Chrome Web Store's two promotional images — `promo-small.png` (440x280,
+   drawn in search results and category rows) and `promo-marquee.png` (1400x560,
+   drawn in featured collections) — into the same directory. They are not
+   screenshots: at 440x280 the popup's own labels are unreadable, so the tiles
+   are the mark, the name and the claim, from the palette and faces in
+   `config/images.ts`.
+
+Every file in `resources/web-store/` is written as 24-bit PNG with no alpha
+channel, which is what the Chrome Web Store's spec asks for on all three kinds
+of image.
 
 The slides are the copy in `config/images.ts`, not this document — change them
 there and every store's set follows:
@@ -137,7 +148,7 @@ set that ships describes the build that ships.
 | --- | --- |
 | App Store | Uploaded with the version's metadata by `extension:safari:publish`. |
 | Firefox AMO | Synced by `extension:firefox:publish` from `firefoxAddons.screenshots`, or on demand with `buddy extension:firefox:previews --dry-run`. |
-| Chrome Web Store | **By hand.** The API publishes packages only — it has no endpoint for listing images. Upload `resources/web-store/*.png` (1280x800) in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) under Store listing → Screenshots. |
+| Chrome Web Store | **By hand.** The API publishes packages only — it has no endpoint for listing images. In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) under Store listing, upload `resources/web-store/01.png`–`03.png` (1280x800) as Screenshots, `promo-small.png` as the Small promo tile, and `promo-marquee.png` as the Marquee promo tile. |
 
 Adding a slide means adding one entry to `appStore.slides`; adding a device
 class means one entry in `appStore.displays`. Apple accepts up to ten per

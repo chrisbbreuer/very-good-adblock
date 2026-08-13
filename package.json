@@ -98,6 +98,7 @@
     "@gorhill/ubo-core": "^0.1.30",
     "@stacksjs/browser-extension": "^0.70.261",
     "@stacksjs/image": "^0.70.246",
+    "@stacksjs/ts-png": "^0.1.8",
     "@types/chrome": "^0.2.5",
     "adblockpluscore": "^0.11.1",
     "better-dx": "^0.2.22",
