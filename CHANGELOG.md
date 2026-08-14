@@ -1,5 +1,20 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.15...v0.2.16)
+
+## 🐛 Bug Fixes
+
+- **popup**: present the popup as a card when it opens in a window ([d53fa25](https://github.com/chrisbbreuer/very-good-adblock/commit/d53fa25)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deploy**: declare the pre-migration backup the api release needs ([4595d8d](https://github.com/chrisbbreuer/very-good-adblock/commit/4595d8d)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📝 Documentation
+
+- correct what regenerates the Safari screenshots ([e029a9b](https://github.com/chrisbbreuer/very-good-adblock/commit/e029a9b)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.14...v0.2.15)
 
 ## ✨ Features
