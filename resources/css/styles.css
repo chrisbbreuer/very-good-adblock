@@ -205,24 +205,48 @@ button {
   padding: 12px 12px 12px;
 }
 
-/* The popup is a fixed 390px column, and as a toolbar popover it is handed
-   exactly that much room. Anywhere it opens in a window instead — Safari's
-   popup viewer, or popup.html opened directly — the canvas is far wider, and a
-   column anchored to the left edge leaves the rest of the window as bare
-   background: it reads as a page that failed to lay out rather than as a
-   panel. Past the design width the column centres itself.
+/* The popup in a window rather than a popover.
+
+   As a toolbar popover it is handed exactly its 390px and nothing else is
+   visible. Opened in a window — Safari's popup viewer, an unpacked install
+   inspected from the extension page, popup.html navigated to directly — the
+   canvas is twice that or more, and the same markup has to hold a room it was
+   never sized for. Left as-is it was a column pinned to the top-left corner
+   with the rest of the window bare; merely centring it left a narrow strip in
+   an empty field, which is not much better.
+
+   So in a window it stops pretending to be a popover and becomes what it
+   already looks like: one card, a little wider, sitting on the app background
+   with room around it. Top-aligned rather than vertically centred — a flex
+   container that centres an item taller than itself clips the top, and this
+   card is regularly taller than a short window.
+
    Scoped to the body so the marketing hero's inlined copy, which is a div
    sized by `.hero-device`, keeps its own sizing. */
 @media (min-width: 420px) {
   body.popup-shell {
     display: flex;
     justify-content: center;
+    /* Hug the content: stretched to the body's full height, the card ran on
+       past its last row as an empty panel. */
+    align-items: flex-start;
     width: 100%;
+    /* The card no longer stretches to the viewport, so the body has to: the
+       background gradient is sized to the body box, and a body that stops at
+       the card's height drew a visible seam across the window under it. */
+    min-height: 100vh;
+    padding: 28px 20px;
   }
 
   body.popup-shell > .popup-frame {
     flex: none;
-    width: 390px;
+    width: min(100%, 440px);
+    min-height: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--panel-bg);
+    box-shadow: var(--shadow-lg);
   }
 }
 
