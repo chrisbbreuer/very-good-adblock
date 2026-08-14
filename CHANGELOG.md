@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.16...v0.2.17)
+
+## 🐛 Bug Fixes
+
+- **deps**: pin ts-pantry to 0.11.21, whose published bundle parses ([5c77828](https://github.com/chrisbbreuer/very-good-adblock/commit/5c77828)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.15...v0.2.16)
 
 ## 🐛 Bug Fixes
