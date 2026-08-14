@@ -269,7 +269,7 @@ function renderPageVisit(next: DashboardState): void {
   elements.pageBreakdown.textContent = next.activeTab ? 'on this page' : 'no active tab'
 
   const title = next.activeTab
-    ? `${page.blocked.toLocaleString()} blocked on this page — ${page.network.toLocaleString()} network requests, ${page.content.toLocaleString()} pop-ups and placements. Click for the list.`
+    ? `${page.blocked.toLocaleString()} blocked on this page — ${page.network.toLocaleString()} ad and tracker sources, ${page.content.toLocaleString()} pop-ups and placements. Click for the list.`
     : 'No active tab'
   elements.pageBlocksToggle.title = title
 }

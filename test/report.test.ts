@@ -65,7 +65,7 @@ describe('report', () => {
     const body = buildAdReport(dashboardState(), { browser: 'Chrome 126 on macOS', screenshotCopied: true }).body
     expect(body).toContain('Very Good AdBlock v0.1.0')
     expect(body).toContain('Chrome 126 on macOS')
-    expect(body).toContain('3 (2 network, 1 hidden)')
+    expect(body).toContain('3 (2 ad sources, 1 hidden)')
     expect(body).toContain('EasyList')
     expect(body).toContain('clipboard')
   })

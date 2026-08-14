@@ -157,7 +157,7 @@ function diagnosticsRows(state: DashboardState, context: ReportContext, options:
   rows.push(['Page', sanitizeUrl(state.activeTab?.url) ?? state.activeTab?.hostname ?? '(no active tab)'])
   rows.push(['Protection', protectionLabel(state)])
   rows.push(['This site', state.activeTab?.allowed ? 'Allowlisted (not protected)' : 'Protected'])
-  rows.push(['Blocked on this page', `${state.activePage.blocked} (${state.activePage.network} network, ${state.activePage.content} hidden)`])
+  rows.push(['Blocked on this page', `${state.activePage.blocked} (${state.activePage.network} ad sources, ${state.activePage.content} hidden)`])
   rows.push(['Lifetime blocked', `${state.lifetime.adsBlocked.toLocaleString()} · ${formatBytes(state.lifetime.bytesSaved)} · ${formatMinutes(state.lifetime.videoSecondsSaved)}`])
   rows.push(['Features', featureFlags(state)])
 

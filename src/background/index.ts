@@ -12,6 +12,7 @@ import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shar
 import { isSearchResultsUrl } from '../shared/search-navigation'
 import { isOriginalPopupDestination, rememberInitialPopupUrl } from './popup-candidate'
 import type { PopupCandidate } from './popup-candidate'
+import { isNewBlockedHost } from './page-block-tally'
 import {
   defaultSettings,
   getActiveTabState,
@@ -38,21 +39,44 @@ const filterSources = generatedNetworkHosts.sources.map(source => ({
 /**
  * Per-tab counters for the current page visit (reset on navigation).
  * `content` is fed by the content script (cosmetic hides, video skips, pop-up
- * blocks); `network` is the declarativeNetRequest match count for this load,
+ * blocks); `network` counts the distinct ad/tracker HOSTS blocked on this load,
  * kept live by the debug listener (unpacked) or the webRequest error listener
  * (packed), and reconciled against getMatchedRules. Every network increment
  * flows through addNetworkBlocks, which also feeds the lifetime/site stats.
  * `loadedAt` bounds the getMatchedRules lookup to the current visit.
+ *
+ * `networkRaw` counts every blocked REQUEST, repeats included. The two differ
+ * by a lot and both are needed. A blocked tracker does not give up: its script
+ * retries the beacon, so one endpoint can be refused hundreds of times while
+ * the page sits open — a Shopify product page with the usual analytics stack
+ * reports ~30 distinct hosts and, after a few minutes, several hundred refused
+ * requests. Showing the request count as "blocked on this page" read as an
+ * absurd ad count; the distinct-host count is what a person means. The raw
+ * count still drives the getMatchedRules reconciliation (which counts
+ * requests) and the bytes-saved estimate (every refused request saves its
+ * bytes), and the popup's per-row `×N` keeps the repeats visible.
  */
 interface PageVisitState {
   content: number
   network: number
+  networkRaw: number
   url?: string
   loadedAt: number
   networkCheckedAt: number
 }
 
 const pageBadgeStats = new Map<number, PageVisitState>()
+// Hosts already counted on the current visit, so a retrying beacon moves the
+// raw counter and the row's ×N without moving the headline number again.
+// Mirrored to session storage with the counters: a worker restart that lost it
+// would count every still-retrying tracker a second time, which is the inflation
+// this set exists to prevent.
+const pageBlockedHosts = new Map<number, Set<string>>()
+const pageBlockedHostsStorageKey = 'pageBlockedHosts'
+// A page whose trackers randomise their subdomain could grow this without
+// bound; past the cap the counter simply stops rising, which is the right
+// failure for a number that means "how many trackers are on this page".
+const maxBlockedHostsPerPage = 500
 const cosmeticActivity = new Map<number, Map<string, number>>()
 // pageBadgeStats is mirrored to chrome.storage.session (debounced) so the
 // per-page counts survive service-worker restarts: MV3 workers are killed
@@ -106,9 +130,10 @@ async function hydratePageBadgeStats(): Promise<void> {
   if (!session) return
 
   try {
-    const stored = await session.get([pageStatsStorageKey, pageBlockLogStorageKey])
+    const stored = await session.get([pageStatsStorageKey, pageBlockLogStorageKey, pageBlockedHostsStorageKey])
     const entries = stored[pageStatsStorageKey] as Record<string, PageVisitState> | undefined
     const storedLogs = stored[pageBlockLogStorageKey] as Record<string, PageBlockEntry[]> | undefined
+    const storedHosts = stored[pageBlockedHostsStorageKey] as Record<string, string[]> | undefined
 
     for (const [key, state] of Object.entries(entries ?? {})) {
       const tabId = Number(key)
@@ -120,10 +145,22 @@ async function hydratePageBadgeStats(): Promise<void> {
       pageBadgeStats.set(tabId, {
         content: Math.max(existing?.content ?? 0, state.content ?? 0),
         network: Math.max(existing?.network ?? 0, state.network ?? 0),
+        networkRaw: Math.max(existing?.networkRaw ?? 0, state.networkRaw ?? 0),
         url: existing?.url ?? state.url,
         loadedAt: Math.min(existing?.loadedAt ?? Number.POSITIVE_INFINITY, state.loadedAt ?? Number.POSITIVE_INFINITY),
         networkCheckedAt: Math.max(existing?.networkCheckedAt ?? 0, state.networkCheckedAt ?? 0),
       })
+    }
+
+    for (const [key, hosts] of Object.entries(storedHosts ?? {})) {
+      const tabId = Number(key)
+      if (!Number.isInteger(tabId) || !Array.isArray(hosts)) continue
+
+      // Union, not replace: a host counted since the worker came back is as
+      // real as one from the snapshot, and either way it must not count twice.
+      const existing = pageBlockedHosts.get(tabId) ?? new Set<string>()
+      for (const host of hosts) existing.add(host)
+      pageBlockedHosts.set(tabId, existing)
     }
 
     for (const [key, log] of Object.entries(storedLogs ?? {})) {
@@ -151,7 +188,13 @@ function schedulePageStatsPersist(): void {
     for (const [tabId, state] of pageBadgeStats) snapshot[String(tabId)] = state
     const logSnapshot: Record<string, PageBlockEntry[]> = {}
     for (const [tabId, log] of pageBlockLog) logSnapshot[String(tabId)] = log
-    void session.set({ [pageStatsStorageKey]: snapshot, [pageBlockLogStorageKey]: logSnapshot }).catch(() => {})
+    const hostSnapshot: Record<string, string[]> = {}
+    for (const [tabId, hosts] of pageBlockedHosts) hostSnapshot[String(tabId)] = [...hosts]
+    void session.set({
+      [pageStatsStorageKey]: snapshot,
+      [pageBlockLogStorageKey]: logSnapshot,
+      [pageBlockedHostsStorageKey]: hostSnapshot,
+    }).catch(() => {})
   }, pageStatsPersistDelayMs)
 }
 
@@ -202,21 +245,38 @@ function pageBlockRowForSource(source: BlockSource): { kind: PageBlockKind, labe
   }
 }
 
-/** The single funnel for network-block increments: page counter plus stats. */
+/**
+ * The single funnel for network-block increments: page counter plus stats.
+ *
+ * `count` is a number of blocked requests. What it adds to the headline counter
+ * is the number of blocked hosts not seen yet on this visit — one, for a host
+ * appearing the first time, and zero for every retry after that. Bytes and the
+ * row's `×N` take the full count either way. A caller with no URL to attribute
+ * (the getMatchedRules fallback below) passes no `label` and only moves the raw
+ * side, since an unattributable block cannot be told apart from a repeat.
+ */
 function addNetworkBlocks(tabId: number, count: number, category: ResourceCategory, label?: string): void {
   if (count <= 0) return
   const page = pageBadgeStats.get(tabId)
   const hostname = page?.url ? hostnameFromUrl(page.url) : ''
   if (!page || !hostname) return
 
-  page.network += count
+  page.networkRaw += count
+
+  const seenHosts = pageBlockedHosts.get(tabId) ?? new Set<string>()
+  const firstSighting = isNewBlockedHost(seenHosts, label, maxBlockedHostsPerPage)
+  if (firstSighting) {
+    pageBlockedHosts.set(tabId, seenHosts)
+    page.network += 1
+  }
+
   logPageBlock(tabId, { kind: 'network', label: label ?? 'blocked request', detail: category, count, at: new Date().toISOString() })
   schedulePageStatsPersist()
 
   const key = `${hostname}:${category}`
   const existing = pendingNetworkStats.get(key)
   if (existing) {
-    existing.count += count
+    if (firstSighting) existing.count += 1
     existing.bytesSaved = (existing.bytesSaved ?? 0) + estimateBytesSaved(category, count)
     existing.occurredAt = new Date().toISOString()
   }
@@ -225,7 +285,7 @@ function addNetworkBlocks(tabId: number, count: number, category: ResourceCatego
       hostname,
       source: 'dnr',
       category,
-      count,
+      count: firstSighting ? 1 : 0,
       bytesSaved: estimateBytesSaved(category, count),
       occurredAt: new Date().toISOString(),
     })
@@ -282,9 +342,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (popupCandidate) rememberInitialPopupUrl(popupCandidate, changeInfo.url ?? tab.pendingUrl ?? tab.url)
 
   if (changeInfo.status === 'loading' || changeInfo.url) {
-    pageBadgeStats.set(tabId, { content: 0, network: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
+    pageBadgeStats.set(tabId, { content: 0, network: 0, networkRaw: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
     pageBlockLog.delete(tabId)
+    pageBlockedHosts.delete(tabId)
     schedulePageStatsPersist()
     void updateBadge(tabId)
   }
@@ -299,6 +360,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
   pageBlockLog.delete(tabId)
+  pageBlockedHosts.delete(tabId)
   popupCandidates.delete(tabId)
   blockedNoticeShownAt.delete(tabId)
   schedulePageStatsPersist()
@@ -820,14 +882,19 @@ function getCosmeticTelemetry(settings: ExtensionSettings, activeTabId?: number)
 
 function incrementPageContent(tabId: number, count: number, url?: string): void {
   if (count <= 0) return
+  // Mutate the state in place rather than replacing it. refreshTabNetworkCount
+  // holds a reference across its await and compares the counter it finds there
+  // against getMatchedRules; a swapped-out object would leave it reconciling
+  // against a snapshot the live listeners had already moved past, and folding
+  // in a delta that was never missing.
   const existing = pageBadgeStats.get(tabId)
-  pageBadgeStats.set(tabId, {
-    content: (existing?.content ?? 0) + count,
-    network: existing?.network ?? 0,
-    url: url ?? existing?.url,
-    loadedAt: existing?.loadedAt ?? Date.now(),
-    networkCheckedAt: existing?.networkCheckedAt ?? 0,
-  })
+  if (!existing) {
+    pageBadgeStats.set(tabId, { content: count, network: 0, networkRaw: 0, url, loadedAt: Date.now(), networkCheckedAt: 0 })
+  }
+  else {
+    existing.content += count
+    if (url) existing.url = url
+  }
   schedulePageStatsPersist()
 }
 
@@ -849,7 +916,10 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
-    const delta = Math.max(0, matched.rulesMatchedInfo.length - details.network)
+    // Against the RAW count: getMatchedRules reports requests, and the headline
+    // counter no longer does. Comparing it to the deduplicated number would
+    // read every retry the listeners already saw as a block they had missed.
+    const delta = Math.max(0, matched.rulesMatchedInfo.length - details.networkRaw)
     if (delta > 0) {
       // Matches the live listeners missed (e.g. while the worker was down):
       // fold them through the same funnel so lifetime stats stay in lockstep.
