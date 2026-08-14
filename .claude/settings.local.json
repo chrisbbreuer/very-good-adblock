@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/chris/Code/stacks/**)",
+      "Bash(rm -rf pantry/ts-images/*)",
+      "Bash(cp -R /private/tmp/claude-501/-Users-chris-Code-very-good-adblock/e2c2fc50-69ed-4937-b7f9-46a8df7e7c0e/scratchpad/tsimg/package/. pantry/ts-images/)"
+    ]
+  }
+}

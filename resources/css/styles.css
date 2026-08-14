@@ -205,51 +205,40 @@ button {
   padding: 12px 12px 12px;
 }
 
-/* The popup in a window rather than a popover.
+/* The popup on a surface bigger than the popover it was designed for.
 
-   Opened in a window — Safari's popup viewer, Dia, popup.html navigated to
-   directly — the canvas is twice the design width or more, and a column pinned
-   to the top-left corner with the rest of the window bare reads as a layout
-   that failed. In a window it becomes what it already looks like: one card on
-   the app background with room around it.
+   Not every browser sizes the popover to the document. Dia hands it a fixed
+   ~800px viewport whatever the page asks for, and Safari's popup viewer opens
+   a window; the same markup then has to hold a room twice its width. Two
+   things were tried and both were wrong: the 390px column pinned to the
+   top-left with the rest bare read as a layout that failed, and the column
+   centred as a card read as a card marooned in an empty field. The space is
+   not going away, so the layout takes it — the frame fills the surface, the
+   way it fills a 390px popover.
+
+   Capped and centred past ~820px, which is where filling stops helping and the
+   rows would just stretch: popup.html opened in a full browser tab is a
+   1400px-wide canvas, not a popup.
 
    Gated on an attribute the popup script sets, NOT on a width media query.
-   This is load-bearing. Chromium sizes a toolbar popover to the document's own
+   This is load-bearing. Chromium DOES size a popover to the document's own
    preferred width, so a query keyed on the viewport is a feedback loop: the
    popover is measured at the 800px maximum, `min-width: 420px` matches, the
-   rule inside it widens the body to `100%`, and the measurement it just
-   answered becomes the answer — the popover opens 800px wide with the card
-   marooned in the middle of it, which is exactly what shipped. The document's
-   preferred width has to stay a constant 390px no matter what, so the window
-   treatment can only be applied by something that runs after layout and looks
-   at the window itself.
-
-   For the same reason nothing in here may change that width: the padding is
-   vertical, the frame keeps its 390px, and the centring is a flex container
-   the popover never becomes. */
+   rule inside widens the body to `100%`, and the measurement it just answered
+   becomes the answer — the popover opens at the maximum every time, which is
+   what shipped. The document's preferred width has to stay a constant 390px
+   until something that runs AFTER layout says otherwise. */
 html[data-surface="window"] body.popup-shell {
-  display: flex;
-  justify-content: center;
-  /* Hug the content: stretched to the body's full height, the card ran on past
-     its last row as an empty panel. */
-  align-items: flex-start;
   width: 100%;
   max-width: none;
-  /* The card no longer stretches to the viewport, so the body has to: the
-     background gradient is sized to the body box, and a body that stops at the
-     card's height drew a visible seam across the window under it. */
   min-height: 100vh;
-  padding: 28px 0;
 }
 
 html[data-surface="window"] body.popup-shell > .popup-frame {
-  flex: none;
-  width: 390px;
-  min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 820px;
+  margin-inline: auto;
+  padding: 16px;
 }
 
 .glass-panel,
