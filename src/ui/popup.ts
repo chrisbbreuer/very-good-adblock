@@ -46,7 +46,11 @@ const elements = {
 
 let state: DashboardState | undefined
 
+let hostedInOwnTab = false
+
 markSurface()
+window.addEventListener('resize', markSurface)
+void detectHostSurface()
 void refresh()
 void showSafariNoticeIfNeeded()
 
@@ -57,14 +61,48 @@ void showSafariNoticeIfNeeded()
  * document's preferred width, so a `min-width` media query that widens
  * anything answers its own question: the popover is laid out at the 800px
  * maximum, the query matches, the document grows to fill it, and the popover
- * opens at 800px with a 390px column adrift inside it. This runs after layout
- * and asks the window instead, which cannot feed back.
+ * opens at 800px with a 390px column adrift inside it. Asking the window
+ * instead cannot feed back that way.
+ *
+ * Re-checked on resize, because the answer at first paint is not final. A
+ * browser that shows the popup in a window of its own minimum size — Dia opens
+ * one about twice the design width — sizes that window AFTER the document has
+ * been laid out at its preferred 390px, so the load-time check sees a popover
+ * and the window arrives a frame later. A popover, sized once to its content
+ * and never resized, simply never fires this.
  *
  * The threshold sits well above the 390px design width and well below any real
- * window: a popover reports exactly its own width, so it never trips.
+ * window, and it is only ever read from the window: nothing the window styling
+ * does can push the document past it.
  */
 function markSurface(): void {
-  if (window.innerWidth >= 520) document.documentElement.dataset.surface = 'window'
+  const inWindow = hostedInOwnTab || window.innerWidth >= 520
+  if (inWindow) document.documentElement.dataset.surface = 'window'
+  else delete document.documentElement.dataset.surface
+}
+
+/**
+ * The reliable half of the question: `tabs.getCurrent` resolves to a tab when
+ * this document is running as one, and to nothing inside a toolbar popover.
+ *
+ * Width alone was not enough. A browser can hand the popup a window whose
+ * viewport still reports the document's own 390px — the window is bigger than
+ * the page it contains, and no resize ever fires — so the size test sees a
+ * popover forever while the user is looking at a column in the corner of a
+ * window. This asks what the document is, not how wide it is.
+ *
+ * Kept alongside the width test rather than replacing it: `tabs` is not
+ * available on every surface this popup renders on (the marketing preview,
+ * Safari's viewer), and there a wide viewport is still the honest signal.
+ */
+async function detectHostSurface(): Promise<void> {
+  try {
+    hostedInOwnTab = Boolean(await chrome.tabs?.getCurrent?.())
+  }
+  catch {
+    // No tabs API here (or it refused): fall back to the width test alone.
+  }
+  markSurface()
 }
 
 // Keep the live counts (blocked-on-this-page, running totals) ticking while the
