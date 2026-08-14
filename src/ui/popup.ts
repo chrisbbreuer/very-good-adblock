@@ -46,8 +46,26 @@ const elements = {
 
 let state: DashboardState | undefined
 
+markSurface()
 void refresh()
 void showSafariNoticeIfNeeded()
+
+/**
+ * Tell the stylesheet whether this is a toolbar popover or a window.
+ *
+ * The distinction cannot be made in CSS. Chromium sizes a popover to the
+ * document's preferred width, so a `min-width` media query that widens
+ * anything answers its own question: the popover is laid out at the 800px
+ * maximum, the query matches, the document grows to fill it, and the popover
+ * opens at 800px with a 390px column adrift inside it. This runs after layout
+ * and asks the window instead, which cannot feed back.
+ *
+ * The threshold sits well above the 390px design width and well below any real
+ * window: a popover reports exactly its own width, so it never trips.
+ */
+function markSurface(): void {
+  if (window.innerWidth >= 520) document.documentElement.dataset.surface = 'window'
+}
 
 // Keep the live counts (blocked-on-this-page, running totals) ticking while the
 // popup is open. This refreshes text only — the 24h chart and category list are

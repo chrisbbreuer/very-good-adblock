@@ -207,47 +207,49 @@ button {
 
 /* The popup in a window rather than a popover.
 
-   As a toolbar popover it is handed exactly its 390px and nothing else is
-   visible. Opened in a window — Safari's popup viewer, an unpacked install
-   inspected from the extension page, popup.html navigated to directly — the
-   canvas is twice that or more, and the same markup has to hold a room it was
-   never sized for. Left as-is it was a column pinned to the top-left corner
-   with the rest of the window bare; merely centring it left a narrow strip in
-   an empty field, which is not much better.
+   Opened in a window — Safari's popup viewer, Dia, popup.html navigated to
+   directly — the canvas is twice the design width or more, and a column pinned
+   to the top-left corner with the rest of the window bare reads as a layout
+   that failed. In a window it becomes what it already looks like: one card on
+   the app background with room around it.
 
-   So in a window it stops pretending to be a popover and becomes what it
-   already looks like: one card, a little wider, sitting on the app background
-   with room around it. Top-aligned rather than vertically centred — a flex
-   container that centres an item taller than itself clips the top, and this
-   card is regularly taller than a short window.
+   Gated on an attribute the popup script sets, NOT on a width media query.
+   This is load-bearing. Chromium sizes a toolbar popover to the document's own
+   preferred width, so a query keyed on the viewport is a feedback loop: the
+   popover is measured at the 800px maximum, `min-width: 420px` matches, the
+   rule inside it widens the body to `100%`, and the measurement it just
+   answered becomes the answer — the popover opens 800px wide with the card
+   marooned in the middle of it, which is exactly what shipped. The document's
+   preferred width has to stay a constant 390px no matter what, so the window
+   treatment can only be applied by something that runs after layout and looks
+   at the window itself.
 
-   Scoped to the body so the marketing hero's inlined copy, which is a div
-   sized by `.hero-device`, keeps its own sizing. */
-@media (min-width: 420px) {
-  body.popup-shell {
-    display: flex;
-    justify-content: center;
-    /* Hug the content: stretched to the body's full height, the card ran on
-       past its last row as an empty panel. */
-    align-items: flex-start;
-    width: 100%;
-    /* The card no longer stretches to the viewport, so the body has to: the
-       background gradient is sized to the body box, and a body that stops at
-       the card's height drew a visible seam across the window under it. */
-    min-height: 100vh;
-    padding: 28px 20px;
-  }
+   For the same reason nothing in here may change that width: the padding is
+   vertical, the frame keeps its 390px, and the centring is a flex container
+   the popover never becomes. */
+html[data-surface="window"] body.popup-shell {
+  display: flex;
+  justify-content: center;
+  /* Hug the content: stretched to the body's full height, the card ran on past
+     its last row as an empty panel. */
+  align-items: flex-start;
+  width: 100%;
+  max-width: none;
+  /* The card no longer stretches to the viewport, so the body has to: the
+     background gradient is sized to the body box, and a body that stops at the
+     card's height drew a visible seam across the window under it. */
+  min-height: 100vh;
+  padding: 28px 0;
+}
 
-  body.popup-shell > .popup-frame {
-    flex: none;
-    width: min(100%, 440px);
-    min-height: 0;
-    padding: 14px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-panel);
-    background: var(--panel-bg);
-    box-shadow: var(--shadow-lg);
-  }
+html[data-surface="window"] body.popup-shell > .popup-frame {
+  flex: none;
+  width: 390px;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-lg);
 }
 
 .glass-panel,
