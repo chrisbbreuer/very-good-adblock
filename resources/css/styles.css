@@ -202,7 +202,7 @@ button {
 
 .popup-frame {
   min-height: 100vh;
-  padding: 12px 12px 12px;
+  padding: 9px;
 }
 
 /* The popup on a surface bigger than the popover it was designed for.
@@ -299,8 +299,8 @@ h1 {
 }
 
 .power-button {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-pill);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.14);
@@ -350,7 +350,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
 .dashboard-metrics {
@@ -362,11 +362,11 @@ h1 {
 .site-card,
 .dashboard-panel {
   border-radius: var(--radius-card);
-  padding: 10px;
+  padding: 8px;
 }
 
 .metric-card {
-  min-height: 66px;
+  min-height: 48px;
   background: linear-gradient(150deg, rgba(var(--text-rgb), 0.06), rgba(var(--text-rgb), 0.03));
 }
 
@@ -377,8 +377,8 @@ h1 {
 
 .metric-card strong {
   display: block;
-  margin: 5px 0 2px;
-  font-size: 20px;
+  margin: 3px 0 1px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -473,12 +473,18 @@ h1 {
 .timeline-card,
 .site-card,
 .category-list {
-  margin-top: 9px;
+  margin-top: 6px;
 }
 
 .section-heading {
-  min-height: 26px;
+  min-height: 23px;
   font-size: 13px;
+}
+
+/* The list headings sit directly on the frame rather than inside a card, so
+   their box is the only thing spacing them from the rows below. */
+.category-list .section-heading {
+  min-height: 24px;
 }
 
 .section-heading span {
@@ -490,7 +496,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(24, 1fr);
   align-items: end;
-  height: 52px;
+  height: 30px;
   gap: 4px;
   padding: 8px 1px 0;
   overflow: visible;
@@ -673,7 +679,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 9px;
+  margin-top: 7px;
   padding: 6px 10px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-inner);
@@ -736,7 +742,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 28px;
+  min-height: 25px;
   border-bottom: 1px solid var(--hairline);
   font-size: 13px;
 }
@@ -776,7 +782,7 @@ h1 {
 
 .site-stat-caption {
   display: block;
-  margin-top: 10px;
+  margin-top: 6px;
   color: rgba(var(--text-rgb), 0.5);
   font-size: 10px;
   font-weight: 800;
@@ -788,13 +794,13 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 7px;
+  margin-top: 6px;
 }
 
 .site-stat-grid article {
   min-width: 0;
   border-radius: var(--radius-inner);
-  padding: 8px 9px;
+  padding: 5px 8px;
   background: rgba(var(--text-rgb), 0.04);
 }
 
@@ -821,7 +827,7 @@ h1 {
 }
 
 .site-footnote {
-  margin: 8px 1px 0;
+  margin: 5px 1px 0;
   color: rgba(var(--text-rgb), 0.58);
   font-size: 11px;
   line-height: 1.35;
@@ -893,8 +899,8 @@ h1 {
   align-items: center;
   gap: 11px;
   width: 100%;
-  margin-top: 10px;
-  padding: 9px 11px;
+  margin-top: 7px;
+  padding: 7px 11px;
   text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius-inner);
@@ -921,8 +927,8 @@ h1 {
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 27px;
+  height: 27px;
   border-radius: var(--radius-inner);
   font-size: 15px;
   color: #ffb05c;

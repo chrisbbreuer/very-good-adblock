@@ -393,7 +393,9 @@ function renderTopCategories(next: DashboardState): void {
     return totals
   }, {}))
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
+    // Three, so the popup fits a 600px popover without scrolling. The full
+    // list is one click away behind the heading's open-dashboard arrow.
+    .slice(0, 3)
 
   if (!categories.length) {
     elements.topCategories.replaceChildren(emptyRow('No blocked ads yet'))
