@@ -89,7 +89,7 @@
             <input id="setting-youtube" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Twitch video detection</span>
+            <span>Twitch ad muting</span>
             <input id="setting-twitch" type="checkbox">
           </label>
           <label class="toggle-row">

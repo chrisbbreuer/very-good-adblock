@@ -17,7 +17,7 @@ features:
   - title: MV3 Native Blocking
     details: Uses Chrome declarativeNetRequest static rules plus dynamic per-site rules for allowlists and manual blocks.
   - title: YouTube and Twitch Helpers
-    details: Content scripts hide first-party ad placements with site-specific cosmetic filtering, click exposed YouTube skip buttons, and detect Twitch video-ad markers.
+    details: Content scripts hide first-party ad placements with site-specific cosmetic filtering, click exposed YouTube skip buttons, and mute and cover the player through a stitched Twitch ad break.
   - title: Stats That Follow You
     details: Lifetime totals and compact history sync through Chrome so fresh installs can restore your dashboard.
   - title: Local by Default
@@ -36,7 +36,7 @@ Very Good AdBlock exists because I was tired of running into new popups, intrusi
 
 - Ads and placements blocked today and over the lifetime of the extension.
 - Estimated data saved from blocked resource categories.
-- Estimated minutes saved from skipped or detected YouTube and Twitch video ads.
+- Estimated minutes saved from skipped YouTube video ads and muted Twitch ad breaks.
 - Compact daily history and top-site rollups synced through Chrome.
 
 ## What To Read First

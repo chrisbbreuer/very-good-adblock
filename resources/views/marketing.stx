@@ -104,7 +104,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg>
             </span>
             <h3>YouTube and Twitch</h3>
-            <p>Strips video ads out of YouTube's player response, skips what slips through, and detects Twitch stream ads. The real video never breaks.</p>
+            <p>Strips video ads out of YouTube's player response, skips what slips through, and mutes and covers Twitch's stitched ad breaks. The real video never breaks.</p>
             <span class="feature-more">Learn more →</span>
           </a>
           <a class="feature-card" href="/features/popups/">

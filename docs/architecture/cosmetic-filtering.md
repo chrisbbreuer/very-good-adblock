@@ -53,15 +53,27 @@ deferral asked for.
 - **Never the player.** Instream video ads are handled by skip automation.
   Player-region containers (`.video-ads`, `.ytp-ad-module`) are intentionally
   not hidden, so hiding an ad can never hide the skip control or the video.
-- **Detection, not hiding, for stream ads.** Twitch now stitches video ads into
+- **Suppression, not hiding, for stream ads.** Twitch stitches video ads into
   the stream server-side (SSAI), so the legacy display-ad selectors
   (`.stream-display-ad__container`, `sad-overlay`, `video-ad-banner`) are gone
-  from the maintained filter lists and were dropped. What remains is hiding the
-  ad-only affordances (`Leave feedback for this Ad` / `Learn more about this ad`
-  buttons) and the anti-adblock nag overlay. The in-stream ad markers
+  from the maintained filter lists and were dropped. Cosmetic filtering keeps
+  only the ad-only affordances (`Leave feedback for this Ad` / `Learn more about
+  this ad` buttons) and the anti-adblock nag overlay.
+
+  The break itself is handled outside cosmetic filtering, in
+  `src/content/twitch-ads.ts`: while Twitch's own markers
   (`.commercial-break-in-progress`, `[data-a-target="video-ad-label"]`,
-  countdown) stay visible and are only counted — the ad is the live stream, so
-  hiding the notice would remove feedback while the ad keeps playing.
+  countdown) are on screen, the player is muted and covered, and both are handed
+  back when they go. This does not shorten the break — the ad is the same
+  segments as the stream, on one timeline, so there is nothing to skip. Removing
+  it would mean swapping the HLS playlist for one fetched with a different
+  access token, which is an arms race against Twitch's backend that takes
+  playback down with it when it loses.
+
+  Everything the suppressor does is reversible and self-limiting: the cover
+  comes off when the markers go, when the toggle flips, and unconditionally
+  after 210s, so a false positive costs a muted minute rather than a dead
+  player. A viewer who unmutes mid-break keeps their choice.
 - **Global + per-site kill switches.** `cosmeticFiltering` disables all hiding
   without touching network blocking; the per-site YouTube/Twitch toggles and the
   allowlist scope it further.

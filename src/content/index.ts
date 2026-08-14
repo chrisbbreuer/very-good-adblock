@@ -5,6 +5,7 @@ import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved } from '../shared/metrics'
 import { defaultSettings } from '../shared/storage'
 import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, RuntimeResponse } from '../shared/types'
+import { createTwitchAdSuppressor } from './twitch-ads'
 
 const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
@@ -20,12 +21,14 @@ const maxPruneEventCount = 200
 const maxPendingRoots = 80
 const adFastForwardRate = 16
 const youtubeAdPollMs = 300
+const twitchAdPollMs = 500
 const youtubeSkipSelectors = '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-container button, button[class*="ytp-ad-skip"]'
 let cosmeticGroups: ActiveCosmeticGroup[] = []
 let observer: MutationObserver | undefined
 let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
 let youtubeAdTimer: number | undefined
+let twitchAdTimer: number | undefined
 let adRestoreRate: number | undefined
 let adRestoreMuted: boolean | undefined
 let scanDocumentOnNextSweep = false
@@ -150,9 +153,18 @@ async function start(): Promise<void> {
     youtubeAdTimer = window.setInterval(() => handleYouTubeAds(), youtubeAdPollMs)
   }
 
+  // Same reason as YouTube's poll: a break ends when Twitch removes its markers,
+  // and a stream that is otherwise still can leave the cover up waiting for a
+  // mutation that never comes. The poll takes it off on its own.
+  if (settings.twitchEnhancements && isTwitch()) {
+    twitchAdTimer = window.setInterval(() => twitchAds.update(), twitchAdPollMs)
+  }
+
   window.addEventListener('pagehide', () => {
     observer?.disconnect()
     if (youtubeAdTimer) window.clearInterval(youtubeAdTimer)
+    if (twitchAdTimer) window.clearInterval(twitchAdTimer)
+    twitchAds.restore()
     flushEvents()
   }, { once: true })
 }
@@ -239,9 +251,8 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
 
   if (settings.youtubeEnhancements && isYouTube()) handleYouTubeAds()
 
-  if (settings.twitchEnhancements && isTwitch()) {
-    recordTwitchVideoAds(roots)
-  }
+  if (settings.twitchEnhancements && isTwitch()) handleTwitchVideoAds(roots)
+  else twitchAds.restore()
 
   scheduleEventFlush()
 }
@@ -487,8 +498,13 @@ function isPromotedTweet(article: Element): boolean {
  */
 const twitchVideoCreditWindowMs = 30_000
 let lastTwitchVideoCreditAt = 0
+const twitchAds = createTwitchAdSuppressor()
 
-function recordTwitchVideoAds(roots: readonly SelectorRoot[]): void {
+function handleTwitchVideoAds(roots: readonly SelectorRoot[]): void {
+  // Mute and cover the player for the length of the break. The stitched ad is
+  // the stream itself, so this is suppression, not removal — see twitch-ads.ts.
+  twitchAds.update()
+
   let freshMarker = false
   for (const selector of twitchVideoAdMarkers) {
     for (const root of roots) {
