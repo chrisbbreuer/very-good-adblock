@@ -1,5 +1,25 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.17...v0.3.0)
+
+## ✨ Features
+
+- **popup**: guard the scripted routes into a new tab ([bf71899](https://github.com/chrisbbreuer/very-good-adblock/commit/bf71899)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: let clicks through the invisible lid ad networks lay down ([04d3443](https://github.com/chrisbbreuer/very-good-adblock/commit/04d3443)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **twitch**: mute and cover the player through a stitched ad break ([aa24e1e](https://github.com/chrisbbreuer/very-good-adblock/commit/aa24e1e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **popup**: fit the popup in a popover without scrolling ([2d66216](https://github.com/chrisbbreuer/very-good-adblock/commit/2d66216)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: fill an oversized popover instead of floating a card in it ([41ff10b](https://github.com/chrisbbreuer/very-good-adblock/commit/41ff10b)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: ask what the document is, not how wide it is ([2f4e523](https://github.com/chrisbbreuer/very-good-adblock/commit/2f4e523)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: stop the window styling from resizing the popover itself ([17ef6f1](https://github.com/chrisbbreuer/very-good-adblock/commit/17ef6f1)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **stats**: count ad sources on a page, not blocked requests ([018ee7c](https://github.com/chrisbbreuer/very-good-adblock/commit/018ee7c)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.16...v0.2.17)
 
 ## 🐛 Bug Fixes
