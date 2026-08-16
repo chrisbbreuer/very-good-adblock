@@ -1,3 +1,4 @@
+import { isClickCatcherElement } from '../shared/click-catcher'
 import { popupBlockMessageSource, popupConfigMessageSource, twitchVideoAdMarkers, xConfigMessageSource, xPromotedLabels, xPruneMessageSource, ytConfigMessageSource, ytPruneMessageSource } from '../shared/constants'
 import { activeCosmeticGroups } from '../shared/cosmetic'
 import type { ActiveCosmeticGroup, CosmeticContext } from '../shared/cosmetic'
@@ -11,10 +12,14 @@ const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
 const videoMarkersSeen = new WeakSet<Element>()
 const antiAdblockSeen = new WeakSet<Element>()
+const clickCatchersSeen = new WeakSet<Element>()
+const clickCatchersWatched = new WeakSet<Element>()
 const pending = new Map<string, BlockEvent>()
 const selectorHits = new Map<string, number>()
 const pendingRoots = new Set<Element>()
 const styleId = 'very-good-adblock-cosmetics'
+const clickThroughStyleId = 'very-good-adblock-click-through'
+const clickCatcherClass = 'very-good-adblock-click-through'
 const mutationSweepDelayMs = 150
 const eventFlushDelayMs = 1_000
 const maxPruneEventCount = 200
@@ -247,6 +252,8 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
 
   if (settings.cosmeticFiltering && cosmeticGroups.length) countHiddenPlacements(roots)
 
+  if (settings.popupBlocking) neutralizeClickCatchers()
+
   if (settings.cosmeticFiltering && isX()) hideXPromotedTweets(roots)
 
   if (settings.youtubeEnhancements && isYouTube()) handleYouTubeAds()
@@ -255,6 +262,79 @@ function sweep(settings: ExtensionSettings, roots: readonly SelectorRoot[]): voi
   else twitchAds.restore()
 
   scheduleEventFlush()
+}
+
+/**
+ * Let clicks through the invisible lid pop-under networks lay over the page.
+ *
+ * Making the lid click-through rather than removing it is deliberate: the
+ * user's click lands on what they were aiming at (the player's play button),
+ * while the ad script's own element stays where it left it, so nothing it does
+ * later depends on a node that vanished underneath it.
+ *
+ * The rule is a class plus a stylesheet, not an inline style, because the
+ * script rewrites its element's `style` attribute and would wipe an inline
+ * `pointer-events` straight back off. An `!important` declaration in our own
+ * stylesheet outranks the page's inline style, so the lid stays inert as long
+ * as the class does — and `watchClickCatcher` puts the class back if it goes.
+ *
+ * Only top-level children are measured. A lid has to sit above unrelated
+ * content to work, which in practice puts it at the end of `<body>`, and
+ * limiting the scan keeps the cost at a handful of `getComputedStyle` calls per
+ * sweep instead of one per element on the page.
+ */
+function neutralizeClickCatchers(): void {
+  const candidates = [
+    ...(document.body?.children ?? []),
+    ...(document.documentElement?.children ?? []),
+  ]
+
+  let neutralized = 0
+  for (const element of candidates) {
+    // A lid we already defused reports `pointer-events: none` and no longer
+    // matches, so this only ever sees live ones — including a lid the page
+    // rebuilt after we defused the last.
+    if (!isClickCatcherElement(element)) continue
+
+    injectClickThroughStyle()
+    element.classList.add(clickCatcherClass)
+    watchClickCatcher(element)
+
+    // Count each element once, however many times the page revives it.
+    if (clickCatchersSeen.has(element)) continue
+    clickCatchersSeen.add(element)
+    neutralized++
+  }
+
+  if (neutralized > 0) queueEvent('popup', 'other', neutralized)
+}
+
+/** The one rule that makes a defused lid click-through, injected on first use. */
+function injectClickThroughStyle(): void {
+  if (document.getElementById(clickThroughStyleId)) return
+
+  const style = document.createElement('style')
+  style.id = clickThroughStyleId
+  style.textContent = `.${clickCatcherClass} { pointer-events: none !important; }`
+  ;(document.head ?? document.documentElement).append(style)
+}
+
+/**
+ * Put the class back if the page strips it.
+ *
+ * These scripts rewrite their overlay's attributes to keep it on top, which can
+ * take our class with it. The sweep alone would not notice: rewriting an
+ * attribute fires no `childList` mutation, so nothing would re-run until some
+ * unrelated part of the page changed.
+ */
+function watchClickCatcher(element: Element): void {
+  if (clickCatchersWatched.has(element)) return
+  clickCatchersWatched.add(element)
+
+  const observer = new MutationObserver(() => {
+    if (!element.classList.contains(clickCatcherClass)) element.classList.add(clickCatcherClass)
+  })
+  observer.observe(element, { attributes: true, attributeFilter: ['class', 'style'] })
 }
 
 /** Runs every poll tick and on each sweep: click Skip, close overlays, speed ads. */
