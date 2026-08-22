@@ -36,6 +36,9 @@ let youtubeAdTimer: number | undefined
 let twitchAdTimer: number | undefined
 let adRestoreRate: number | undefined
 let adRestoreMuted: boolean | undefined
+// One video-ad credit per ad period, shared by the skip click and the
+// fast-forward so a single ad is never counted twice.
+let youTubeAdCredited = false
 let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
@@ -352,8 +355,11 @@ function handleYouTubeAds(): void {
  * alone crawls because the stream cannot buffer at 16x for a 90s+ ad. Until
  * the ad's duration is known (metadata still loading) the video is muted and
  * sped to 16x so not even a moment of the ad is heard. The viewer's rate and
- * mute state are captured and restored once the ad ends. Runs on every poll
- * tick, so each new ad in a pod is seeked as soon as it becomes seekable.
+ * mute state are captured and restored once the ad ends, and playback is
+ * resumed: ending an abnormally (seek-to-end, programmatic skip click) can
+ * leave YouTube's player parked on pause where a normal ad completion would
+ * have rolled straight into the video. Runs on every poll tick, so each new ad
+ * in a pod is seeked as soon as it becomes seekable.
  */
 function fastForwardYouTubeAd(): void {
   const player = document.querySelector('.html5-video-player')
@@ -366,8 +372,8 @@ function fastForwardYouTubeAd(): void {
     if (adRestoreRate === undefined) {
       adRestoreRate = video.playbackRate
       adRestoreMuted = video.muted
-      queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
     }
+    creditVideoAd()
     try {
       video.muted = true
       if (video.playbackRate < adFastForwardRate) video.playbackRate = adFastForwardRate
@@ -379,18 +385,45 @@ function fastForwardYouTubeAd(): void {
       // Player rejected the change; leave the ad to the Skip button.
     }
   }
-  else if (adRestoreRate !== undefined) {
-    // Ad ended — restore the viewer's chosen speed and sound for the real video.
-    try {
-      video.playbackRate = adRestoreRate
-      if (adRestoreMuted !== undefined) video.muted = adRestoreMuted
+  else {
+    // Out of the ad state: re-arm the per-ad credit and hand the player back.
+    youTubeAdCredited = false
+
+    if (adRestoreRate !== undefined) {
+      // Ad ended — restore the viewer's chosen speed and sound for the real video.
+      try {
+        video.playbackRate = adRestoreRate
+        if (adRestoreMuted !== undefined) video.muted = adRestoreMuted
+      }
+      catch {
+        // Ignore; YouTube manages the player state from here.
+      }
+      resumeVideo(video)
+      adRestoreRate = undefined
+      adRestoreMuted = undefined
     }
-    catch {
-      // Ignore; YouTube manages the player state from here.
-    }
-    adRestoreRate = undefined
-    adRestoreMuted = undefined
   }
+}
+
+/**
+ * Resume playback once, right as the ad period ends — this is what makes the
+ * video start on its own after a skipped pre-roll instead of sitting paused.
+ */
+function resumeVideo(video: HTMLVideoElement): void {
+  if (!video.paused) return
+  void video.play().catch(() => {})
+}
+
+/**
+ * Credit one video-ad block per ad period. Both defenses fire for the same ad
+ * (the poll fast-forwards it AND clicks its Skip button), so without this gate
+ * a single ad is counted twice in the stats. The flag resets when the player
+ * leaves the ad state, so each new ad in a pod is credited again.
+ */
+function creditVideoAd(): void {
+  if (youTubeAdCredited) return
+  youTubeAdCredited = true
+  queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
 }
 
 /**
@@ -500,7 +533,7 @@ function clickYouTubeSkip(): void {
     button.click()
     if (!seen.has(button)) {
       seen.add(button)
-      queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
+      creditVideoAd()
     }
   }
 }

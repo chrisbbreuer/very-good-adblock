@@ -6,9 +6,11 @@ import type { BlockEvent } from '../src/shared/types'
 import { openChromeView } from './helpers/webview'
 
 let contentScript = ''
+let ytInpageScript = ''
 
 beforeAll(async () => {
   contentScript = await buildContentScript()
+  ytInpageScript = await buildYtInpageScript()
 })
 
 describe('YouTube video-ad defenses', () => {
@@ -22,13 +24,17 @@ describe('YouTube video-ad defenses', () => {
 
       await waitFor(view, `(window.__adblockEvents?.length ?? 0) > 0`, 'event flush')
       const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
-      const videoSecondsSaved = events.reduce((total, event) => total + (event.videoSecondsSaved ?? 0), 0)
-      expect(videoSecondsSaved).toBeGreaterThanOrEqual(1)
+      const videoEvents = events.filter(event => event.source === 'video')
+      // The skip click and the fast-forward both fire for the same ad; the ad
+      // must still be credited exactly once.
+      expect(videoEvents.reduce((total, event) => total + event.count, 0)).toBe(1)
 
-      // When the ad ends, the viewer's speed and sound come back.
+      // When the ad ends, the viewer's speed and sound come back…
       await view.evaluate(`document.getElementById('movie_player').classList.remove('ad-showing')`)
       await waitFor(view, `document.getElementById('ad-video').playbackRate === 1`, 'rate restored')
       await waitFor(view, `document.getElementById('ad-video').muted === false`, 'sound restored')
+      // …and the video starts playing on its own instead of staying parked.
+      await waitFor(view, `document.getElementById('ad-video').paused === false`, 'playback auto-started')
     })
   }, 30_000)
 
@@ -68,19 +74,62 @@ describe('YouTube video-ad defenses', () => {
       expect(await view.evaluate<boolean>(`window.__skipClicked === true`)).toBe(false)
     })
   }, 30_000)
+
+  it('prunes ads out of XMLHttpRequest-delivered player responses before the app reads them', async () => {
+    await withYouTubePage(xhrFixture(), async (view) => {
+      // Both response shapes YouTube reads: raw text parsed by the app, and the
+      // browser-parsed `responseType: 'json'`.
+      await waitFor(view, `window.__xhrTextAds === 0`, 'text XHR pruned')
+      await waitFor(view, `window.__xhrJsonAds === 0`, 'json XHR pruned')
+
+      // The removals are attributed for stats.
+      await waitFor(view, `(window.__adblockEvents ?? []).some(e => e.source === 'youtube')`, 'prune event flushed')
+      const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
+      const pruned = events.filter(event => event.source === 'youtube').reduce((total, event) => total + event.count, 0)
+      expect(pruned).toBeGreaterThanOrEqual(4)
+    })
+  }, 30_000)
+
+  it('prunes the inline ytInitialData browse payload as it is assigned', async () => {
+    await withYouTubePage(initialDataFixture(), async (view) => {
+      await waitFor(view, `Array.isArray(window.__initialDataContents)`, 'fixture assigned ytInitialData')
+      await waitFor(view, `window.__initialDataContents.length === 1`, 'feed ad cell pruned from ytInitialData')
+
+      await waitFor(view, `(window.__adblockEvents ?? []).some(e => e.source === 'youtube')`, 'prune event flushed')
+    })
+  }, 30_000)
+
+  it('patches the fresh realm a dynamically inserted iframe hands out, so stolen natives stay defused', async () => {
+    await withYouTubePage(frameRealmFixture(), async (view) => {
+      // The classic bypass: append a blank iframe, grab `contentWindow.fetch`
+      // before anything patches it, then use that reference for Innertube calls.
+      // The frame realm is patched at insertion, so the stolen fetch prunes too.
+      await waitFor(view, `window.__stolenFetchAds === 0`, 'stolen fetch pruned')
+
+      await waitFor(view, `(window.__adblockEvents ?? []).some(e => e.source === 'youtube')`, 'prune event flushed')
+    })
+  }, 30_000)
 })
 
-async function withYouTubePage(bodyMarkup: string, run: (view: Bun.WebView) => Promise<void>): Promise<void> {
-  const page = wrapFixture(bodyMarkup, contentScript)
+async function withYouTubePage(
+  bodyMarkup: string,
+  run: (view: Bun.WebView) => Promise<void>,
+  options: { api?: ApiHandler } = {},
+): Promise<void> {
+  const page = wrapFixture(bodyMarkup, [ytInpageScript, contentScript].join('\n;\n'))
   const certDir = await mkdtemp(join(tmpdir(), 'adblock-yt-defense-'))
   const keyPath = join(certDir, 'key.pem')
   const certPath = join(certDir, 'cert.pem')
   await Bun.$`openssl req -x509 -newkey rsa:2048 -nodes -keyout ${keyPath} -out ${certPath} -subj /CN=localhost -days 1`.quiet()
 
+  const api = options.api ?? adPlayerApi
   const server = Bun.serve({
     port: 0,
     tls: { key: await Bun.file(keyPath).text(), cert: await Bun.file(certPath).text() },
-    fetch() {
+    fetch(request) {
+      const url = new URL(request.url)
+      const apiResponse = api(url.pathname + url.search)
+      if (apiResponse) return apiResponse
       return new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   })
@@ -118,10 +167,33 @@ async function withYouTubePage(bodyMarkup: string, run: (view: Bun.WebView) => P
   }
 }
 
+type ApiHandler = (path: string) => Response | undefined
+
+/** A player response shaped like the live ones: playback data plus ad pods. */
+function adPlayerResponse(): Record<string, unknown> {
+  return {
+    responseContext: {},
+    playabilityStatus: { status: 'OK' },
+    streamingData: { formats: [{ itag: 18, url: 'https://example/video' }] },
+    videoDetails: { videoId: 'defense01', title: 'Defense fixture' },
+    captions: { playerCaptionsTracklistRenderer: {} },
+    adPlacements: [{ adPlacementRenderer: { config: {} } }, { adPlacementRenderer: { config: {} } }],
+    adSlots: [{ adSlotRenderer: {} }],
+  }
+}
+
+function adPlayerApi(path: string): Response | undefined {
+  if (!path.startsWith('/youtubei/v1/player')) return undefined
+  return new Response(JSON.stringify(adPlayerResponse()), {
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
 function fastForwardFixture(): string {
   return `<ytd-app>
     <div id="movie_player" class="html5-video-player ad-showing">
       <video id="ad-video"></video>
+      <button class="ytp-ad-skip-button-modern" onclick="window.__skipClicked = true">Skip</button>
     </div>
     <script>
       (() => {
@@ -129,7 +201,87 @@ function fastForwardFixture(): string {
         Object.defineProperty(v, 'duration', { configurable: true, value: 30 });
         let ct = 0;
         Object.defineProperty(v, 'currentTime', { configurable: true, get: () => ct, set: (value) => { ct = value; } });
+        // A source-less <video> never leaves the paused state on play(), so the
+        // fixture models a real (media-backed) player's behavior instead.
+        Object.defineProperty(v, 'paused', { configurable: true, writable: true, value: true });
+        v.play = () => { v.paused = false; return Promise.resolve(); };
       })();
+    </script>
+  </ytd-app>`
+}
+
+/** A player response read back over XHR, in both text and json response modes. */
+function xhrFixture(): string {
+  return `<ytd-app>
+    <div id="movie_player" class="html5-video-player">
+      <video id="main-video"></video>
+    </div>
+    <script>
+      setTimeout(() => {
+        const text = new XMLHttpRequest();
+        text.open('POST', '/youtubei/v1/player?prettyPrint=false');
+        text.onload = () => {
+          const data = JSON.parse(text.responseText);
+          window.__xhrTextAds = (data.adPlacements || []).length + (data.adSlots || []).length;
+        };
+        text.send();
+
+        const json = new XMLHttpRequest();
+        json.open('POST', '/youtubei/v1/player?prettyPrint=false');
+        json.responseType = 'json';
+        json.onload = () => {
+          const data = json.response;
+          window.__xhrJsonAds = (data.adPlacements || []).length + (data.adSlots || []).length;
+        };
+        json.send();
+      }, 400);
+    </script>
+  </ytd-app>`
+}
+
+/** The inline browse payload YouTube assigns as a literal, never via JSON.parse. */
+function initialDataFixture(): string {
+  return `<ytd-app>
+    <script>
+      setTimeout(() => {
+        window.ytInitialData = {
+          contents: {
+            richGridRenderer: {
+              contents: [
+                { richItemRenderer: { content: { videoRenderer: { videoId: 'real' } } } },
+                { richItemRenderer: { content: { adSlotRenderer: {} } } },
+              ],
+            },
+          },
+          playerResponse: { adPlacements: [{}, {}] },
+        };
+        window.__initialDataContents = window.ytInitialData.contents.richGridRenderer.contents;
+      }, 400);
+    </script>
+  </ytd-app>`
+}
+
+/**
+ * The fresh-realm bypass YouTube actually performs: append a blank iframe and
+ * grab `contentWindow.fetch` before anything patches it, then call Innertube
+ * through the stolen reference. The frame realm is patched at insertion, so the
+ * stolen native is the pruned pipeline. (A frame that NAVIGATES gets a brand-new
+ * realm on commit which no parent-side hook can pre-patch — but the observed
+ * attack only ever reads natives from the synchronous about:blank realm.)
+ */
+function frameRealmFixture(): string {
+  return `<ytd-app>
+    <script>
+      setTimeout(() => {
+        const frame = document.createElement('iframe');
+        document.body.appendChild(frame);
+        const stolenFetch = frame.contentWindow.fetch;
+        stolenFetch('/youtubei/v1/player?prettyPrint=false', { method: 'POST' })
+          .then(response => response.json())
+          .then((data) => { window.__stolenFetchAds = (data.adPlacements || []).length })
+          .catch(() => { window.__stolenFetchAds = 'error' });
+        frame.remove();
+      }, 400);
     </script>
   </ytd-app>`
 }
@@ -182,8 +334,16 @@ function staleSkipFixture(): string {
 }
 
 async function buildContentScript(): Promise<string> {
+  return buildEntry('src/content/index.ts')
+}
+
+async function buildYtInpageScript(): Promise<string> {
+  return buildEntry('src/content/yt-inpage.ts')
+}
+
+async function buildEntry(entrypoint: string): Promise<string> {
   const result = await Bun.build({
-    entrypoints: ['src/content/index.ts'],
+    entrypoints: [entrypoint],
     target: 'browser',
     write: false,
     minify: false,
@@ -197,7 +357,7 @@ async function buildContentScript(): Promise<string> {
   return output.text()
 }
 
-function wrapFixture(body: string, script: string): string {
+function wrapFixture(body: string, scripts: string): string {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -232,7 +392,7 @@ function wrapFixture(body: string, script: string): string {
   </head>
   <body>
     ${body}
-    <script>${script}</script>
+    <script>${scripts}</script>
   </body>
 </html>`
 }
