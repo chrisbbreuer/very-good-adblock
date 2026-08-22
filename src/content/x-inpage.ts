@@ -9,7 +9,7 @@
  */
 import { xConfigMessageSource, xPruneMessageSource } from '../shared/constants'
 import { isXGraphqlUrl, prunePromotedFromTimeline } from '../shared/x-prune'
-import { createPruneBridge, requestUrl } from './inpage-bridge'
+import { createPruneBridge, rebuildJsonResponse, requestUrl } from './inpage-bridge'
 
 installFetchPruner()
 
@@ -33,11 +33,7 @@ function installFetchPruner(): void {
       if (removed <= 0) return response
 
       bridge.report(removed)
-      return new Response(JSON.stringify(data), {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-      })
+      return rebuildJsonResponse(response, data)
     }
     catch {
       // Never break a response over ad pruning — hand back the untouched original.

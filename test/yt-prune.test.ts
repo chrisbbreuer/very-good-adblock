@@ -9,9 +9,18 @@ describe('isYouTubeAdResponseUrl', () => {
     expect(isYouTubeAdResponseUrl('https://www.youtube.com/youtubei/v1/reel_watch_sequence?x=1')).toBe(true)
   })
 
+  it('matches the ad-carrying endpoints YouTube moves between over time', () => {
+    // TV/mobile clients fetch player data from these siblings of /player, and
+    // uBlock Origin prunes ads on all of them.
+    expect(isYouTubeAdResponseUrl('https://www.youtube.com/youtubei/v1/get_watch?prettyPrint=false')).toBe(true)
+    expect(isYouTubeAdResponseUrl('https://www.youtube.com/youtubei/v1/playlist?prettyPrint=false')).toBe(true)
+    expect(isYouTubeAdResponseUrl('https://www.youtube.com/playlist?list=PLabc')).toBe(true)
+  })
+
   it('ignores unrelated URLs, including the large /next payload', () => {
     expect(isYouTubeAdResponseUrl('https://www.youtube.com/youtubei/v1/next?key=x')).toBe(false)
     expect(isYouTubeAdResponseUrl('https://www.youtube.com/watch?v=abc')).toBe(false)
+    expect(isYouTubeAdResponseUrl('https://www.youtube.com/feed/subscriptions')).toBe(false)
     expect(isYouTubeAdResponseUrl('https://i.ytimg.com/vi/abc/hq.jpg')).toBe(false)
   })
 })

@@ -47,3 +47,24 @@ export function requestUrl(input: RequestInfo | URL): string {
   if (input instanceof Request) return input.url
   return String(input)
 }
+
+/**
+ * Rebuild a pruned JSON payload as a fresh Response. Transport headers are
+ * dropped rather than copied: `content-length` describes the ORIGINAL body and
+ * a pruned one is shorter, and `content-encoding`/`transfer-encoding` describe
+ * the wire encoding the browser already undid — carrying any of them over can
+ * leave the consumer waiting for bytes that never come or re-decoding plain
+ * text. Everything else (status, cookies aside) is preserved.
+ */
+export function rebuildJsonResponse(response: Response, data: unknown): Response {
+  const headers = new Headers(response.headers)
+  headers.delete('content-length')
+  headers.delete('content-encoding')
+  headers.delete('transfer-encoding')
+
+  return new Response(JSON.stringify(data), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}

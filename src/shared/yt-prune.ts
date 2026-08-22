@@ -22,9 +22,14 @@ const adKeys = ['adPlacements', 'adSlots', 'playerAds', 'adBreakHeartbeatParams'
 /** Innertube endpoints whose responses carry ads worth pruning. */
 export function isYouTubeAdResponseUrl(url: string): boolean {
   return url.includes('/youtubei/v1/player')
+    || url.includes('/youtubei/v1/get_watch')
     || url.includes('/youtubei/v1/browse')
     || url.includes('/youtubei/v1/search')
+    || url.includes('/youtubei/v1/playlist')
     || url.includes('/youtubei/v1/reel_watch_sequence')
+    // The legacy HTML playlist endpoint still answers ad-carrying JSON on TV
+    // and mobile web clients.
+    || url.includes('playlist?list=')
 }
 
 /** A Shorts reel entry flagged as an ad. */
