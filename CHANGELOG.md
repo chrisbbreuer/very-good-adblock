@@ -1,5 +1,25 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.0...v0.3.1)
+
+## 🐛 Bug Fixes
+
+- **youtube**: cover embed hosts, interrupted ads, and dead contexts ([aaf435d](https://github.com/chrisbbreuer/very-good-adblock/commit/aaf435d)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **youtube**: auto-resume playback after a skipped ad and count it once ([b7a7d71](https://github.com/chrisbbreuer/very-good-adblock/commit/b7a7d71)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **youtube**: prune ads from the transports and loads the hooks missed ([28b62be](https://github.com/chrisbbreuer/very-good-adblock/commit/28b62be)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📝 Documentation
+
+- **architecture**: describe the widened youtube pruning surfaces ([82832ad](https://github.com/chrisbbreuer/very-good-adblock/commit/82832ad)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ✅ Tests
+
+- share the bundle builder and cover response rebuilding ([ec2369a](https://github.com/chrisbbreuer/very-good-adblock/commit/ec2369a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.2.17...v0.3.0)
 
 ## ✨ Features
