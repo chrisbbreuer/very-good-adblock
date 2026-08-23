@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
 import { openChromeView } from './helpers/webview'
+import { buildContentScript } from './helpers/bundle'
 
 describe('cached X content script fixture', () => {
   it('hides promoted tweets but keeps ordinary tweet media visible', async () => {
@@ -79,21 +80,6 @@ describe('cached X content script fixture', () => {
   }, 30_000)
 })
 
-async function buildContentScript(): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: ['src/content/index.ts'],
-    target: 'browser',
-    write: false,
-    minify: false,
-  } as Parameters<typeof Bun.build>[0] & { write: false })
-
-  if (!result.success) {
-    throw new Error(result.logs.map(log => log.message).join('\n'))
-  }
-
-  const output = result.outputs.find(file => file.path.endsWith('.js')) ?? result.outputs[0]
-  return output.text()
-}
 
 function xFixture(): string {
   // Both cells share the media-container test id X reuses on ordinary tweets;

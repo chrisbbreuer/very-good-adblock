@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
 import { openChromeView } from './helpers/webview'
+import { buildContentScript } from './helpers/bundle'
 
 describe('cached Twitch content script fixture', () => {
   it('hides Twitch display banners but keeps video-ad markers for detection', async () => {
@@ -91,21 +92,6 @@ describe('cached Twitch content script fixture', () => {
   }, 30_000)
 })
 
-async function buildContentScript(): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: ['src/content/index.ts'],
-    target: 'browser',
-    write: false,
-    minify: false,
-  } as Parameters<typeof Bun.build>[0] & { write: false })
-
-  if (!result.success) {
-    throw new Error(result.logs.map(log => log.message).join('\n'))
-  }
-
-  const output = result.outputs.find(file => file.path.endsWith('.js')) ?? result.outputs[0]
-  return output.text()
-}
 
 function twitchFixture(): string {
   return `<!doctype html>

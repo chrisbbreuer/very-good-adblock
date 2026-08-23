@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { openChromeView } from './helpers/webview'
+import { buildContentScript } from './helpers/bundle'
 
 describe('Twitch stitched video ads', () => {
   it('mutes and covers the player for the break, then hands the stream back', async () => {
@@ -154,19 +155,6 @@ describe('Twitch stitched video ads', () => {
   }, 30_000)
 })
 
-async function buildContentScript(): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: ['src/content/index.ts'],
-    target: 'browser',
-    write: false,
-    minify: false,
-  } as Parameters<typeof Bun.build>[0] & { write: false })
-
-  if (!result.success) throw new Error(result.logs.map(log => log.message).join('\n'))
-
-  const output = result.outputs.find(file => file.path.endsWith('.js')) ?? result.outputs[0]
-  return output.text()
-}
 
 /** A stream with no ad running, plus the controls to start and end a break. */
 function streamFixture(): string {

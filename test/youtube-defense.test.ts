@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import type { BlockEvent } from '../src/shared/types'
+import { buildContentScript, buildEntry } from './helpers/bundle'
 import { openChromeView } from './helpers/webview'
 
 let contentScript = ''
@@ -10,7 +11,7 @@ let ytInpageScript = ''
 
 beforeAll(async () => {
   contentScript = await buildContentScript()
-  ytInpageScript = await buildYtInpageScript()
+  ytInpageScript = await buildEntry('src/content/yt-inpage.ts')
 })
 
 describe('YouTube video-ad defenses', () => {
@@ -331,30 +332,6 @@ function staleSkipFixture(): string {
     </div>
     <script>window.__skipClicked = false;</script>
   </ytd-app>`
-}
-
-async function buildContentScript(): Promise<string> {
-  return buildEntry('src/content/index.ts')
-}
-
-async function buildYtInpageScript(): Promise<string> {
-  return buildEntry('src/content/yt-inpage.ts')
-}
-
-async function buildEntry(entrypoint: string): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: [entrypoint],
-    target: 'browser',
-    write: false,
-    minify: false,
-  } as Parameters<typeof Bun.build>[0] & { write: false })
-
-  if (!result.success) {
-    throw new Error(result.logs.map(log => log.message).join('\n'))
-  }
-
-  const output = result.outputs.find(file => file.path.endsWith('.js')) ?? result.outputs[0]
-  return output.text()
 }
 
 function wrapFixture(body: string, scripts: string): string {
