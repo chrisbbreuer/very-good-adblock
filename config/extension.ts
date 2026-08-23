@@ -140,7 +140,10 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
   content: [
     { entry: 'src/content/index.ts', out: 'content.js', matches: ['http://*/*', 'https://*/*'], runAt: 'document_start' },
     { entry: 'src/content/x-inpage.ts', matches: ['*://x.com/*', '*://*.x.com/*', '*://twitter.com/*', '*://*.twitter.com/*'], runAt: 'document_start', world: 'MAIN' },
-    { entry: 'src/content/yt-inpage.ts', matches: ['*://*.youtube.com/*'], runAt: 'document_start', world: 'MAIN' },
+    // `youtube-nocookie.com` is the privacy-enhanced embed host: sites that
+    // embed players through it get the same source-level pruning, which the
+    // plain youtube.com patterns never reached.
+    { entry: 'src/content/yt-inpage.ts', matches: ['*://*.youtube.com/*', '*://youtube-nocookie.com/*', '*://*.youtube-nocookie.com/*'], runAt: 'document_start', world: 'MAIN' },
     { entry: 'src/content/popup-guard.ts', matches: ['http://*/*', 'https://*/*'], runAt: 'document_start', world: 'MAIN', allFrames: true, matchAboutBlank: true },
   ],
 

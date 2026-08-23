@@ -366,7 +366,10 @@ function fastForwardYouTubeAd(): void {
   const video = player?.querySelector('video')
   if (!(video instanceof HTMLVideoElement)) return
 
-  const adShowing = player?.classList.contains('ad-showing') ?? false
+  // Same states the skip click accepts: YouTube marks some ad periods with
+  // `ad-interrupting` alone, and the fast-forward must engage for those too.
+  const adShowing = (player?.classList.contains('ad-showing') ?? false)
+    || (player?.classList.contains('ad-interrupting') ?? false)
 
   if (adShowing) {
     if (adRestoreRate === undefined) {
@@ -717,18 +720,24 @@ function flushEvents(): void {
   if (pending.size) {
     const events = [...pending.values()]
     pending.clear()
-    void chrome.runtime.sendMessage({ type: 'record-blocks', events })
+    // Swallowed on purpose: once the extension reloads or updates, every open
+    // page's sendMessage rejects with "Extension context invalidated". The
+    // stats for that page are gone either way — the rejection must not become
+    // an unhandled one the page logs over and over.
+    void chrome.runtime.sendMessage({ type: 'record-blocks', events })?.catch(() => {})
   }
 
   if (selectorHits.size) {
     const hits = [...selectorHits.entries()].map(([selector, count]) => ({ selector, count }))
     selectorHits.clear()
-    void chrome.runtime.sendMessage({ type: 'record-cosmetic', hostname, hits })
+    void chrome.runtime.sendMessage({ type: 'record-cosmetic', hostname, hits })?.catch(() => {})
   }
 }
 
 function isYouTube(): boolean {
   return hostname === 'youtube.com' || hostname.endsWith('.youtube.com')
+    // Privacy-enhanced embeds run the same player on their own host.
+    || hostname === 'youtube-nocookie.com' || hostname.endsWith('.youtube-nocookie.com')
 }
 
 function isTwitch(): boolean {
