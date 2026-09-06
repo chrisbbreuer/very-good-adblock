@@ -1,5 +1,17 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.1...v0.3.2)
+
+## 🐛 Bug Fixes
+
+- **popups**: suppress ads opened by media controls ([3ce2a83](https://github.com/chrisbbreuer/very-good-adblock/commit/3ce2a83)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **background**: count store blocks and close popup errors ([c00da7a](https://github.com/chrisbbreuer/very-good-adblock/commit/c00da7a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **release**: cut releases without stacks' monorepo staging ([828148f](https://github.com/chrisbbreuer/very-good-adblock/commit/828148f)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.0...v0.3.1)
 
 ## 🐛 Bug Fixes
