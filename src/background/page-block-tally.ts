@@ -35,3 +35,30 @@ export function isNewBlockedHost(seen: Set<string>, host: string | undefined, ma
   seen.add(host)
   return true
 }
+
+/**
+ * Deduplicate the two live signals for one blocked network request.
+ *
+ * Chrome exposes `onRuleMatchedDebug` in both development and store builds,
+ * but only fires it for unpacked extensions. Store builds therefore have to
+ * count through `webRequest.onErrorOccurred`; unpacked builds can receive both
+ * events for the same request. Their shared request id is the only reliable
+ * way to use both without counting a development request twice.
+ *
+ * Once the cap is reached, the oldest id is evicted. Debug and error reports
+ * for one request arrive together, so retaining the newest ids preserves the
+ * useful deduplication window while bounding memory on a hostile long-lived
+ * page without freezing its statistics.
+ */
+export function isNewBlockedRequest(seen: Set<string>, requestId: string | undefined, maxRequests: number): boolean {
+  if (!requestId) return true
+  if (seen.has(requestId)) return false
+  if (maxRequests <= 0) return true
+
+  if (seen.size >= maxRequests) {
+    const oldest = seen.values().next().value
+    if (oldest !== undefined) seen.delete(oldest)
+  }
+  seen.add(requestId)
+  return true
+}

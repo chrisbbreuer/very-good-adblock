@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'bun:test'
-import { isNewBlockedHost } from '../src/background/page-block-tally'
+import { isNewBlockedHost, isNewBlockedRequest } from '../src/background/page-block-tally'
 
 const CAP = 500
 
@@ -68,5 +68,34 @@ describe('what the counter refuses to guess at', () => {
 
     expect(isNewBlockedHost(seen, 'beacon-fresh.example.com', CAP)).toBe(false)
     expect(seen.size).toBe(CAP)
+  })
+})
+
+describe('live block signal deduplication', () => {
+  it('counts one request once when debug and webRequest both report it', () => {
+    const seen = new Set<string>()
+
+    expect(isNewBlockedRequest(seen, 'request-42', 5_000)).toBe(true)
+    expect(isNewBlockedRequest(seen, 'request-42', 5_000)).toBe(false)
+    expect(isNewBlockedRequest(seen, 'request-43', 5_000)).toBe(true)
+  })
+
+  it('still counts when a browser does not expose a request id', () => {
+    const seen = new Set<string>()
+
+    expect(isNewBlockedRequest(seen, undefined, 5_000)).toBe(true)
+    expect(isNewBlockedRequest(seen, '', 5_000)).toBe(true)
+  })
+
+  it('keeps the newest request ids when its memory cap is reached', () => {
+    const seen = new Set<string>()
+
+    isNewBlockedRequest(seen, 'request-1', 2)
+    isNewBlockedRequest(seen, 'request-2', 2)
+    expect(isNewBlockedRequest(seen, 'request-3', 2)).toBe(true)
+
+    expect([...seen]).toEqual(['request-2', 'request-3'])
+    expect(isNewBlockedRequest(seen, 'request-3', 2)).toBe(false)
+    expect(isNewBlockedRequest(seen, 'request-1', 2)).toBe(true)
   })
 })

@@ -12,7 +12,7 @@ import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shar
 import { isSearchResultsUrl } from '../shared/search-navigation'
 import { isOriginalPopupDestination, rememberInitialPopupUrl } from './popup-candidate'
 import type { PopupCandidate } from './popup-candidate'
-import { isNewBlockedHost } from './page-block-tally'
+import { isNewBlockedHost, isNewBlockedRequest } from './page-block-tally'
 import {
   defaultSettings,
   getActiveTabState,
@@ -77,6 +77,12 @@ const pageBlockedHostsStorageKey = 'pageBlockedHosts'
 // bound; past the cap the counter simply stops rising, which is the right
 // failure for a number that means "how many trackers are on this page".
 const maxBlockedHostsPerPage = 500
+// In an unpacked build the DNR debug event and webRequest error event both
+// describe the same blocked request. In a packed Chrome build only webRequest
+// fires. Keep both listeners live and collapse their shared request id rather
+// than trying to infer the install type from whether the debug API exists.
+const pageBlockedRequestIds = new Map<number, Set<string>>()
+const maxBlockedRequestIdsPerPage = 5_000
 const cosmeticActivity = new Map<number, Map<string, number>>()
 // pageBadgeStats is mirrored to chrome.storage.session (debounced) so the
 // per-page counts survive service-worker restarts: MV3 workers are killed
@@ -346,6 +352,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     cosmeticActivity.delete(tabId)
     pageBlockLog.delete(tabId)
     pageBlockedHosts.delete(tabId)
+    pageBlockedRequestIds.delete(tabId)
     schedulePageStatsPersist()
     void updateBadge(tabId)
   }
@@ -361,6 +368,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   cosmeticActivity.delete(tabId)
   pageBlockLog.delete(tabId)
   pageBlockedHosts.delete(tabId)
+  pageBlockedRequestIds.delete(tabId)
   popupCandidates.delete(tabId)
   blockedNoticeShownAt.delete(tabId)
   schedulePageStatsPersist()
@@ -377,14 +385,24 @@ chrome.tabs.onCreated.addListener((tab) => {
   popupCandidates.set(tab.id, candidate)
 })
 
-// Live network-block feedback in unpacked/dev installs. Packed installs count
-// through the webRequest error listener below; both reconcile against
-// getMatchedRules via Math.max-style deltas so sources never double count.
+// A DNR block can fail a new tab's very first navigation before tabs.onUpdated
+// exposes its pending URL. Capture that destination at request start so the
+// error handler can identify it as the original pop-under and close the tab
+// instead of replacing it with a blocked-page notice.
+chrome.webRequest?.onBeforeRequest.addListener((details) => {
+  if (details.tabId < 0 || details.frameId !== 0 || details.type !== 'main_frame') return
+  const candidate = popupCandidates.get(details.tabId)
+  if (candidate) rememberInitialPopupUrl(candidate, details.url)
+}, { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] })
+
+// Live network-block feedback in unpacked/dev installs. Store builds do not
+// fire this debug-only event even though Chrome still exposes the event object;
+// their matching webRequest error is counted below. Request-id deduplication
+// lets both listeners remain installed without inflating development counts.
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const tabId = info.request.tabId
   if (tabId < 0) return
-  addNetworkBlocks(tabId, 1, categoryForRequestType(info.request.type), hostnameFromUrl(info.request.url))
-  scheduleBadgeRefresh(tabId)
+  recordLiveNetworkBlock(tabId, info.request.requestId, info.request.type, info.request.url)
 })
 
 /**
@@ -394,10 +412,9 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
  * ERR_BLOCKED_BY_CLIENT, and Firefox's NS_ERROR_ABORT also covers ordinary page
  * aborts, so an error only counts when its URL and resource type match one of
  * our own host, curated-path, or user block-list rules. Where
- * onRuleMatchedDebug exists (unpacked installs) it stays the counter and this
- * listener stands down, so the two never double count.
+ * onRuleMatchedDebug also fires (unpacked installs), the shared request id
+ * collapses the two reports so they never double count.
  */
-const hasRuleMatchDebug = typeof chrome.declarativeNetRequest.onRuleMatchedDebug !== 'undefined'
 chrome.webRequest?.onErrorOccurred.addListener(onRequestError, { urls: ['http://*/*', 'https://*/*'] })
 const manuallyBlockedRequestTypes = new Set([
   'main_frame',
@@ -424,8 +441,6 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   // way through. The block itself is still counted below.
   if (details.frameId === 0 && details.type === 'main_frame') showBlockedNotice(details)
 
-  if (hasRuleMatchDebug) return
-
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled) return
 
@@ -435,8 +450,16 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   const pageHostname = (page.url ? hostnameFromUrl(page.url) : '') || hostnameFromUrl(details.initiator ?? '')
   if (pageHostname && siteMatches(pageHostname, settings.allowedSites)) return
 
-  addNetworkBlocks(details.tabId, 1, categoryForRequestType(details.type), hostnameFromUrl(details.url))
-  scheduleBadgeRefresh(details.tabId)
+  recordLiveNetworkBlock(details.tabId, details.requestId, details.type, details.url)
+}
+
+function recordLiveNetworkBlock(tabId: number, requestId: string | undefined, type: string, url: string): void {
+  const seen = pageBlockedRequestIds.get(tabId) ?? new Set<string>()
+  if (!isNewBlockedRequest(seen, requestId, maxBlockedRequestIdsPerPage)) return
+  pageBlockedRequestIds.set(tabId, seen)
+
+  addNetworkBlocks(tabId, 1, categoryForRequestType(type), hostnameFromUrl(url))
+  scheduleBadgeRefresh(tabId)
 }
 
 /**
