@@ -58,7 +58,7 @@ function installPopupGuard(): void {
   // Track the most recent user gesture: when, what kind of element it hit, where
   // any link points, and every destination the clicked element chain declared.
   let gestureAt = 0
-  let gestureKind: 'anchor' | 'control' | 'other' = 'other'
+  let gestureKind: GestureKind = 'other'
   let gestureHref = ''
   let gestureTarget = ''
   let gestureIsolationFeatures = ''
@@ -157,6 +157,14 @@ function installPopupGuard(): void {
     else if (gestureKind === 'control') {
       // A real button/input — OAuth, share, payment pop-ups live here.
       allow = true
+    }
+    else if (gestureKind === 'media-control') {
+      // Ad-funded players commonly hang a cross-origin window.open from the
+      // visible play control itself. It is not an invisible click catcher, but
+      // the user still asked to play media — not to open an unrelated site.
+      // A player control may open a destination it explicitly declares (or a
+      // same-origin player window); an undeclared cross-origin tab is an ad.
+      allow = sameOriginPage || (url != null && declaredByGesture(String(url)))
     }
     else {
       // Clicking a non-interactive area (video/overlay): same-origin, or a
@@ -458,16 +466,19 @@ function reportBlock(): void {
 }
 
 interface GestureInfo {
-  kind: 'anchor' | 'control' | 'other'
+  kind: GestureKind
   href: string
   target: string
   isolationFeatures: string
   declared: string[]
 }
 
+type GestureKind = 'anchor' | 'control' | 'media-control' | 'other'
+
 /** Walk up from the event target to classify what the user actually clicked. */
 function classifyGesture(node: EventTarget | null): GestureInfo {
   const declared = declaredDestinations(node)
+  const mediaControl = isMediaPlayerControl(node)
   let element = node instanceof Element ? node : null
   for (let depth = 0; element && depth < ancestorDepth; depth++) {
     const tag = element.tagName
@@ -490,15 +501,46 @@ function classifyGesture(node: EventTarget | null): GestureInfo {
         declared,
       }
     }
-    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: 'control', href: '', target: '', isolationFeatures: '', declared }
-    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: 'control', href: '', target: '', isolationFeatures: '', declared }
+    if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'SELECT') return { kind: mediaControl ? 'media-control' : 'control', href: '', target: '', isolationFeatures: '', declared }
+    if (element.getAttribute('role') === 'button' || element.getAttribute('role') === 'link') return { kind: mediaControl ? 'media-control' : 'control', href: '', target: '', isolationFeatures: '', declared }
     if (tag === 'INPUT') {
       const type = (element.getAttribute('type') ?? '').toLowerCase()
-      if (type === 'button' || type === 'submit' || type === 'image') return { kind: 'control', href: '', target: '', isolationFeatures: '', declared }
+      if (type === 'button' || type === 'submit' || type === 'image') return { kind: mediaControl ? 'media-control' : 'control', href: '', target: '', isolationFeatures: '', declared }
     }
     element = element.parentElement
   }
   return { kind: 'other', href: '', target: '', isolationFeatures: '', declared }
+}
+
+/**
+ * Whether the gesture's control belongs to a media-player surface.
+ *
+ * Players are implemented with custom div/button trees rather than native
+ * `<video controls>` in many embedders (JW Player's play control is a
+ * `div[role=button]` below `.jwplayer`). Walk the same bounded ancestor chain
+ * used by gesture classification and recognize generic player landmarks, while
+ * leaving an unrelated OAuth/share button elsewhere on the page untouched.
+ */
+function isMediaPlayerControl(node: EventTarget | null): boolean {
+  let element = node instanceof Element ? node : null
+
+  for (let depth = 0; element && depth < ancestorDepth; depth++) {
+    const tag = element.tagName
+    if (tag === 'VIDEO' || tag === 'AUDIO') return true
+
+    const identity = [
+      element.id,
+      element.getAttribute('class') ?? '',
+      element.getAttribute('aria-label') ?? '',
+      element.getAttribute('title') ?? '',
+    ].join(' ')
+    if (/\b(?:audio|video|media)[-_ ]?player\b|\bjwplayer\b/i.test(identity)) return true
+
+    if (element.getAttribute('role') === 'application' && /\bplayer\b/i.test(identity)) return true
+    element = element.parentElement
+  }
+
+  return false
 }
 
 /**

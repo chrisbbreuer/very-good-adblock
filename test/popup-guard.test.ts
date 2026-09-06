@@ -44,6 +44,8 @@ describe('built pop-up guard', () => {
         javascriptChatAllowed: boolean
         javascriptLinkMismatchBlocked: boolean
         isolatedUserPopupAllowed: boolean
+        mediaPlayerPopupBlocked: boolean
+        mediaDeclaredPopupAllowed: boolean
         declaredLinkAfterFloodAllowed: boolean
         duplicateDeclaredLinkBlocked: boolean
         reported: number
@@ -61,6 +63,8 @@ describe('built pop-up guard', () => {
       expect(result.javascriptChatAllowed).toBe(true)
       expect(result.javascriptLinkMismatchBlocked).toBe(true)
       expect(result.isolatedUserPopupAllowed).toBe(true)
+      expect(result.mediaPlayerPopupBlocked).toBe(true)
+      expect(result.mediaDeclaredPopupAllowed).toBe(true)
       expect(result.declaredLinkAfterFloodAllowed).toBe(true)
       expect(result.duplicateDeclaredLinkBlocked).toBe(true)
       expect(result.reported).toBeGreaterThanOrEqual(1)
@@ -185,6 +189,7 @@ function fixture(guardScript: string): string {
   <body>
     <div id="video">play</div>
     <button id="signin">Sign in</button>
+    <div class="jwplayer" role="application" aria-label="Video Player" data-help-url="https://legit.example/player-help"><div id="play" role="button" aria-label="Play">Play</div></div>
     <a id="navlink" href="/other-page">Other page</a>
     <a id="extlink" href="https://legit.example/page">External</a>
     <a id="vwchat" href='javascript:void(open("https://chat.vw.com/", "VW Chat"))'>Chat</a>
@@ -249,6 +254,13 @@ function fixture(guardScript: string): string {
         window.__userActive = false;
         window.__now += 5000;
 
+        // A visible media play button is a real control, but it does not grant
+        // an embedded ad script permission to open an unrelated destination.
+        clickOn('play');
+        var mediaPlayerPopup = window.open('https://record.revenuenetwork.com/click');
+        var mediaDeclaredPopup = window.open('https://legit.example/player-help');
+        window.__now += 5000;
+
         // Allowed cases (each pushes toward the flood budget):
         // Link opening its own external destination.
         clickOn('extlink');
@@ -283,6 +295,8 @@ function fixture(guardScript: string): string {
             javascriptChatAllowed: !!(javascriptChat && javascriptChat.__stub),
             javascriptLinkMismatchBlocked: isDecoy(javascriptMismatch),
             isolatedUserPopupAllowed: !!(isolatedUserPopup && isolatedUserPopup.__stub),
+            mediaPlayerPopupBlocked: isDecoy(mediaPlayerPopup),
+            mediaDeclaredPopupAllowed: !!(mediaDeclaredPopup && mediaDeclaredPopup.__stub),
             declaredLinkAfterFloodAllowed: !!(declaredLinkAfterFlood && declaredLinkAfterFlood.__stub),
             duplicateDeclaredLinkBlocked: isDecoy(duplicateDeclaredLink),
             reported: reported,
