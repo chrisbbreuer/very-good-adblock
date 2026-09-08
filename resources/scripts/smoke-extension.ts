@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import packageJson from '../../package.json'
+import { openBrowserView } from './lib/browser-view'
 import type { BlockEvent, DashboardState, ExtensionSettings, LocalStats } from '../../src/shared/types'
 
 const extensionPath = resolve('dist')
@@ -67,7 +68,7 @@ const server = Bun.serve({
 })
 
 try {
-  const youtube = openView(900, 700)
+  const youtube = await openView(900, 700)
   await youtube.navigate(origin('www.youtube.com', '/watch?v=smoke'))
   await waitFor(youtube, `document.body.dataset.skipped === 'true'`, 'YouTube skip automation')
   await waitFor(youtube, `window.__adblockContentEvents?.length > 0`, 'YouTube metrics flush')
@@ -80,14 +81,14 @@ try {
   assert(youtubeEvents >= 1, `Expected YouTube protection to report events, saw ${youtubeEvents}`)
   closeView(youtube)
 
-  const shorts = openView(900, 700)
+  const shorts = await openView(900, 700)
   await shorts.navigate(origin('www.youtube.com', '/shorts/smoke'))
   await waitFor(shorts, `document.body.dataset.skipped === 'true'`, 'YouTube Shorts skip automation')
   const shortsFeedVideoVisible = await isVisible(shorts, '#feed-video')
   assert(shortsFeedVideoVisible, 'Expected the real YouTube Shorts feed video to stay visible')
   closeView(shorts)
 
-  const twitch = openView(900, 700)
+  const twitch = await openView(900, 700)
   await twitch.navigate(origin('www.twitch.tv', '/streamer'))
   await waitFor(twitch, `window.__adblockContentEvents?.length > 0`, 'Twitch metrics flush')
   const twitchHidden = await countHidden(twitch)
@@ -100,7 +101,7 @@ try {
   assert(twitchVideoSeconds >= 15, `Expected Twitch video detection to estimate saved video time, saw ${twitchVideoSeconds}`)
   closeView(twitch)
 
-  const popup = openView(390, 620)
+  const popup = await openView(390, 620)
   await popup.navigate(origin('example.test', '/popup.html'))
   await waitFor(popup, `document.querySelector('#status-message')?.textContent !== 'Loading protection state...'`, 'popup ready state')
   await assertNoHorizontalOverflow(popup, 'popup')
@@ -124,7 +125,7 @@ try {
   await assertPageClean(popup, 'popup')
   closeView(popup)
 
-  const options = openView(1180, 900)
+  const options = await openView(1180, 900)
   await options.navigate(origin('example.test', '/options.html'))
   await waitFor(options, `document.querySelector('#options-status')?.textContent !== 'Loading dashboard...'`, 'options ready state')
   await assertNoHorizontalOverflow(options, 'options desktop')
@@ -152,7 +153,7 @@ try {
   // The blocked-page interstitial. Everything on it is written by its script
   // from the query string, so a heading that still reads the template's default
   // means the bundle threw before it painted.
-  const blocked = openView(900, 700)
+  const blocked = await openView(900, 700)
   await blocked.navigate(origin('example.test', '/blocked.html?url=http%3A%2F%2Fekster.attn.tv%2Fa477mZJ3GAHl&reason=filter'))
   await waitFor(blocked, `document.querySelector('#blocked-host')?.textContent === 'ekster.attn.tv'`, 'blocked page host')
   await waitFor(blocked, `document.querySelector('#blocked-title')?.textContent?.includes('blocked this page')`, 'blocked page title')
@@ -164,7 +165,7 @@ try {
   await assertPageClean(blocked, 'blocked page')
   closeView(blocked)
 
-  const marketing = openView(1280, 900)
+  const marketing = await openView(1280, 900)
   await marketing.navigate(origin('example.test', '/marketing.html'))
   await waitFor(marketing, `document.querySelector('.marketing-hero h1')?.textContent?.includes('Ads gone')`, 'marketing ready state')
   await assertNoHorizontalOverflow(marketing, 'marketing desktop')
@@ -194,8 +195,8 @@ finally {
   Bun.WebView.closeAll()
 }
 
-function openView(width: number, height: number): Bun.WebView {
-  return new Bun.WebView({
+function openView(width: number, height: number): Promise<Bun.WebView> {
+  return openBrowserView({
     width,
     height,
     backend: webViewBackend,
