@@ -1,5 +1,5 @@
 import { siteMatches } from '../shared/domain'
-import { formatBytes, formatMinutes, hourlySeries } from '../shared/metrics'
+import { formatBytes, formatMinutes, hourBucketKey, hourlySeries } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
@@ -106,6 +106,8 @@ async function detectHostSurface(): Promise<void> {
 }
 
 const hourlyWindow = 24
+/** Hour the chart was last drawn for; see liveTick. */
+let chartHourKey = ''
 
 // Keep the live counts (blocked-on-this-page, running totals) ticking while the
 // popup is open. This refreshes text only — the 24h chart and category list are
@@ -120,7 +122,11 @@ async function liveTick(): Promise<void> {
   liveTickPending = true
   try {
     state = await request({ type: 'get-dashboard' })
-    if (elements.root.dataset.view === 'ready') renderLive(state)
+    // The chart's bars are pinned to the hour they were drawn in, so a dashboard
+    // left open across an hour boundary (it can be hosted in its own tab) would
+    // keep calling the previous hour "This hour". Redraw on the rollover —
+    // once an hour, not every tick, so hover and focus survive.
+    if (elements.root.dataset.view === 'ready' && chartHourKey === hourBucketKey()) renderLive(state)
     else render(state)
   }
   catch {
@@ -220,6 +226,7 @@ async function refresh(): Promise<void> {
 
 function render(next: DashboardState): void {
   renderLive(next)
+  chartHourKey = hourBucketKey()
 
   // Dense 24-hour window (see hourlySeries): idle hours have no stored bucket,
   // so the raw array would pack the bars together and mislabel every one.
@@ -247,7 +254,10 @@ function renderLive(next: DashboardState): void {
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
   // Peak of the same 24-hour window the chart renders (see renderBars).
-  elements.chartPeak.textContent = `peak ${Math.max(0, ...hourlyValues).toLocaleString()}/hr`
+  const peak = Math.max(0, ...hourlyValues)
+  // An all-zero window is now a row of baseline dashes; "peak 0/hr" reads like a
+  // broken chart, so say the window was quiet instead.
+  elements.chartPeak.textContent = peak > 0 ? `peak ${peak.toLocaleString()}/hr` : 'quiet 24h'
   elements.currentSite.textContent = active?.hostname || 'No active tab'
   elements.siteToggle.textContent = allowed ? 'Protect' : 'Allow'
   elements.siteToggle.disabled = !active
