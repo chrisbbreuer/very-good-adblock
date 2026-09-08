@@ -1,5 +1,30 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.2...v0.3.3)
+
+## 🐛 Bug Fixes
+
+- **dashboard**: pin the 60-day chart bars to their real day ([e8d05c6](https://github.com/chrisbbreuer/very-good-adblock/commit/e8d05c6)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: refresh the 24-hour chart when the hour rolls over ([e52cd38](https://github.com/chrisbbreuer/very-good-adblock/commit/e52cd38)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **popup**: pin the 24-hour chart bars to their real hour ([e98d5aa](https://github.com/chrisbbreuer/very-good-adblock/commit/e98d5aa)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ♻️ Code Refactoring
+
+- **stats**: share the hourly bucket key helper ([bc5904a](https://github.com/chrisbbreuer/very-good-adblock/commit/bc5904a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📝 Documentation
+
+- **testing**: describe how the headless browser is chosen ([7913f44](https://github.com/chrisbbreuer/very-good-adblock/commit/7913f44)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## ✅ Tests
+
+- **smoke**: open smoke views through the shared browser helper ([5cd4ce6](https://github.com/chrisbbreuer/very-good-adblock/commit/5cd4ce6)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **harness**: run headless views on Dia instead of Chrome ([a91d302](https://github.com/chrisbbreuer/very-good-adblock/commit/a91d302)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.1...v0.3.2)
 
 ## 🐛 Bug Fixes
