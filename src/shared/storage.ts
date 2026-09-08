@@ -1,6 +1,6 @@
 import { maxRecentEvents } from './constants'
 import { hostnameFromUrl, isHttpUrl, normalizeHostname, siteMatches } from './domain'
-import { compactBuckets, eventTotals, localDayKey } from './metrics'
+import { compactBuckets, eventTotals, hourBucketKey, localDayKey } from './metrics'
 import type { ActiveTabState, BlockEvent, CloudStatsSnapshot, ExtensionSettings, LifetimeStats, LocalStats, NoticeId, SiteStats, StatBucket } from './types'
 
 const syncKeys = {
@@ -464,8 +464,7 @@ function lifetimeMatches(left: Partial<LifetimeStats> | undefined, right: Lifeti
 function bucketKey(date: Date, type: 'hour' | 'day'): string {
   // Hours stay UTC (they're only ever shown relatively, "N hours ago"); days
   // follow the local calendar so "today" means the user's own day.
-  if (type === 'day') return localDayKey(date)
-  return date.toISOString().slice(0, 13)
+  return type === 'day' ? localDayKey(date) : hourBucketKey(date)
 }
 
 function mergeBucket(target: LocalStats['hourly'], key: string, totals: { adsBlocked: number, bytesSaved: number, videoSecondsSaved: number }): void {

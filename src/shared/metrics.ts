@@ -94,6 +94,15 @@ export function localDayKey(date: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * YYYY-MM-DD-Thh in UTC. Hourly buckets stay UTC because they are only ever
+ * shown relatively ("N hours ago"), so the key never has to survive a timezone
+ * change to stay meaningful.
+ */
+export function hourBucketKey(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 13)
+}
+
 export function eventTotals(events: BlockEvent[]): Pick<StatBucket, 'adsBlocked' | 'bytesSaved' | 'videoSecondsSaved'> {
   return events.reduce(
     (totals, event) => {
