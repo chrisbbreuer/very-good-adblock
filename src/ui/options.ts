@@ -1,5 +1,5 @@
 import { normalizeHostname } from '../shared/domain'
-import { formatBytes, formatMinutes, localDayKey } from '../shared/metrics'
+import { dailySeries, formatBytes, formatMinutes, localDayKey } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, downloadJson, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
@@ -217,12 +217,12 @@ const dailyWindow = 60
 
 /**
  * The 60-day history, scaled to the visible window (see renderBars) with each
- * bar dated in its tooltip and the window total in the footer. Leading padding
- * slots (fewer than 60 buckets) get no date — there is no day to label.
+ * bar dated in its tooltip and the window total in the footer. The series is
+ * densified first (see dailySeries): days with nothing blocked store no bucket,
+ * so the raw array would close the gaps and slide every bar onto the wrong day.
  */
 function renderDailyChart(next: DashboardState): void {
-  const buckets = next.local.daily.slice(-dailyWindow)
-  const pad = Math.max(0, dailyWindow - buckets.length)
+  const buckets = dailySeries(next.local.daily, dailyWindow)
   const total = buckets.reduce((sum, bucket) => sum + bucket.adsBlocked, 0)
 
   elements.dailyTotal.textContent = `${total.toLocaleString()} in window`
@@ -232,11 +232,7 @@ function renderDailyChart(next: DashboardState): void {
   elements.dailyChart.classList.toggle('is-empty', isEmpty)
   elements.dailyEmpty.hidden = !isEmpty
   renderBars(elements.dailyChart, buckets.map(bucket => bucket.adsBlocked), dailyWindow, {
-    valueLabel: (value, index) => {
-      const bucket = buckets[index - pad]
-      const prefix = bucket ? `${shortDate(bucket.key)}: ` : ''
-      return `${prefix}${value.toLocaleString()} blocked`
-    },
+    valueLabel: (value, index) => `${shortDate(buckets[index].key)}: ${value.toLocaleString()} blocked`,
   })
 }
 

@@ -133,6 +133,15 @@ export function hourlySeries(buckets: StatBucket[], count: number, now: Date = n
   return denseSeries(buckets, count, offset => hourBucketKey(new Date(currentHour - offset * 3_600_000)))
 }
 
+/**
+ * Dense daily window ending on the local day containing `now` (see
+ * denseSeries). Stepping the day-of-month rather than subtracting 24 hours
+ * keeps each slot on a local calendar day across DST shifts and month ends.
+ */
+export function dailySeries(buckets: StatBucket[], count: number, now: Date = new Date()): StatBucket[] {
+  return denseSeries(buckets, count, offset => localDayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)))
+}
+
 export function eventTotals(events: BlockEvent[]): Pick<StatBucket, 'adsBlocked' | 'bytesSaved' | 'videoSecondsSaved'> {
   return events.reduce(
     (totals, event) => {

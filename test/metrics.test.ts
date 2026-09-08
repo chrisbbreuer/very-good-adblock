@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes, hourBucketKey, hourlySeries, localDayKey } from '../src/shared/metrics'
+import { categoryForRequestType, dailySeries, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes, hourBucketKey, hourlySeries, localDayKey } from '../src/shared/metrics'
 
 describe('metrics', () => {
   it('formats estimated savings', () => {
@@ -86,5 +86,40 @@ describe('metrics', () => {
 
   it('keys hourly buckets by UTC hour', () => {
     expect(hourBucketKey(new Date('2026-09-07T03:59:59.000Z'))).toBe('2026-09-07T03')
+  })
+
+  it('pins daily buckets to the day they happened on', () => {
+    const now = new Date(2026, 8, 7, 12, 30)
+    const buckets = [
+      { key: '2026-09-01', adsBlocked: 40, bytesSaved: 0, videoSecondsSaved: 0 },
+      { key: '2026-09-07', adsBlocked: 12, bytesSaved: 0, videoSecondsSaved: 0 },
+    ]
+
+    const series = dailySeries(buckets, 7, now)
+
+    expect(series.map(bucket => bucket.key)).toEqual([
+      '2026-09-01',
+      '2026-09-02',
+      '2026-09-03',
+      '2026-09-04',
+      '2026-09-05',
+      '2026-09-06',
+      '2026-09-07',
+    ])
+    expect(series.map(bucket => bucket.adsBlocked)).toEqual([40, 0, 0, 0, 0, 0, 12])
+  })
+
+  it('walks daily buckets across a month boundary', () => {
+    const now = new Date(2026, 2, 2, 9, 0)
+    // Stepping the day-of-month (rather than subtracting 24 h) survives short
+    // months and DST changes.
+    expect(dailySeries([], 4, now).map(bucket => bucket.key)).toEqual(['2026-02-27', '2026-02-28', '2026-03-01', '2026-03-02'])
+  })
+
+  it('drops daily buckets that fell out of the window', () => {
+    const now = new Date(2026, 8, 7, 12, 30)
+    const series = dailySeries([{ key: '2026-08-20', adsBlocked: 900, bytesSaved: 0, videoSecondsSaved: 0 }], 7, now)
+
+    expect(series.every(bucket => bucket.adsBlocked === 0)).toBe(true)
   })
 })
