@@ -1,5 +1,5 @@
 import { siteMatches } from '../shared/domain'
-import { formatBytes, formatMinutes } from '../shared/metrics'
+import { formatBytes, formatMinutes, hourlySeries } from '../shared/metrics'
 import type { DashboardState, RuntimeMessage } from '../shared/types'
 import { byId, relativeTime, renderBars, sendMessage } from './dom'
 import { sourceLabel } from './labels'
@@ -104,6 +104,8 @@ async function detectHostSurface(): Promise<void> {
   }
   markSurface()
 }
+
+const hourlyWindow = 24
 
 // Keep the live counts (blocked-on-this-page, running totals) ticking while the
 // popup is open. This refreshes text only — the 24h chart and category list are
@@ -219,7 +221,9 @@ async function refresh(): Promise<void> {
 function render(next: DashboardState): void {
   renderLive(next)
 
-  renderBars(elements.hourlyChart, next.local.hourly.map(bucket => bucket.adsBlocked), 24, {
+  // Dense 24-hour window (see hourlySeries): idle hours have no stored bucket,
+  // so the raw array would pack the bars together and mislabel every one.
+  renderBars(elements.hourlyChart, hourlySeries(next.local.hourly, hourlyWindow).map(bucket => bucket.adsBlocked), hourlyWindow, {
     interactive: true,
     valueLabel: (value, index) => `${hourLabel(index)}: ${value.toLocaleString()} blocked`,
   })
@@ -231,7 +235,7 @@ function renderLive(next: DashboardState): void {
   const active = next.activeTab
   const enabled = next.settings.enabled
   const allowed = active ? siteMatches(active.hostname, next.settings.allowedSites) : false
-  const hourlyValues = next.local.hourly.map(bucket => bucket.adsBlocked)
+  const hourlyValues = hourlySeries(next.local.hourly, hourlyWindow).map(bucket => bucket.adsBlocked)
 
   elements.root.dataset.view = 'ready'
   elements.root.dataset.enabled = String(enabled && !allowed)
@@ -243,7 +247,7 @@ function renderLive(next: DashboardState): void {
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
   elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
   // Peak of the same 24-hour window the chart renders (see renderBars).
-  elements.chartPeak.textContent = `peak ${Math.max(0, ...hourlyValues.slice(-24)).toLocaleString()}/hr`
+  elements.chartPeak.textContent = `peak ${Math.max(0, ...hourlyValues).toLocaleString()}/hr`
   elements.currentSite.textContent = active?.hostname || 'No active tab'
   elements.siteToggle.textContent = allowed ? 'Protect' : 'Allow'
   elements.siteToggle.disabled = !active
@@ -418,7 +422,7 @@ function siteStatsFor(next: DashboardState, hostname: string): DashboardState['l
 }
 
 function hourLabel(index: number): string {
-  const hoursAgo = 23 - index
+  const hoursAgo = hourlyWindow - 1 - index
   if (hoursAgo <= 0) return 'This hour'
   if (hoursAgo === 1) return '1 hour ago'
   return `${hoursAgo} hours ago`

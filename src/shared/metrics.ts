@@ -103,6 +103,36 @@ export function hourBucketKey(date: Date = new Date()): string {
   return date.toISOString().slice(0, 13)
 }
 
+/**
+ * Expand sparse buckets into a dense series of `count` slots, oldest first,
+ * where `keyAt(offset)` names the bucket `offset` periods before the newest.
+ *
+ * Buckets only exist for periods that recorded something, so rendering the
+ * stored array straight onto a fixed-width chart silently closes the gaps: idle
+ * periods collapse to nothing and every remaining bar slides forward onto a
+ * time it did not happen in, while buckets older than the window (retention
+ * keeps more than either chart shows) get drawn as if they were recent. Filling
+ * the empty periods back in pins slot N to the period it actually covers.
+ */
+function denseSeries(buckets: StatBucket[], count: number, keyAt: (offset: number) => string): StatBucket[] {
+  const byKey = new Map(buckets.map(bucket => [bucket.key, bucket]))
+  const series: StatBucket[] = []
+
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const key = keyAt(offset)
+    const bucket = byKey.get(key)
+    series.push(bucket ? { ...bucket } : { key, adsBlocked: 0, bytesSaved: 0, videoSecondsSaved: 0 })
+  }
+
+  return series
+}
+
+/** Dense hourly window ending at the hour containing `now` (see denseSeries). */
+export function hourlySeries(buckets: StatBucket[], count: number, now: Date = new Date()): StatBucket[] {
+  const currentHour = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours())
+  return denseSeries(buckets, count, offset => hourBucketKey(new Date(currentHour - offset * 3_600_000)))
+}
+
 export function eventTotals(events: BlockEvent[]): Pick<StatBucket, 'adsBlocked' | 'bytesSaved' | 'videoSecondsSaved'> {
   return events.reduce(
     (totals, event) => {

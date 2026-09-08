@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes, localDayKey } from '../src/shared/metrics'
+import { categoryForRequestType, estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved, eventTotals, formatBytes, formatMinutes, hourBucketKey, hourlySeries, localDayKey } from '../src/shared/metrics'
 
 describe('metrics', () => {
   it('formats estimated savings', () => {
@@ -54,5 +54,37 @@ describe('metrics', () => {
 
     expect(totals.adsBlocked).toBe(2)
     expect(totals.bytesSaved).toBeGreaterThan(0)
+  })
+
+  it('pins hourly buckets to the hour they happened in', () => {
+    const now = new Date('2026-09-07T12:30:00.000Z')
+    const buckets = [
+      { key: '2026-09-07T03', adsBlocked: 300, bytesSaved: 0, videoSecondsSaved: 0 },
+      { key: '2026-09-07T12', adsBlocked: 5, bytesSaved: 0, videoSecondsSaved: 0 },
+    ]
+
+    const series = hourlySeries(buckets, 24, now)
+
+    // Idle hours have no stored bucket; without the zero fill, 03:00 and 12:00
+    // would render as neighbouring bars and read as "1 hour ago".
+    expect(series).toHaveLength(24)
+    expect(series.at(-1)?.key).toBe('2026-09-07T12')
+    expect(series.at(-1)?.adsBlocked).toBe(5)
+    expect(series[0].key).toBe('2026-09-06T13')
+    expect(series[24 - 1 - 9].adsBlocked).toBe(300)
+    expect(series.filter(bucket => bucket.adsBlocked > 0)).toHaveLength(2)
+  })
+
+  it('drops hourly buckets that fell out of the window', () => {
+    const now = new Date('2026-09-07T12:30:00.000Z')
+    // Retention keeps 72 hours of buckets, so stale ones must not be drawn as
+    // if they were recent.
+    const series = hourlySeries([{ key: '2026-09-05T09', adsBlocked: 900, bytesSaved: 0, videoSecondsSaved: 0 }], 24, now)
+
+    expect(series.every(bucket => bucket.adsBlocked === 0)).toBe(true)
+  })
+
+  it('keys hourly buckets by UTC hour', () => {
+    expect(hourBucketKey(new Date('2026-09-07T03:59:59.000Z'))).toBe('2026-09-07T03')
   })
 })
