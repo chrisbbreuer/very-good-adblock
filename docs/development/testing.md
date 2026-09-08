@@ -40,6 +40,22 @@ The smoke test uses Bun WebView. It checks:
 - Reset/export controls.
 - Desktop and mobile overflow.
 
+## Headless Browser
+
+Every headless view — the WebView tests and the smoke run — goes through
+`resources/scripts/lib/browser-view.ts`, which picks the Chromium binary and
+applies the requested viewport.
+
+Dia (`/Applications/Dia.app`) is preferred over Chrome where it exists: the
+harness then never contends with the Chrome the machine is already running,
+which used to fail whole batches with `Failed to spawn Chrome` partway through
+a run. `BUN_CHROME_PATH` overrides the choice, and where neither Dia nor that
+variable is present (CI) Bun auto-detects Chrome as before.
+
+Dia's headless targets start at 0x0, so the helper hops through `about:blank`
+to get a live CDP session and applies the size override there — without it,
+`innerWidth` and every element rect measure as zero.
+
 ## Cached YouTube Regression
 
 `bun run test` regenerates and validates a cached YouTube-like fixture through `ts-web-scraper` when that local dependency is available. The committed fixture keeps CI deterministic and offline-friendly.
