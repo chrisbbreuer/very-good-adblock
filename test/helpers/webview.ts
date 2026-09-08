@@ -1,9 +1,11 @@
+import { openBrowserView } from '../../resources/scripts/lib/browser-view'
+
 export async function openChromeView(options: Bun.WebView.ConstructorOptions): Promise<Bun.WebView> {
   let lastError: unknown
 
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
-      return new Bun.WebView(options)
+      return await openBrowserView(options)
     }
     catch (error) {
       lastError = error
