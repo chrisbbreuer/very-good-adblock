@@ -358,6 +358,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 
   if (changeInfo.status === 'complete') {
+    // Once the original page has loaded, later navigations belong to an
+    // established tab, even if it still has an opener and is under 30s old.
+    popupCandidates.delete(tabId)
     void updateBadge(tabId)
     startBadgePolling(tabId)
   }
@@ -429,17 +432,20 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   if (details.tabId < 0) return
   if (!isOurBlock(details)) return
 
-  // A blocked top-level document in a freshly opened tab is a pop-under that
-  // escaped the page-level guard (an anchor target=_blank click, which the
-  // window.open wrapper cannot see). This also runs where the debug listener
-  // counts subresource blocks — the paths never overlap.
-  if (details.frameId === 0 && handleBlockedPopupTab(details)) return
+  // frameId identifies the requesting frame, not the resource being loaded.
+  // A tracker script/XHR in the top frame (e.g. r.stripe.com on stripe.com)
+  // must count as a network block without closing or replacing the page.
+  if (details.frameId === 0 && details.type === 'main_frame') {
+    // A failed prerender belongs to a hidden frame tree, not the visible tab.
+    // Check before either closing the tab or showing a blocked-page notice.
+    const lifecycle = (details as { documentLifecycle?: string }).documentLifecycle
+    if (lifecycle && lifecycle !== 'active') return
 
-  // Anything else that dies at the top level is a page the user asked for, so
-  // the browser's bare ERR_BLOCKED_BY_CLIENT ("try disabling your extensions")
-  // gets replaced with our own page: who blocked it, what was blocked, and a
-  // way through. The block itself is still counted below.
-  if (details.frameId === 0 && details.type === 'main_frame') showBlockedNotice(details)
+    if (handleBlockedPopupTab(details)) return
+
+    // Preserve direct navigations and offer a way through the blocked page.
+    showBlockedNotice(details)
+  }
 
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled) return
@@ -545,12 +551,6 @@ const blockedNoticeMinIntervalMs = 1_000
 function showBlockedNotice(details: chrome.webRequest.OnErrorOccurredDetails): void {
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled) return
-
-  // A speculative prerender of a blocked URL fails in a hidden frame tree of a
-  // tab the user is still reading. Navigating that tab would yank the page out
-  // from under them for a click they never made.
-  const lifecycle = (details as { documentLifecycle?: string }).documentLifecycle
-  if (lifecycle && lifecycle !== 'active') return
 
   const now = Date.now()
   const shownAt = blockedNoticeShownAt.get(details.tabId) ?? 0
