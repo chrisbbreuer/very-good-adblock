@@ -1,5 +1,15 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.4...v0.3.5)
+
+## 🐛 Bug Fixes
+
+- **navigation**: preserve SMS links and external browser tabs ([7dfd7ed](https://github.com/chrisbbreuer/very-good-adblock/commit/7dfd7ed)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.3...v0.3.4)
 
 ## 🐛 Bug Fixes
