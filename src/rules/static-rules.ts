@@ -1,5 +1,6 @@
 import type { ResourceCategory } from '../shared/types'
 import generatedNetworkHosts from './generated/network-hosts.json'
+import { navigationHosts, navigationRuleStartId } from './navigation'
 
 export interface CuratedRuleSeed {
   id: number
@@ -140,7 +141,20 @@ export function buildStaticRules(): chrome.declarativeNetRequest.Rule[] {
     },
   }))
 
-  return [...curatedRules, ...redirectRules, ...generatedRules]
+  // A document-only allow beats static and refreshed host blocks (priority 1),
+  // while the user's explicit block list (priority 20) still takes precedence.
+  // `allow`, unlike `allowAllRequests`, does not exempt the landing page's ads.
+  const navigationRules = navigationHosts.map((host, index) => ({
+    id: navigationRuleStartId + index,
+    priority: 3,
+    action: { type: 'allow' as const },
+    condition: {
+      urlFilter: `||${host}^`,
+      resourceTypes: [resourceType('main_frame')],
+    },
+  }))
+
+  return [...curatedRules, ...redirectRules, ...generatedRules, ...navigationRules]
 }
 
 /**

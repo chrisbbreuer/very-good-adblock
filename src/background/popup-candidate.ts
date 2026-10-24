@@ -17,6 +17,22 @@ export function rememberInitialPopupUrl(candidate: PopupCandidate, url?: string)
 }
 
 /**
+ * An opener can be assigned to a link launched by the browser or another app.
+ * Only attribute a popup to that page when the request's initiator confirms it.
+ * Missing or opaque initiators are ambiguous and must keep the tab alive.
+ */
+export function isPopupRequestFromOpener(initiator?: string, openerUrl?: string): boolean {
+  if (!isHttpUrl(initiator) || !isHttpUrl(openerUrl)) return false
+
+  try {
+    return new URL(initiator).origin === new URL(openerUrl).origin
+  }
+  catch {
+    return false
+  }
+}
+
+/**
  * A blocked main-frame request is safe to auto-close only when it belongs to
  * the destination that originally created the tab. Without this check, a real
  * user-opened tab can be removed when an early redirect touches an ad host.

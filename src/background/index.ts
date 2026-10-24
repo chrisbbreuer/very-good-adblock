@@ -5,12 +5,13 @@ import { blockedPageFile, blockedPageQuery } from '../shared/blocked-page'
 import type { BlockedReason } from '../shared/blocked-page'
 import { grantBypass, pruneBypasses } from './bypass'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
+import { isNavigationAllowRule, navigationHosts } from '../rules/navigation'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../rules/blocked-hosts'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
 import { isSearchResultsUrl } from '../shared/search-navigation'
-import { isOriginalPopupDestination, rememberInitialPopupUrl } from './popup-candidate'
+import { isOriginalPopupDestination, isPopupRequestFromOpener, rememberInitialPopupUrl } from './popup-candidate'
 import type { PopupCandidate } from './popup-candidate'
 import { isNewBlockedHost, isNewBlockedRequest } from './page-block-tally'
 import {
@@ -29,7 +30,7 @@ import {
 } from '../shared/storage'
 import type { ActivePageStats, BlockEvent, BlockSource, CosmeticTelemetry, DashboardState, DnrTelemetry, ExtensionSettings, PageBlockEntry, PageBlockKind, ResourceCategory, RuntimeMessage, RuntimeResponse } from '../shared/types'
 
-const staticRuleCount = curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.hosts.length
+const staticRuleCount = curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.hosts.length + navigationHosts.length
 const filterSources = generatedNetworkHosts.sources.map(source => ({
   name: source.name,
   revision: source.revision,
@@ -403,6 +404,7 @@ chrome.webRequest?.onBeforeRequest.addListener((details) => {
 // their matching webRequest error is counted below. Request-id deduplication
 // lets both listeners remain installed without inflating development counts.
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
+  if (isNavigationAllowRule(info.rule.ruleId)) return
   const tabId = info.request.tabId
   if (tabId < 0) return
   recordLiveNetworkBlock(tabId, info.request.requestId, info.request.type, info.request.url)
@@ -489,14 +491,10 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   // top-level request during startup.
   if (isSearchResultsUrl(candidate.initialUrl) || isSearchResultsUrl(details.url)) return false
 
-  // ERR_BLOCKED_BY_CLIENT is shared by every blocker in the browser. Some
-  // browsers also give searches opened from their command bar an opener tab,
-  // so treating every such error as ours can close a legitimate search window
-  // immediately. Only remove the tab when its destination is covered by one of
-  // our shipped/refreshed host rules or by the user's explicit block list.
+  // A user-blocked destination needs a notice with a way through, not a tab
+  // disappearing. Only filter-list blocks can qualify as unwanted popups.
   const targetHostname = hostnameFromUrl(details.url)
-  const blockedByUs = isBlockedHost(targetHostname) || siteMatches(targetHostname, settings.blockedSites)
-  if (!blockedByUs) return false
+  if (siteMatches(targetHostname, settings.blockedSites) || !isBlockedHost(targetHostname)) return false
 
   // An opener relationship alone does not prove this is a pop-under. Keep a
   // legitimate tab (for example, a user-opened YouTube link) alive if a later
@@ -506,6 +504,7 @@ function handleBlockedPopupTab(details: chrome.webRequest.OnErrorOccurredDetails
   const opener = pageBadgeStats.get(candidate.openerTabId)
   const openerHostname = opener?.url ? hostnameFromUrl(opener.url) : ''
   if (!openerHostname || siteMatches(openerHostname, settings.allowedSites)) return false
+  if (!isPopupRequestFromOpener(details.initiator, opener?.url)) return false
 
   incrementPageContent(candidate.openerTabId, 1, opener?.url)
   logPageBlock(candidate.openerTabId, {
@@ -939,16 +938,19 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
+    // A successful SMS redirect can match our document allow rule. Neither
+    // live feedback nor this reconciliation may count that as a blocked ad.
+    const blockedMatches = matched.rulesMatchedInfo.filter(match => !isNavigationAllowRule(match.rule.ruleId))
     // Against the RAW count: getMatchedRules reports requests, and the headline
     // counter no longer does. Comparing it to the deduplicated number would
     // read every retry the listeners already saw as a block they had missed.
-    const delta = Math.max(0, matched.rulesMatchedInfo.length - details.networkRaw)
+    const delta = Math.max(0, blockedMatches.length - details.networkRaw)
     if (delta > 0) {
       // Matches the live listeners missed (e.g. while the worker was down):
       // fold them through the same funnel so lifetime stats stay in lockstep.
       // The newest entries sit at the tail — categorize the delta from their
       // request types, falling back to 'other' when the list is truncated.
-      const entries = matched.rulesMatchedInfo.slice(-delta)
+      const entries = blockedMatches.slice(-delta)
       for (const entry of entries) {
         const request = (entry as { request?: { type?: string, url?: string } }).request
         addNetworkBlocks(tabId, 1, categoryForRequestType(request?.type ?? 'other'), request?.url ? hostnameFromUrl(request.url) : undefined)

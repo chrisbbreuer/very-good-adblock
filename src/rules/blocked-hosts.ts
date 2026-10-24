@@ -2,6 +2,7 @@ import generatedNetworkHosts from './generated/network-hosts.json'
 import { normalizeHostname } from '../shared/domain'
 import { isProtectedSearchHost } from '../shared/search-navigation'
 import { curatedRuleSeeds } from './static-rules'
+import { isNavigationHost } from './navigation'
 
 /**
  * Lookup set of every host our network rules block, used where rule matches are
@@ -73,6 +74,10 @@ export function isBlockedRequest(url: string, type: string): boolean {
   catch {
     return false
   }
+
+  // Mirror the document-only allow rules, including for refreshed host blocks.
+  // A cancellation by another extension must not make us close an SMS link.
+  if (type === 'main_frame' && isNavigationHost(parsed.hostname)) return false
 
   if (hostRuleRequestTypes.has(type) && isBlockedHost(parsed.hostname)) return true
 

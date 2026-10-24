@@ -1,8 +1,33 @@
 import { describe, expect, it } from 'bun:test'
 import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
 import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../src/rules/blocked-hosts'
+import { isNavigationHost } from '../src/rules/navigation'
 
 describe('blocked-hosts matcher', () => {
+  it('allows merchant SMS link documents while still recognizing their tracking requests', () => {
+    for (const url of ['https://ruffwear.attn.tv/an9_JTRemUCA', 'https://ekster.attn.tv/a477mZJ3GAHl', 'https://attn.tv/link']) {
+      expect(isBlockedRequest(url, 'main_frame')).toBe(false)
+      for (const type of ['script', 'image', 'xmlhttprequest', 'sub_frame']) {
+        expect(isBlockedRequest(url, type)).toBe(true)
+      }
+    }
+  })
+
+  it('matches navigation exceptions at domain boundaries', () => {
+    expect(isNavigationHost('RUFFWEAR.ATTN.TV')).toBe(true)
+    expect(isNavigationHost('attn.tv.evil.example')).toBe(false)
+    expect(isNavigationHost('notattn.tv')).toBe(false)
+    expect(isNavigationHost('tv')).toBe(false)
+    expect(isNavigationHost('')).toBe(false)
+    expect(isBlockedRequest('https://doubleclick.net/pop', 'main_frame')).toBe(true)
+  })
+
+  it('keeps document exceptions when host blocks are refreshed', () => {
+    addBlockedHosts(['ruffwear.attn.tv'])
+    expect(isBlockedRequest('https://ruffwear.attn.tv/an9_JTRemUCA', 'main_frame')).toBe(false)
+    expect(isBlockedRequest('https://ruffwear.attn.tv/pixel', 'image')).toBe(true)
+  })
+
   it('matches hosts from the generated network list', () => {
     const host = generatedNetworkHosts.hosts[0]
     expect(isBlockedHost(host)).toBe(true)

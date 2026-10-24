@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import { runInNewContext } from 'node:vm'
-import type { PageBlockEntry } from '../src/shared/types'
+import type { ExtensionSettings, PageBlockEntry } from '../src/shared/types'
+import { defaultSettings } from '../src/shared/storage'
+import { navigationRuleStartId } from '../src/rules/navigation'
 
 let backgroundScript: string
 
@@ -19,15 +21,17 @@ function event<Args extends unknown[]>() {
 }
 
 /** Run the shipping background listeners with isolated browser state and timers. */
-async function background() {
+async function background(settings: ExtensionSettings = defaultSettings, matches: chrome.declarativeNetRequest.MatchedRuleInfo[] = []) {
   const onCreated = event<[chrome.tabs.Tab]>()
   const onUpdated = event<[number, chrome.tabs.OnUpdatedInfo, chrome.tabs.Tab]>()
   const onBeforeRequest = event<[chrome.webRequest.OnBeforeRequestDetails]>()
   const onErrorOccurred = event<[chrome.webRequest.OnErrorOccurredDetails]>()
+  const onRuleMatchedDebug = event<[chrome.declarativeNetRequest.MatchedRuleInfoDebug]>()
   const removed: number[] = []
   const navigated: Array<{ tabId: number, url?: string }> = []
   const session: Record<string, unknown> = {}
   const timers: Array<{ callback: () => void, delay: number }> = []
+  const onChanged = event<[Record<string, chrome.storage.StorageChange>, string]>()
   const storage = { async get() { return {} }, async set() {} }
   const chromeStub = {
     runtime: {
@@ -42,11 +46,13 @@ async function background() {
     },
     webRequest: { onBeforeRequest, onErrorOccurred },
     declarativeNetRequest: {
-      onRuleMatchedDebug: event(),
-      async getMatchedRules() { return { rulesMatchedInfo: [] } },
+      onRuleMatchedDebug,
+      async getMatchedRules() { return { rulesMatchedInfo: matches } },
+      async getDynamicRules() { return [] },
+      async updateDynamicRules() {},
     },
     storage: {
-      sync: storage, local: storage, onChanged: event(),
+      sync: { ...storage, async get() { return { settings } } }, local: storage, onChanged,
       session: { ...storage, async set(values: Record<string, unknown>) { Object.assign(session, values) } },
     },
     action: {
@@ -59,6 +65,7 @@ async function background() {
       return timers.push({ callback, delay })
     },
   })
+  onChanged.emit({ settings: { newValue: settings } }, 'sync')
   // Finish session hydration before delivering live navigation events.
   await Promise.resolve()
 
@@ -88,6 +95,12 @@ async function background() {
         requestId: 'blocked', url, method: 'GET', frameId: 0, parentFrameId: -1,
         tabId: 2, type, timeStamp: Date.now(), error: 'net::ERR_BLOCKED_BY_CLIENT',
         fromCache: false, documentLifecycle: 'active', frameType: 'outermost_frame', ...extra,
+      })
+    },
+    matchNavigation(url: string) {
+      onRuleMatchedDebug.emit({
+        rule: { ruleId: navigationRuleStartId, rulesetId: 'very_good_adblock_static_rules_3' },
+        request: { requestId: 'allowed', url, method: 'GET', frameId: 0, parentFrameId: -1, tabId: 2, type: 'main_frame', initiator: 'https://publisher.example' },
       })
     },
     log(tabId: number): PageBlockEntry[] {
@@ -124,7 +137,7 @@ describe('background navigation safety', () => {
     browser.open('https://doubleclick.net/pop')
     browser.fail('https://doubleclick.net/ad.js', 'script')
     expect(browser.removed).toEqual([])
-    browser.fail('https://doubleclick.net/pop', 'main_frame')
+    browser.fail('https://doubleclick.net/pop', 'main_frame', { initiator: 'https://publisher.example' })
 
     expect(browser.removed).toEqual([2])
     expect(browser.navigated).toEqual([])
@@ -135,7 +148,7 @@ describe('background navigation safety', () => {
     const browser = await background()
     browser.open('about:blank')
     browser.start('https://doubleclick.net/pop')
-    browser.fail('https://doubleclick.net/pop', 'main_frame')
+    browser.fail('https://doubleclick.net/pop', 'main_frame', { initiator: 'https://publisher.example' })
     expect(browser.removed).toEqual([2])
   })
 
@@ -179,5 +192,55 @@ describe('background navigation safety', () => {
     browser.fail('https://stripe.com/', 'main_frame')
     expect(browser.removed).toEqual([])
     expect(browser.navigated).toEqual([])
+  })
+
+  it.each(['net::ERR_BLOCKED_BY_CLIENT', 'NS_ERROR_ABORT'])(
+    'preserves SMS links with an assigned opener on %s', async (error) => {
+      const browser = await background()
+      browser.open('https://ruffwear.attn.tv/an9_JTRemUCA')
+      browser.fail('https://ruffwear.attn.tv/an9_JTRemUCA', 'main_frame', { error, initiator: 'https://publisher.example' })
+
+      expect(browser.removed).toEqual([])
+      expect(browser.navigated).toEqual([])
+      expect(browser.log(1)).toEqual([])
+      expect(browser.log(2)).toEqual([])
+    },
+  )
+
+  it.each([undefined, 'null', 'chrome://newtab', 'https://different.example', 'https://publisher.example.evil.test'])(
+    'preserves external or ambiguous navigation with initiator %s despite an assigned opener', async (initiator) => {
+      const browser = await background()
+      browser.open('https://doubleclick.net/link')
+      browser.fail('https://doubleclick.net/link', 'main_frame', { initiator })
+
+      expect(browser.removed).toEqual([])
+      expect(browser.navigated).toHaveLength(1)
+      expect(browser.log(1)).toEqual([])
+    },
+  )
+
+  it('keeps a user-blocked SMS destination open with an explanatory notice', async () => {
+    const browser = await background({ ...defaultSettings, blockedSites: ['attn.tv'] })
+    browser.open('https://ruffwear.attn.tv/an9_JTRemUCA')
+    browser.fail('https://ruffwear.attn.tv/an9_JTRemUCA', 'main_frame', { initiator: 'https://publisher.example' })
+
+    expect(browser.removed).toEqual([])
+    expect(browser.navigated).toEqual([{ tabId: 2, url: expect.stringContaining('reason=user') }])
+    expect(browser.log(1)).toEqual([])
+  })
+
+  it('does not count an allowed SMS document as blocked in live or reconciled feedback', async () => {
+    const browser = await background(defaultSettings, [{
+      rule: { ruleId: navigationRuleStartId, rulesetId: 'very_good_adblock_static_rules_3' },
+      tabId: 2, timeStamp: Date.now(),
+    }])
+    browser.open('https://ruffwear.attn.tv/an9_JTRemUCA')
+    browser.matchNavigation('https://ruffwear.attn.tv/an9_JTRemUCA')
+    // Finish the asynchronous badge reconciliation without running its timers.
+    await new Promise(resolve => setImmediate(resolve))
+
+    expect(browser.removed).toEqual([])
+    expect(browser.navigated).toEqual([])
+    expect(browser.log(2)).toEqual([])
   })
 })

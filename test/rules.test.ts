@@ -5,6 +5,7 @@ import { buildStaticRuleset, buildStaticRules, curatedRuleSeeds, redirectRuleSee
 import extensionConfig from '../config/extension'
 import { defaultSettings } from '../src/shared/storage'
 import generatedNetworkHosts from '../src/rules/generated/network-hosts.json'
+import { navigationHosts } from '../src/rules/navigation'
 
 describe('rules', () => {
   it('builds unique static DNR rules from curated seeds', () => {
@@ -12,10 +13,27 @@ describe('rules', () => {
     const ids = new Set(rules.map(rule => rule.id))
 
     expect(generatedNetworkHosts.totalHosts).toBeGreaterThan(1000)
-    expect(rules).toHaveLength(curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.totalHosts)
+    expect(rules).toHaveLength(curatedRuleSeeds.length + redirectRuleSeeds.length + generatedNetworkHosts.totalHosts + navigationHosts.length)
     expect(ids.size).toBe(rules.length)
-    expect(rules.every(rule => rule.action.type === 'block' || rule.action.type === 'redirect')).toBe(true)
+    expect(rules.every(rule => ['block', 'redirect', 'allow'].includes(rule.action.type))).toBe(true)
     expect(rules.every(rule => rule.condition.resourceTypes?.length)).toBe(true)
+  })
+
+  it('allows SMS redirect documents without exempting embedded tracking or overriding user blocks', () => {
+    const rules = buildStaticRules()
+    const navigation = rules.find(rule => rule.action.type === 'allow' && rule.condition.urlFilter === '||attn.tv^')
+    const tracking = rules.find(rule => rule.action.type === 'block' && rule.condition.urlFilter === '||attn.tv^')
+    const manual = buildDynamicRules({ ...defaultSettings, blockedSites: ['attn.tv'] })
+      .find(rule => rule.action.type === 'block')
+
+    expect(navigation).toBeDefined()
+    expect(navigation?.condition.resourceTypes).toEqual(['main_frame'])
+    expect(navigation?.priority).toBeGreaterThan(tracking?.priority ?? 0)
+    expect(navigation?.priority).toBeLessThan(manual?.priority ?? 0)
+    expect(tracking?.condition.resourceTypes).toContain('script')
+    expect(tracking?.condition.resourceTypes).toContain('xmlhttprequest')
+    expect(tracking?.condition.resourceTypes).toContain('sub_frame')
+    expect(rules.some(rule => rule.action.type === 'allowAllRequests')).toBe(false)
   })
 
   it('redirects ad SDK loaders to inert stubs at higher priority than blocks', () => {
