@@ -35,6 +35,19 @@ Safari users launch the app once, then enable the extension in **Settings > Apps
   <img src="docs/public/screenshots/dashboard.png" width="860" alt="The Very Good AdBlock dashboard: 52,914 lifetime blocks, a 60-day history chart, and protection toggles for cosmetic hiding, cookie banners, pop-up blocking, and YouTube/Twitch helpers.">
 </p>
 
+## In a WebKit app
+
+The same blocking ships as a library for apps that embed WebKit (`WKWebView`) instead of running an extension, built and published by Stacks out of `resources/functions` (`buddy build:libs`, `buddy libs:publish`):
+
+```ts
+import { webkitContentRules, webkitPageScripts } from 'very-good-adblock'
+
+const lists = webkitContentRules()    // WebKit content-blocker JSON, versioned, at most 50,000 rules a list
+const scripts = webkitPageScripts()   // YouTube and X ad removal and the pop-up guard, for the page's own world
+```
+
+The lists and scripts are generated from this repo's rules and content scripts by `resources/scripts/build-webkit-data.ts`; `test/webkit.test.ts` fails when the generated module falls behind them.
+
 ## Why
 
 Very Good AdBlock exists because waiting for an ad to interrupt you before it gets blocked is backwards. Pop-ups, intrusive placements, and video ads should be gone *before* the page can show them, with a blocker that stays fast, small, and modern instead of shipping a background page that churns on every request.

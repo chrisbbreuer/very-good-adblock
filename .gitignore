@@ -25,6 +25,7 @@ bench/fixtures
 /storage/cloud/
 /storage/framework/runtime/
 /storage/framework/stx/
+/storage/framework/libs/
 /storage/logs/
 
 # Safari app: synced extension payload, Xcode build products, user state
