@@ -28,6 +28,9 @@ export default {
       keywords: ['adblock', 'webkit', 'content-blocker', 'wkwebview', 'safari', 'youtube-adblock', 'privacy'],
       include: ['webkit.ts', 'webkit-data.ts'],
       runtime: 'standalone',
+      // Apps install it with Bun from npm, like the rest of their dependencies.
+      registry: 'npm',
+      readme: 'resources/library/README.md',
     },
   ],
 } satisfies LibraryConfig
