@@ -35,6 +35,8 @@
     "build:firefox": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target firefox",
     "build:safari": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target safari",
     "build:webkit": "bun node_modules/@stacksjs/buddy/dist/cli.js extension:build --target webkit",
+    "build:libs": "bun node_modules/@stacksjs/buddy/dist/cli.js build:libs",
+    "libs:publish": "bun node_modules/@stacksjs/buddy/dist/cli.js libs:publish",
     "cache:youtube-fixture": "bun --bun resources/scripts/cache-youtube-fixture.ts",
     "icons": "bun --bun resources/scripts/generate-icons.ts",
     "docs:build": "bunpress build",

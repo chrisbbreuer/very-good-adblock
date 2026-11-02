@@ -25,6 +25,7 @@ bench/fixtures
 /pantry
 /storage/cloud/
 /storage/framework/runtime/
+/storage/framework/libs/
 /storage/framework/stx/
 /storage/logs/
 

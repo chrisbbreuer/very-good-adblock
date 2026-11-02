@@ -56,3 +56,33 @@ jobs:
       APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
       APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+
+  # The very-good-adblock library (config/library.ts): the extension's rules
+  # and content scripts for WebKit apps, rebuilt from this tag and published to
+  # npm. Only on a tag push: the scheduled store retries must not republish.
+  # npm trusted publishing mints the credential from id-token; no token is
+  # passed, so a stale one can never take the publish.
+  library:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pantry
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+        with:
+          version: '0.11.75'
+          install: 'false'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build the library
+        run: bun run build:libs
+
+      - name: Publish the library
+        run: bun run libs:publish
