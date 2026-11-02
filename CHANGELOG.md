@@ -1,5 +1,20 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.5...v0.3.6)
+
+## ✨ Features
+
+- **library**: publish the WebKit build as the very-good-adblock package ([a463e77](https://github.com/chrisbbreuer/very-good-adblock/commit/a463e77)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **webkit**: a webkit build target for apps that embed WKWebView ([3258438](https://github.com/chrisbbreuer/very-good-adblock/commit/3258438)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **deps**: Stacks 0.75.417, and drop the ts-pantry 0.11.21 pin ([7e28d0f](https://github.com/chrisbbreuer/very-good-adblock/commit/7e28d0f)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.4...v0.3.5)
 
 ## 🐛 Bug Fixes
