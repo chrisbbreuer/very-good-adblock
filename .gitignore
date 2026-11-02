@@ -13,6 +13,7 @@ coverage
 dist
 dist-firefox
 dist-safari
+dist-webkit
 lib-cov
 logs
 node_modules

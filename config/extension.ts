@@ -192,6 +192,19 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
     { id: 'very_good_adblock_static_rules_3', path: 'rules/static-3.json', source: 'src/rules/ruleset-3.ts' },
   ],
 
+  // `bun run build:webkit`: the same blocking for apps that embed WKWebView
+  // (content-blocker lists and user scripts in dist-webkit/), published as the
+  // very-good-adblock library (config/library.ts). The cosmetic groups mirror
+  // the content script's: aggressive and cookie-consent hiding stay opt-in.
+  webkit: {
+    dynamicRules: [{ id: 'very_good_adblock_dynamic_rules', source: 'src/rules/webkit.ts#dynamicRules' }],
+    cosmetic: [
+      { id: 'very_good_adblock_cosmetic', source: 'src/rules/webkit.ts#cosmetic' },
+      { id: 'very_good_adblock_cosmetic_aggressive', source: 'src/rules/webkit.ts#cosmeticAggressive', enabled: false },
+      { id: 'very_good_adblock_cosmetic_consent', source: 'src/rules/webkit.ts#cosmeticConsent', enabled: false },
+    ],
+  },
+
   manifest: {
     // No `tabs`: the `chrome.tabs` API itself never needed it, and the sensitive
     // fields we do read (`url`, `pendingUrl`, `favIconUrl`) are already granted by
