@@ -1,0 +1,85 @@
+<script server>
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+interface indexProps {
+  transactionHistory?: any[]
+}
+
+const { transactionHistory = [] } = defineProps<indexProps>()
+
+function formatTimestampDate(timestamp: number) {
+    if (!timestamp) return ''
+    const date = new Date(timestamp * 1000)
+    return date.toLocaleDateString()
+  }
+
+  function getTransactionType(lineData: Array<{ plan?: { interval?: string } }> | undefined) {
+    return lineData?.[0]?.plan?.interval || ''
+  }
+
+  // Stripe reports `unit_amount` in the currency's minor unit.
+  function getUnitPrice(lineData: Array<{ price?: { unit_amount?: number | string, currency?: string } }> | undefined) {
+    return formatCurrency(lineData?.[0]?.price?.unit_amount || 0, lineData?.[0]?.price?.currency || 'USD')
+  }
+
+  function getLastDigits(paymentIntent: { payment_method?: { card?: { last4?: string } } } | undefined) {
+    return paymentIntent?.payment_method?.card?.last4 || ''
+  }
+</script>
+<div class="sm:flex sm:items-center">
+  <div class="sm:flex-auto">
+    <h1 class="font-semibold leading-6 text-base text-gray-900">
+      Transaction History
+    </h1>
+    <p class="mt-2 text-gray-700 text-sm">
+      A list with all your Stacks-relating transactions.
+    </p>
+  </div>
+</div>
+
+<div class="flow-root mt-8">
+  <div class="overflow-x-auto -mx-4 -my-2 sm:-mx-6 lg:-mx-8">
+    <div class="inline-block py-2 sm:px-6 lg:px-8 min-w-full align-middle">
+      <div class="overflow-hidden ring-1 ring-black ring-opacity-5 sm:rounded-lg shadow">
+        <table class="min-w-full divide-gray-300 divide-y">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="pl-4 pr-3 py-3.5 sm:pl-6 font-semibold text-gray-900 text-left text-sm">
+                Transaction
+              </th>
+              <th scope="col" class="px-3 py-3.5 font-semibold text-gray-900 text-left text-sm">
+                Date
+              </th>
+              <th scope="col" class="px-3 py-3.5 font-semibold text-gray-900 text-left text-sm">
+                Amount
+              </th>
+              <th scope="col" class="px-3 py-3.5 font-semibold text-gray-900 text-left text-sm">
+                Payment Method
+              </th>
+            </tr>
+          </thead>
+
+          <tbody class="bg-white divide-gray-200 divide-y">
+            @foreach(transactionHistory as transaction, index)
+              <tr>
+                <td class="pl-4 pr-3 py-4 sm:pl-6 font-medium text-gray-900 text-sm whitespace-nowrap">
+                  Dashboard Subscription <em class="italic">({{ getTransactionType(transaction.name) }}ly)</em>
+                </td>
+                <td class="px-3 py-4 text-gray-500 text-sm whitespace-nowrap">
+                  {{ formatTimestampDate(transaction.created_at) }}
+                </td>
+                <td class="px-3 py-4 text-gray-500 text-sm whitespace-nowrap">
+                  {{ getUnitPrice(transaction.unit_price) }}
+                </td>
+                <td class="flex items-center px-3 py-4 space-x-2 text-gray-500 text-sm whitespace-nowrap">
+                  <slot name="cardBrand" />
+                  <span>**** **** **** {{ getLastDigits(transaction.payment_intent) }}</span>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

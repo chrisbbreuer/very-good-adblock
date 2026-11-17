@@ -1,0 +1,126 @@
+<script client>
+import type { AbandonedCartRecord } from '../../../../app/Actions/Dashboard/Marketing/abandoned-cart-records'
+import { reachOf } from '../../../../app/Actions/Dashboard/Marketing/abandoned-cart-records'
+import { formatCurrency, moneyInputError, moneyInputStep, parseMoneyInput } from '@stacksjs/commerce/money'
+
+const open = useReactiveProp('open', false)
+const records = useReactiveProp('records', [] as AbandonedCartRecord[])
+const defaultIdleHours = useReactiveProp('defaultIdleHours', 4)
+const defaultCurrency = useReactiveProp('defaultCurrency', 'USD')
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['submit', 'close'])
+
+const name = state('')
+const subject = state('')
+const text = state('')
+const fromName = state('')
+const fromAddress = state('')
+// Text, as the input reports it; read as a number where it is used.
+const idleHours = state('4')
+// The threshold as typed, in major units. Carts and the stored rule hold
+// integer minor units (stacksjs/stacks#2851).
+const minimumValue = state('0')
+const scheduledAt = state('')
+let hydrated = false
+
+effect(() => {
+  if (!open()) {
+    hydrated = false
+    return
+  }
+  if (hydrated)
+    return
+  hydrated = true
+  name.set('Cart recovery')
+  subject.set('You left something behind')
+  text.set('')
+  fromName.set('')
+  fromAddress.set('')
+  idleHours.set(String(defaultIdleHours()))
+  minimumValue.set('0')
+  scheduledAt.set('')
+})
+
+/**
+ * Who this would actually be sent to, as the rules are being set.
+ *
+ * The same function the summary is built from, run against the rows already
+ * on the page: a rule that reaches nobody should say so while somebody is
+ * still choosing it, not after they have scheduled a send to an empty room.
+ */
+function reach(): { carts: number, value: number } {
+  return reachOf(records(), Number(idleHours()) || 0, minimumMinor())
+}
+
+function minimumError(): string {
+  return moneyInputError(minimumValue(), defaultCurrency(), { required: false })
+}
+
+/** The typed threshold in minor units, or 0 while it is empty or unreadable. */
+function minimumMinor(): number {
+  if (minimumError())
+    return 0
+  return parseMoneyInput(minimumValue(), defaultCurrency(), { required: false }) ?? 0
+}
+
+function money(value: number): string {
+  return formatCurrency(value, defaultCurrency())
+}
+
+function submit(): void {
+  const when = scheduledAt() ? new Date(scheduledAt()) : null
+  if (when && !Number.isFinite(when.getTime()))
+    return
+  if (minimumError())
+    return
+
+  emit('submit', {
+    name: name(),
+    subject: subject(),
+    text: text(),
+    fromName: fromName(),
+    fromAddress: fromAddress(),
+    idleHours: Number(idleHours()) || 0,
+    minimumValue: minimumMinor(),
+    scheduledAt: when ? when.toISOString() : null,
+    currency: defaultCurrency(),
+  })
+}
+</script>
+
+<Modal :isOpen="open()" title="New recovery campaign" description="Writes to the people whose carts went cold. The audience comes from the carts themselves, not from a list." size="lg" @close="emit('close')">
+  <div class="grid gap-4 mt-4">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="name" label="Campaign name" :required="true" />
+      <Input v-model:value="subject" label="Subject line" :required="true" />
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="idleHours" label="Wait before writing (hours)" type="number" min="1" max="336" step="1" inputmode="numeric" hint="Writing to somebody who is still shopping is not a recovery, it is an interruption." />
+      <Input v-model:value="minimumValue" label="Minimum cart value" type="number" min="0" :step="moneyInputStep(defaultCurrency())" inputmode="decimal" :error="minimumError()" hint="Leave at zero to chase every cart." />
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="fromName" label="From name" />
+      <Input v-model:value="fromAddress" label="From address" type="email" />
+    </div>
+
+    <Textarea v-model:value="text" label="Message" :rows="3" placeholder="Your cart is still here, and so is everything in it." />
+    <Input v-model:value="scheduledAt" label="Send at" type="datetime-local" hint="Leave empty to save it as a draft and send it from the campaigns screen." />
+
+    <div class="p-3 bg-gray-50 dark:bg-neutral-900/50 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="font-medium text-gray-900 text-sm dark:text-white">{{ reach().carts.toLocaleString() }} carts match these rules</p>
+      <p class="mt-1 text-gray-500 text-xs dark:text-neutral-400">{{ money(reach().value) }} of goods, counted from the carts on this page. Carts with no address on them cannot be written to and are not included.</p>
+    </div>
+
+    <div :if="error()" role="alert" class="p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ error() }}</div>
+  </div>
+
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="emit('close')">Close</Button>
+      <Button :disabled="busy() || !name() || !subject() || !!minimumError()" :loading="busy()" @click="submit()">{{ scheduledAt() ? 'Schedule campaign' : 'Save as draft' }}</Button>
+    </div>
+  </template>
+</Modal>

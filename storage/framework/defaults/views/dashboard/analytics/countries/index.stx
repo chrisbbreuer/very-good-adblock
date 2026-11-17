@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Country Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="countries"
+    title="Country Analytics"
+    description="Geographic traffic recorded by the configured analytics provider."
+    emptyMessage="Request telemetry does not geolocate IP addresses. Configure an analytics provider with geographic aggregation to populate this view."
+  />
+</PageLayout>
+@endsection

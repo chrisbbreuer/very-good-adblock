@@ -1,0 +1,130 @@
+@import('../UI/Table')
+
+<script client>
+import type { PaymentRecord } from '../../../../app/Actions/Dashboard/Commerce/payment-records'
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+const records = useReactiveProp('records', [] as PaymentRecord[])
+const loading = useReactiveProp('loading', false)
+/** The parent's sort select; a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+// One page the server chose (stacksjs/stacks#3218): it searches, filters, sorts
+// and pages the payments, so this shows them as given and hands paging and
+// column sorting back to the parent.
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['view', 'page-change', 'page-size-change', 'sort'])
+
+/** `partiallyRefunded` and `bank_transfer` as words, each capitalized. */
+function label(value: string): string {
+  return value.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+/**
+ * The status pill's colour, which is a tone rather than the status itself so
+ * that every status the ledger has not named still reads as pending, as the
+ * hand-rolled pill did.
+ */
+function statusTone(status: string): string {
+  if (status === 'completed' || status === 'succeeded')
+    return 'settled'
+  if (status === 'failed')
+    return 'failed'
+  if (status === 'refunded' || status === 'partiallyRefunded')
+    return 'refunded'
+  return 'pending'
+}
+
+/**
+ * Only the amount is slotted, for its refund line, whose colour says whether
+ * the refund was recorded. The rest are values with a second line, which is
+ * `subtitleKey`.
+ */
+const COLUMNS = [
+  { key: 'paymentLabel', label: 'Payment', sortable: true, subtitleKey: 'referenceLabel', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'billingLabel', label: 'Billing', sortable: true, subtitleKey: 'orderLabel' },
+  { key: 'amount', label: 'Amount', sortable: true, slotted: true },
+  // Capitalized in `label()` rather than with a class, which would reach the
+  // processor line beneath it too.
+  { key: 'methodLabel', label: 'Method', sortable: true, subtitleKey: 'processorLabel' },
+  {
+    key: 'statusTone',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeLabelKey: 'statusLabel',
+    badgeClasses: {
+      settled: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40',
+      failed: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40',
+      refunded: 'text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40',
+      pending: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+    },
+  },
+  { key: 'createdAt', label: 'Created', type: 'datetime' as const, sortable: true, class: 'whitespace-nowrap' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'view', label: 'View payment' },
+]
+
+const rows = derived(() => records().map(record => ({
+  ...record,
+  paymentLabel: `#${record.id}`,
+  referenceLabel: record.referenceNumber || record.transactionId || 'No reference',
+  billingLabel: record.billingEmail || 'No billing email',
+  orderLabel: record.orderId ? `Order #${record.orderId}` : 'No linked order',
+  amountLabel: formatCurrency(record.amount, record.currency),
+  refundLabel: record.refundAmount > 0 ? `Refunded ${formatCurrency(record.refundAmount, record.currency)}` : '',
+  refundMissing: record.refundAmount <= 0 && record.status === 'refunded' && !record.refundRecorded,
+  methodLabel: label(record.method),
+  processorLabel: record.cardBrand || record.cardLastFour
+    ? [record.cardBrand, record.cardLastFour].filter(Boolean).join(' · ')
+    : record.paymentProvider || 'No processor details',
+  statusTone: statusTone(record.status),
+  statusLabel: label(record.status),
+})))
+
+function handleRowAction(payload: { action: string, row: PaymentRecord }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+<Table
+  :sort-reset-key="sortResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="id"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No payments found"
+  empty-description="Adjust the filters to inspect another part of the native ledger."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+>
+  <template #cell="{ row }">
+    <p class="font-medium text-gray-900 text-sm dark:text-white" x-text="row.amountLabel"></p>
+    <p :if="row.refundLabel" class="mt-1 text-violet-600 text-xs dark:text-violet-300" x-text="row.refundLabel"></p>
+    <p :if="row.refundMissing" class="mt-1 text-amber-600 text-xs dark:text-amber-300">Refund amount not recorded</p>
+  </template>
+</Table>

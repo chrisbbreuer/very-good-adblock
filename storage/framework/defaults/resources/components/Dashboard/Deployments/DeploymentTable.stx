@@ -1,0 +1,74 @@
+@import('../UI/Table')
+
+<script client>
+import type { DeploymentRecord } from '../../../../functions/deployments'
+
+const deployments = useReactiveProp('deployments', [])
+const loading = useReactiveProp('loading', false)
+
+function formatDuration(value: number | null): string {
+  if (value === null)
+    return '-'
+  if (value < 60)
+    return `${Math.round(value)}s`
+  const minutes = Math.floor(value / 60)
+  const seconds = Math.round(value % 60)
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+}
+
+function statusTone(status: string): string {
+  if (['success', 'successful', 'completed', 'ready'].includes(status))
+    return 'succeeded'
+  if (['failed', 'error', 'cancelled'].includes(status))
+    return 'failed'
+  if (['pending', 'queued', 'running', 'deploying'].includes(status))
+    return 'running'
+  return 'other'
+}
+
+const COLUMNS = [
+  { key: 'commitLabel', label: 'Commit', sortable: true, subtitleKey: 'commitDetail', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'environment', label: 'Environment', sortable: true, emptyText: 'Not recorded' },
+  {
+    key: 'statusTone',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeLabelKey: 'statusLabel',
+    badgeClasses: {
+      succeeded: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40',
+      failed: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40',
+      running: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+    },
+  },
+  { key: 'durationLabel', label: 'Duration', align: 'right' as const, searchable: false, class: 'font-mono' },
+  { key: 'createdAt', label: 'Created', type: 'datetime' as const, align: 'right' as const, sortable: true, emptyText: 'Not recorded', class: 'whitespace-nowrap' },
+]
+
+const rows = derived(() => (deployments() as DeploymentRecord[]).map(deployment => ({
+  ...deployment,
+  commitLabel: deployment.commitMessage || 'No commit message',
+  commitDetail: `${deployment.commitHash || 'No commit hash'} · ${deployment.branch || 'No branch'}`,
+  statusTone: statusTone(deployment.status),
+  statusLabel: deployment.status ? deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1) : 'Unknown',
+  durationLabel: formatDuration(deployment.duration),
+})))
+</script>
+
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  paginated
+  :page-size="25"
+  empty-title="No deployment records found"
+  empty-description="Records appear when a deployment integration writes to the Deployment model."
+>
+  <template #actions="{ row }">
+    <div class="text-right">
+      <StxLink :to="'/deployments/' + row.id" :aria-label="'View deployment ' + row.id" :title="'View deployment ' + row.id" class="inline-flex items-center justify-center h-7 w-7 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md">
+        <span aria-hidden="true" class="block h-4 w-4 text-neutral-500 dark:text-neutral-400 i-hugeicons-view"></span>
+      </StxLink>
+    </div>
+  </template>
+</Table>

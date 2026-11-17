@@ -1,0 +1,298 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface PageRecord {
+  id: string
+  title: string
+  template: string
+  views: number
+  conversions: number
+  publishedAt: string
+}
+
+interface PageDraft {
+  title: string
+  template: string
+  published: boolean
+}
+
+const formOpen = state(false)
+const editingPage = state<PageRecord | null>(null)
+const saving = state(false)
+const saveError = state('')
+const deletingPage = state<PageRecord | null>(null)
+const deleting = state(false)
+const deleteError = state('')
+
+// The cards count every page (stacksjs/stacks#3192).
+const allCount = state(0)
+const viewCount = state(0)
+const conversionCount = state(0)
+const newestTitle = state('')
+
+/** The server's name for each sortable column. */
+const SORT_KEYS: Record<string, string> = { title: 'title', publishState: 'published' }
+
+function normalize(record: any): PageRecord {
+  return {
+    id: String(record?.id || ''),
+    title: String(record?.title || ''),
+    template: String(record?.template || 'default'),
+    views: Number(record?.views || 0),
+    conversions: Number(record?.conversions || 0),
+    publishedAt: String(record?.published_at || ''),
+  }
+}
+
+const COLUMNS = [
+  { key: 'title', label: 'Page', sortable: true, subtitleKey: 'template', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'viewsLabel', label: 'Traffic', subtitleKey: 'conversionsLabel', class: 'text-gray-500 dark:text-neutral-400' },
+  {
+    key: 'publishState',
+    label: 'Publishing',
+    type: 'badge' as const,
+    sortable: true,
+    // Coloured by state, labelled with the date it happened - which is why
+    // `badgeLabels` cannot express it.
+    badgeLabelKey: 'publishedLabel',
+    badgeClasses: {
+      published: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40',
+      draft: 'text-gray-600 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-700',
+    },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit page' },
+  { action: 'delete', label: 'Delete page' },
+]
+
+/** The rows are the page the server chose; the cells each read a field, so derive them. */
+function visiblePages(): PageRecord[] {
+  return records().map(page => ({
+    ...page,
+    viewsLabel: `${formatNumber(page.views)} views`,
+    conversionsLabel: `${formatNumber(page.conversions)} conversions`,
+    publishState: page.publishedAt ? 'published' : 'draft',
+    publishedLabel: formatDate(page.publishedAt),
+  })) as PageRecord[]
+}
+
+function handleRowAction(payload: { action: string, row: PageRecord }): void {
+  if (payload.action === 'edit')
+    openEdit(payload.row)
+  else
+    openDelete(payload.row)
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-US').format(value)
+}
+
+function formatDate(value: string): string {
+  if (!value)
+    return 'Draft'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
+}
+
+interface PageListResponse {
+  pages?: unknown[]
+  total?: number
+  page?: number
+  allCount?: number
+  totalViews?: number
+  totalConversions?: number
+  newestTitle?: string
+}
+
+// The server pages, searches and sorts (stacksjs/stacks#3192); useServerList
+// keeps the request order, paging, header sort and search debounce this page
+// used to keep itself. Unsorted is newest first, which the server reads as
+// created_at descending.
+const {
+  records,
+  total,
+  page: listPage,
+  perPage,
+  search,
+  loading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<PageRecord>({
+  fetch: async (query) => {
+    const data = await dashboardApi<PageListResponse>(`/api/dashboard/pages?${query}`)
+    if (!Array.isArray(data.pages))
+      throw new TypeError('Pages were not returned in the expected shape.')
+    return { ...data, records: data.pages.map(normalize) }
+  },
+  defaultSort: { sort: 'created_at', direction: 'desc' },
+  columnSorts: SORT_KEYS,
+  searchParam: 'search',
+  onLoad: (result) => {
+    const data = result as PageListResponse
+    allCount.set(Number(data.allCount || 0))
+    viewCount.set(Number(data.totalViews || 0))
+    conversionCount.set(Number(data.totalConversions || 0))
+    newestTitle.set(String(data.newestTitle || ''))
+  },
+  onError: error => pushToast('error', 'Could not load pages', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function loadPages(): Promise<void> {
+  return load()
+}
+
+/** The table's own search box; useServerList waits for typing to pause. */
+function changeSearch(term: string): void {
+  search.set(String(term || ''))
+}
+
+function openCreate(): void {
+  editingPage.set(null)
+  saveError.set('')
+  formOpen.set(true)
+}
+
+function openEdit(page: PageRecord): void {
+  editingPage.set(page)
+  saveError.set('')
+  formOpen.set(true)
+}
+
+function closeForm(): void {
+  if (!saving())
+    formOpen.set(false)
+}
+
+async function savePage(draft: PageDraft): Promise<void> {
+  const page = editingPage()
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(page ? `/api/dashboard/pages/${page.id}` : '/api/dashboard/pages', {
+      method: page ? 'PATCH' : 'POST',
+      body: draft,
+    })
+    formOpen.set(false)
+    pushToast('success', page ? 'Page updated' : 'Page created')
+    await loadPages()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(page: PageRecord): void {
+  deletingPage.set(page)
+  deleteError.set('')
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingPage.set(null)
+}
+
+function deleteDescription(): string {
+  const page = deletingPage()
+  return page ? `${page.title} will be permanently removed.` : ''
+}
+
+async function deletePage(): Promise<void> {
+  const page = deletingPage()
+  if (!page)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/pages/${page.id}`, { method: 'DELETE' })
+    deletingPage.set(null)
+    pushToast('success', 'Page deleted')
+    await loadPages()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadPages()
+})
+</script>
+
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Content</p><h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">Pages</h1><p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Create your site's pages, choose their templates, and decide when they go live.</p></div>
+    <div class="flex gap-2"><Button :loading="loading()" variant="secondary" @click="loadPages()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button><Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>New page</Button></div>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadPages()">Retry</Button></div>
+
+  <section aria-label="Page metrics" class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Total</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ allCount() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Views</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(viewCount()) }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Conversions</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(conversionCount()) }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Newest</p><p class="mt-2 font-semibold text-gray-900 text-lg truncate dark:text-white">{{ newestTitle() || 'None' }}</p></article>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <Table
+      :columns="COLUMNS"
+      :data="visiblePages()"
+      :loading="loading()"
+      :row-actions="ROW_ACTIONS"
+      action-label-key="title"
+      searchable
+      manual-search
+      search-placeholder="Search pages"
+      paginated
+      manual-pagination
+      manual-sort
+      :total="total()"
+      :current-page="listPage()"
+      :page-size="perPage()"
+      empty-title="No pages found"
+      empty-description="Adjust the search or create a page."
+      @row-action="handleRowAction"
+      @page-change="changePage"
+      @page-size-change="changePageSize"
+      @search="changeSearch"
+      @sort="changeSort"
+    />
+  </section>
+</div>
+
+<PageEditorDialog
+  :open="formOpen()"
+  :page="editingPage()"
+  :busy="saving()"
+  :error="saveError()"
+  @close="closeForm"
+  @submit="savePage"
+/>
+
+<ConfirmDialog
+  :isOpen="Boolean(deletingPage())"
+  title="Delete page?"
+  :description="deleteDescription()"
+  confirmLabel="Delete page"
+  :busy="deleting()"
+  :error="deleteError()"
+  @close="closeDelete"
+  @confirm="deletePage"
+/>

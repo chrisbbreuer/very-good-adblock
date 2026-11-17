@@ -1,0 +1,176 @@
+@import('../UI/Table')
+
+<script client>
+import type { QueueAggregateStats, QueueBucket, QueueWorker } from '../../../../functions/queue'
+import { fetchQueueStats, fetchQueueWorkers, retryQueueFailures } from '../../../../functions/queue'
+import { pushToast } from '../../../../functions/toasts'
+
+const queues = state<QueueBucket[]>([])
+const workers = state<QueueWorker[]>([])
+const stats = state<QueueAggregateStats | null>(null)
+const queueConnected = state(false)
+const workerRunning = state(false)
+const activeWorkerJobs = state(0)
+const workersMigrated = state(true)
+const isLoading = state(true)
+const isRetrying = state(false)
+const loadError = state('')
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat().format(value)
+}
+
+function processingTime(value: number): string {
+  return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`
+}
+
+function queueRows(): QueueBucket[] {
+  return queues()
+}
+
+function workerRows(): QueueWorker[] {
+  return workers()
+}
+
+const count = (key: string, label: string) => ({ key, label, type: 'number' as const, align: 'right' as const, sortable: true, searchable: false, class: 'text-gray-500 dark:text-neutral-300' })
+
+const QUEUE_COLUMNS = [
+  { key: 'name', label: 'Queue', sortable: true, subtitleKey: 'status', class: 'font-medium text-gray-900 dark:text-white' },
+  count('pending', 'Pending'),
+  count('active', 'Active'),
+  count('failed', 'Failed'),
+  { ...count('total', 'Total'), class: 'font-medium text-gray-900 dark:text-white' },
+]
+
+const WORKER_COLUMNS = [
+  { key: 'name', label: 'Worker', sortable: true, class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'queuesLabel', label: 'Queues', sortable: true, class: 'text-gray-500 dark:text-neutral-300' },
+  { key: 'status', label: 'Status', sortable: true, class: 'text-gray-500 dark:text-neutral-300' },
+  count('jobs_processed', 'Processed'),
+  count('failed_jobs', 'Failed'),
+  { key: 'last_heartbeat', label: 'Last heartbeat', type: 'datetime' as const, align: 'right' as const, sortable: true, emptyText: 'Not recorded', class: 'text-gray-500 dark:text-neutral-300' },
+]
+
+const workerTableRows = derived(() => workerRows().map(worker => ({ ...worker, queuesLabel: worker.queues.join(', ') })))
+
+async function loadQueue(): Promise<void> {
+  isLoading.set(true)
+  loadError.set('')
+  try {
+    const [summary, workerData] = await Promise.all([fetchQueueStats(), fetchQueueWorkers()])
+    queues.set(summary.queues)
+    stats.set(summary.stats)
+    queueConnected.set(summary.queueConnected)
+    workers.set(workerData.data)
+    workerRunning.set(workerData.worker_running)
+    activeWorkerJobs.set(workerData.active_jobs)
+    workersMigrated.set(workerData.workers_migrated !== false)
+  }
+  catch (error) {
+    loadError.set('Queue data could not be loaded.')
+    pushToast('error', 'Could not load queue', { detail: String(error) })
+  }
+  finally {
+    isLoading.set(false)
+  }
+}
+
+async function retryFailed(): Promise<void> {
+  isRetrying.set(true)
+  try {
+    const result = await retryQueueFailures()
+    if (!result.success)
+      throw new Error(result.message)
+    pushToast('success', result.message)
+    await loadQueue()
+  }
+  catch (error) {
+    pushToast('error', 'Could not retry failed jobs', { detail: String(error) })
+  }
+  finally {
+    isRetrying.set(false)
+  }
+}
+
+onMount(() => {
+  void loadQueue()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Queue" description="Recorded queue state and shared worker heartbeats.">
+  <div class="flex gap-2 items-center">
+    <span :class="'inline-flex items-center px-2.5 py-1 font-medium text-xs rounded-full ' + (queueConnected() ? 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-950' : 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-950')">
+      <span :class="'mr-1.5 h-1.5 w-1.5 rounded-full ' + (queueConnected() ? 'bg-green-500' : 'bg-red-500')"></span>
+      {{ queueConnected() ? 'Queue connected' : 'Queue unavailable' }}
+    </span>
+    <Button variant="secondary" :loading="isLoading()" @click="loadQueue">
+      <span :if="!isLoading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <section class="grid gap-3 grid-cols-2 lg:grid-cols-4">
+    <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">Recorded jobs</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(stats()?.totalJobs || 0) }}</p>
+    </div>
+    <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">Active jobs</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(stats()?.activeJobs || 0) }}</p>
+    </div>
+    <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">Failed jobs</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(stats()?.failedJobs || 0) }}</p>
+    </div>
+    <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">Average processing</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ processingTime(stats()?.averageProcessingTimeMs || 0) }}</p>
+    </div>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
+      <div>
+        <h2 class="font-semibold text-gray-900 dark:text-white">Queue breakdown</h2>
+        <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Declared queues and recorded jobs, with totals grouped by queue name.</p>
+      </div>
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ stats()?.throughputPerMinute || 0 }} jobs/min across reporting workers</p>
+    </div>
+    <div :if="!isLoading() && queueRows().length === 0" class="px-5 py-12 text-center">
+      <div class="mb-3 mx-auto h-9 w-9 text-gray-400 i-hugeicons-queue-02"></div>
+      <p class="font-semibold text-gray-900 dark:text-white">No queues have recorded jobs</p>
+      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Dispatch a job to populate queue metrics.</p>
+    </div>
+    <div :if="queueRows().length > 0">
+      <Table :columns="QUEUE_COLUMNS" :data="queueRows()" row-key="name" paginated :page-size="25" />
+    </div>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
+      <div>
+        <h2 class="font-semibold text-gray-900 dark:text-white">Workers</h2>
+        <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ workerRunning() ? 'A worker is running' : 'No worker is currently running' }} · {{ activeWorkerJobs() }} active jobs</p>
+      </div>
+      <Button :disabled="(stats()?.failedJobs || 0) === 0" :loading="isRetrying()" @click="retryFailed">
+        <span :if="!isRetrying()" class="h-4 w-4 i-hugeicons-refresh"></span>
+        Retry failed jobs
+      </Button>
+    </div>
+    <div :if="!isLoading() && !workersMigrated()" role="status" class="px-5 py-12 text-center">
+      <p class="font-semibold text-gray-900 dark:text-white">Worker telemetry is not set up yet</p>
+      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Workers report here through the <code>queue_workers</code> table. Run <code>./buddy migrate</code> to create it.</p>
+    </div>
+    <div :if="!isLoading() && workersMigrated() && workerRows().length === 0" class="px-5 py-12 text-center">
+      <p class="font-semibold text-gray-900 dark:text-white">No workers tracked in this process</p>
+      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Start a queue worker to populate heartbeat and processing metrics.</p>
+    </div>
+    <div :if="workerRows().length > 0">
+      <Table :columns="WORKER_COLUMNS" :data="workerTableRows()" row-key="name" paginated :page-size="25" />
+    </div>
+  </section>
+</div>

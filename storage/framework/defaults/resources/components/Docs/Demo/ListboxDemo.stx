@@ -1,0 +1,67 @@
+<script>
+interface Person {
+  id: number
+  name: string
+  unavailable: boolean
+}
+
+interface ListboxDemoProps {
+  people?: Person[]
+  selectedPerson?: Person
+  isOpen?: boolean
+}
+
+// `selectedPerson` defaults off `people`, which is legal here because
+// destructuring binds left to right — `people` is in scope by the time the
+// default for `selectedPerson` is evaluated.
+const { people = [
+  { id: 1, name: 'Chris Breuer', unavailable: false },
+  { id: 2, name: 'Avery Hill', unavailable: false },
+  { id: 3, name: 'Glenn Michael', unavailable: false },
+  { id: 4, name: 'Michael Vincent', unavailable: true },
+  { id: 5, name: 'Blake Ayer', unavailable: false },
+], selectedPerson = people[0], isOpen = false } = defineProps<ListboxDemoProps>()
+</script>
+<div class="max-w-4xl">
+  <DocsPlayground>
+    <div class="items-center mx-auto my-12 space-y-4 h-[150px] w-[300px] w-3/5">
+      <div class="relative mt-1">
+        <button
+          class="relative pl-3 pr-10 py-2 w-full text-left sm:text-sm bg-white rounded-lg focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 focus-visible:ring-white/75 focus:outline-none shadow-md cursor-default"
+          data-action="toggle-listbox"
+        >
+          <span class="block truncate">{{ selectedPerson.name }}</span>
+          <span class="flex absolute inset-y-0 right-0 items-center pr-2 pointer-events-none">
+            <div class="i-hugeicons-chevron-up-down-20-solid"></div>
+          </span>
+        </button>
+
+        @if(isOpen)
+          <div class="absolute overflow-auto mt-1 py-1 max-h-60 w-full text-base sm:text-sm bg-white outline-none ring-1 ring-black/5 rounded-md focus:outline-none shadow-lg">
+            @foreach(people as person)
+              <div
+                class="list-none relative cursor-default select-none py-2 pl-10 pr-4 hover:bg-amber-100 hover:text-amber-900 {{ selectedPerson.id == person.id ? 'bg-amber-100 text-amber-900' : 'text-gray-900' }}"
+                data-action="select-person"
+                data-person-id="{{ person.id }}"
+                data-person-name="{{ person.name }}"
+              >
+                <span class="block truncate {{ selectedPerson.id == person.id ? 'font-medium' : 'font-normal' }}">
+                  {{ person.name }}
+                </span>
+                @if(selectedPerson.id == person.id)
+                  <span class="flex absolute inset-y-0 left-0 items-center pl-3 text-amber-600">
+                    <div class="i-hugeicons-check-20-solid"></div>
+                  </span>
+                @endif
+              </div>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    </div>
+
+    <div slot="code">
+      <!-- ListboxCode component would be rendered here -->
+    </div>
+  </DocsPlayground>
+</div>

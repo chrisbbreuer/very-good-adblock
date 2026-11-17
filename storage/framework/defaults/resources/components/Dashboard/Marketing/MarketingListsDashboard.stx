@@ -1,0 +1,228 @@
+<script client>
+import type {
+  MarketingListRecord,
+  MarketingListSummary,
+} from '../../../../app/Actions/Dashboard/Marketing/marketing-list-records'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface MarketingListIndexResponse {
+  records: MarketingListRecord[]
+  summary: MarketingListSummary
+}
+
+interface MarketingListPayload {
+  name: string
+  slug: string
+  description: string
+  status: string
+  isPublic: boolean
+  doubleOptIn: boolean
+}
+
+const emptySummary: MarketingListSummary = {
+  total: 0,
+  active: 0,
+  subscribers: 0,
+  newThisWeek: 0,
+  campaigns: 0,
+  counterDriftLists: 0,
+}
+const records = state<MarketingListRecord[]>([])
+const summary = state<MarketingListSummary>({ ...emptySummary })
+const loading = state(true)
+const loadError = state('')
+const search = state('')
+const statusFilter = state('all')
+const visibilityFilter = state('all')
+const sort = state('name')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<MarketingListRecord | null>(null)
+const deletingRecord = state<MarketingListRecord | null>(null)
+const saving = state(false)
+const saveError = state('')
+const deleting = state(false)
+const deleteError = state('')
+
+function filteredRecords(): MarketingListRecord[] {
+  const query = search().trim().toLowerCase()
+  return [...records()]
+    .filter((record) => {
+      if (statusFilter() !== 'all' && record.status !== statusFilter())
+        return false
+      if (visibilityFilter() === 'public' && !record.isPublic)
+        return false
+      if (visibilityFilter() === 'private' && record.isPublic)
+        return false
+      return !query || [record.name, record.slug, record.description, record.status]
+        .some(value => value.toLowerCase().includes(query))
+    })
+    .sort((left, right) => {
+      if (sort() === 'members')
+        return right.subscriberCount - left.subscriberCount || left.name.localeCompare(right.name)
+      if (sort() === 'campaigns')
+        return right.campaignCount - left.campaignCount || left.name.localeCompare(right.name)
+      if (sort() === 'newest')
+        return Number(right.id) - Number(left.id)
+      return left.name.localeCompare(right.name)
+    })
+}
+
+/**
+ * What the table is showing: a change returns it to the first page, as this
+ * page's own pager did before the table took over paging.
+ */
+function viewKey(): string {
+  return JSON.stringify([search(), statusFilter(), visibilityFilter(), sort()])
+}
+
+async function loadLists(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<MarketingListIndexResponse>('/api/dashboard/marketing/lists')
+    if (!data || !Array.isArray(data.records) || !data.summary)
+      throw new TypeError('Email list resources were not returned in the expected shape.')
+    records.set(data.records)
+    summary.set(data.summary)
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not load email lists', { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function openEdit(record: MarketingListRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  saveError.set('')
+}
+
+async function saveList(payload: MarketingListPayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(
+      editing ? `/api/dashboard/marketing/lists/${current.id}` : '/api/dashboard/marketing/lists',
+      {
+        method: editing ? 'PATCH' : 'POST',
+        // Yes or no go as they are: the columns are booleans.
+        body: {
+          ...payload,
+          isPublic: Boolean(payload.isPublic),
+          doubleOptIn: Boolean(payload.doubleOptIn),
+        },
+      },
+    )
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Email list updated' : 'Email list added')
+    await loadLists()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: MarketingListRecord): void {
+  deletingRecord.set(record)
+  deleteError.set('')
+}
+
+function closeDelete(): void {
+  if (deleting())
+    return
+  deletingRecord.set(null)
+  deleteError.set('')
+}
+
+async function deleteList(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/marketing/lists/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Email list deleted')
+    await loadLists()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadLists()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Email lists" description="Manage EmailList records, signup policy, and real membership totals.">
+  <div class="flex gap-2">
+    <Button :loading="loading()" variant="secondary" @click="loadLists()">
+      <span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button @click="openAdd()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add list</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+    <span>{{ loadError() }}</span>
+    <Button variant="secondary" size="sm" @click="loadLists()">Retry</Button>
+  </div>
+  <div :if="summary().counterDriftLists > 0" class="flex gap-3 items-start p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+    <span class="shrink-0 mt-0.5 h-5 w-5 i-hugeicons-alert-02"></span>
+    <p>{{ summary().counterDriftLists }} {{ summary().counterDriftLists === 1 ? 'list has' : 'lists have' }} stored counters that differ from membership rows. Dashboard totals use the membership records.</p>
+  </div>
+
+  <section aria-label="Email list metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-4">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Email lists</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().total }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">{{ summary().active }} active</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Memberships</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().subscribers.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Subscribed and pending</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">New this week</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().newThisWeek.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Subscribed membership rows</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Campaigns</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().campaigns.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Linked campaign records</p></article>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="xl:col-span-1"><SearchFilter v-model:searchValue="search" placeholder="Search email lists" ariaLabel="Search email lists" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Filter status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'archived', label: 'Archived' }]" />
+      <Select v-model:value="visibilityFilter" ariaLabel="Filter visibility" placeholder="" :options="[{ value: 'all', label: 'All signup modes' }, { value: 'public', label: 'Public' }, { value: 'private', label: 'Private' }]" />
+      <Select v-model:value="sort" ariaLabel="Sort email lists" placeholder="" :options="[{ value: 'name', label: 'Name' }, { value: 'members', label: 'Most members' }, { value: 'campaigns', label: 'Most campaigns' }, { value: 'newest', label: 'Newest' }]" />
+    </div>
+    <MarketingListsTable :sort-reset-key="sort()" :page-reset-key="viewKey()" :records="filteredRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
+  </section>
+</div>
+
+<MarketingListDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :busy="saving()" :error="saveError()" @submit="saveList" @close="closeDialog()" />
+<MarketingListDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" :error="deleteError()" @confirm="deleteList()" @close="closeDelete()" />

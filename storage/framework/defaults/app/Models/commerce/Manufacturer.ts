@@ -1,0 +1,100 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Manufacturer',
+  table: 'manufacturers',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'manufacturer', 'description', 'country', 'featured'],
+      searchable: ['manufacturer', 'description', 'country'],
+      sortable: ['manufacturer', 'country', 'createdAt', 'updatedAt'],
+      filterable: ['country', 'featured'],
+    },
+
+    useSeeder: {
+      count: 30,
+    },
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'product-manufacturers',
+    },
+
+    observe: true,
+  },
+
+  hasMany: ['Product'],
+
+  attributes: {
+    manufacturer: {
+      unique: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Manufacturer name must have a maximum of 100 characters',
+        },
+      },
+      factory: faker => `${faker.company.name()} ${faker.string.alphanumeric(6)}`,
+    },
+
+    description: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(2000),
+        message: {
+          max: 'Description must have a maximum of 2000 characters',
+        },
+      },
+      factory: faker => `${faker.company.catchPhrase()}. ${faker.company.buzzPhrase()}`,
+    },
+
+    country: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Country must have a maximum of 100 characters',
+        },
+      },
+      factory: faker => faker.location.country(),
+    },
+
+    featured: {
+      default: false,
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.boolean(),
+      },
+      factory: faker => faker.datatype.boolean({ probability: 0.2 }),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
+    },
+  },
+} as const)

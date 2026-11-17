@@ -1,0 +1,106 @@
+@import('../UI/Table')
+
+<script client>
+import type { CommerceCustomerRecord } from '../../../../app/Actions/Dashboard/Commerce/commerce-customer-records'
+
+const records = useReactiveProp('records', [] as CommerceCustomerRecord[])
+const loading = useReactiveProp('loading', false)
+/** The parent's sort select: a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+const currency = useReactiveProp('currency', 'USD')
+/**
+ * The server pages and sorts what the parent's search and filter match
+ * (stacksjs/stacks#3218): how many customers match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['view', 'edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+/** Only the customer cell is slotted, for its initial. */
+const COLUMNS = [
+  { key: 'nameLabel', label: 'Customer', sortable: true, slotted: true },
+  { key: 'emailLabel', label: 'Contact', sortable: true, subtitleKey: 'phoneLabel', class: 'text-gray-700 dark:text-neutral-200' },
+  // Money is integer minor units; the row carries the store currency so the
+  // column formats it through formatCurrency, not as a bare number.
+  { key: 'totalSpent', label: 'Recorded spend', type: 'currency' as const, currencyKey: 'currency', sortable: true, class: 'font-medium' },
+  { key: 'lastOrder', label: 'Last order', type: 'date' as const, sortable: true, emptyText: 'No order recorded', class: 'whitespace-nowrap' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      Active: 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300',
+      Inactive: 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300',
+    },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'view', label: 'View' },
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => records().map(record => ({
+  ...record,
+  currency: currency(),
+  nameLabel: record.name || 'Unnamed customer',
+  initial: (record.name || '?').slice(0, 1).toUpperCase(),
+  idLabel: `ID ${record.id || 'not recorded'}`,
+  emailLabel: record.email || 'No email recorded',
+  phoneLabel: record.phone || 'No phone recorded',
+})))
+
+function handleRowAction(payload: { action: string, row: CommerceCustomerRecord }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box
+  and the filter selects. The server pages and sorts what they match.
+--}}
+<Table
+  :sort-reset-key="sortResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="nameLabel"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No customers found"
+  empty-description="Adjust the filters or add a native Customer record."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+>
+  <template #cell="{ row }">
+    <div class="flex gap-3 items-center">
+      <span class="flex items-center justify-center shrink-0 h-9 w-9 font-semibold text-blue-700 text-sm dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 rounded-md" x-text="row.initial"></span>
+      <div class="min-w-0">
+        <p class="font-medium text-gray-900 text-sm dark:text-white" x-text="row.nameLabel"></p>
+        <p class="mt-1 font-mono text-gray-500 text-xs dark:text-neutral-500" x-text="row.idLabel"></p>
+      </div>
+    </div>
+  </template>
+</Table>

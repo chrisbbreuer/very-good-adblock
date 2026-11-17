@@ -1,0 +1,234 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+
+interface RequestRow {
+  id: number
+  method: string
+  path: string
+  status: number
+  durationMs: number
+  ipAddress: string
+  memoryUsageMb: number
+  userAgent: string
+  errorMessage: string
+  createdAt: string
+}
+
+interface RequestStats {
+  total: number
+  errorCount: number
+  averageDurationMs: number
+  successRate: number
+  requestsLastHour: number
+  requestsPerMinute: number
+}
+
+interface RequestsResponse {
+  requests: RequestRow[]
+  stats: RequestStats
+}
+
+const requests = state<RequestRow[]>([])
+const stats = state<RequestStats>({
+  total: 0,
+  errorCount: 0,
+  averageDurationMs: 0,
+  successRate: 0,
+  requestsLastHour: 0,
+  requestsPerMinute: 0,
+})
+const search = state('')
+const methodFilter = state('all')
+const statusFilter = state('all')
+const selectedRequest = state<RequestRow | null>(null)
+const loading = state(true)
+const loadError = state('')
+
+const methods = derived(() => [...new Set(requests().map(request => request.method))].sort())
+const filteredRequests = derived(() => {
+  const query = search().trim().toLowerCase()
+  return requests().filter((request) => {
+    if (methodFilter() !== 'all' && request.method !== methodFilter())
+      return false
+    if (statusFilter() === 'success' && request.status >= 400)
+      return false
+    if (statusFilter() === 'error' && request.status < 400)
+      return false
+    if (!query)
+      return true
+    return [
+      request.method,
+      request.path,
+      request.status,
+      request.ipAddress,
+      request.userAgent,
+      request.errorMessage,
+    ].join(' ').toLowerCase().includes(query)
+  })
+})
+
+/**
+ * Pill colours by tone rather than by value, so every status code and every
+ * method the table has not named still lands on a colour, as the hand-rolled
+ * pills did.
+ */
+function statusTone(status: number): string {
+  if (status >= 500)
+    return 'server'
+  if (status >= 400)
+    return 'client'
+  if (status >= 300)
+    return 'redirect'
+  return 'ok'
+}
+
+function methodTone(method: string): string {
+  if (method === 'GET')
+    return 'read'
+  if (method === 'DELETE')
+    return 'delete'
+  return 'write'
+}
+
+const COLUMNS = [
+  {
+    key: 'methodTone',
+    label: 'Method',
+    type: 'badge' as const,
+    sortable: true,
+    badgeLabelKey: 'method',
+    badgeClasses: {
+      read: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
+      delete: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40',
+      write: 'text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40',
+    },
+  },
+  { key: 'path', label: 'Path', sortable: true, class: 'max-w-md font-mono text-neutral-800 text-xs truncate dark:text-neutral-200' },
+  {
+    key: 'statusTone',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeLabelKey: 'status',
+    badgeClasses: {
+      server: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40',
+      client: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+      redirect: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
+      ok: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40',
+    },
+  },
+  { key: 'durationMs', label: 'Duration (ms)', type: 'number' as const, sortable: true, align: 'right' as const, class: 'font-mono whitespace-nowrap' },
+  { key: 'ipAddress', label: 'Client', sortable: true, emptyText: 'Not recorded' },
+  { key: 'createdAt', label: 'Recorded', type: 'datetime' as const, sortable: true, align: 'right' as const, emptyText: 'Unknown', class: 'whitespace-nowrap' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'inspect', label: 'Inspect request', icon: 'i-hugeicons-view' },
+]
+
+const requestRows = derived(() => filteredRequests().map(request => ({
+  ...request,
+  methodTone: methodTone(request.method),
+  statusTone: statusTone(request.status),
+  durationMs: Math.round(request.durationMs * 10) / 10,
+})))
+
+function handleRowAction(payload: { action: string, row: RequestRow }): void {
+  if (payload.action === 'inspect')
+    inspectRequest(payload.row)
+}
+
+function inspectRequest(request: RequestRow): void {
+  selectedRequest.set(request)
+}
+
+function closeInspector(): void {
+  selectedRequest.set(null)
+}
+
+async function loadRequests(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const response = await dashboardApi<RequestsResponse>('/api/dashboard/requests')
+    requests.set(response.requests || [])
+    stats.set(response.stats)
+  }
+  catch (error) {
+    requests.set([])
+    loadError.set(error instanceof Error ? error.message : 'Request records could not be loaded.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+onMount(() => {
+  void loadRequests()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="font-bold text-2xl text-neutral-900 tracking-tight dark:text-white">Requests</h1>
+      <p class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">Inspect HTTP activity persisted by the Request model.</p>
+    </div>
+    <Button variant="secondary" :loading="loading()" @click="loadRequests">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-lg dark:border-red-900">
+    <span>{{ loadError() }}</span>
+    <Button variant="secondary" size="sm" @click="loadRequests">Try again</Button>
+  </div>
+
+  <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+    <StatsCard title="Recorded Requests" icon="i-hugeicons-global" iconBg="primary">
+      <template #value>{{ stats().total }}</template>
+    </StatsCard>
+    <StatsCard title="Success Rate" icon="i-hugeicons-checkmark-circle-02" iconBg="success">
+      <template #value>{{ stats().successRate.toFixed(1) }}%</template>
+    </StatsCard>
+    <StatsCard title="Average Duration" icon="i-hugeicons-clock-01" iconBg="info">
+      <template #value>{{ stats().averageDurationMs.toFixed(1) }} ms</template>
+    </StatsCard>
+    <StatsCard title="Requests Last Hour" icon="i-hugeicons-activity-03" iconBg="warning">
+      <template #value>{{ stats().requestsLastHour }}</template>
+    </StatsCard>
+  </div>
+
+  <Card padding="none">
+    <div class="flex flex-col gap-4 p-5 border-b border-neutral-200 dark:border-neutral-700">
+      <div>
+        <h2 class="font-semibold text-neutral-900 dark:text-white">Recent request records</h2>
+        <p class="mt-1 text-neutral-500 text-xs dark:text-neutral-400">Showing up to 100 persisted records. Last-hour rate: {{ stats().requestsPerMinute.toFixed(2) }} per minute.</p>
+      </div>
+      <div class="grid gap-3 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <SearchFilter v-model:searchValue="search" placeholder="Search path, client, status, or error" ariaLabel="Search requests" />
+        <Select v-model:value="methodFilter" ariaLabel="Method" placeholder="" :options="[{ value: 'all', label: 'All methods' }, ...methods().map(method => ({ value: method, label: method }))]" />
+        <Select v-model:value="statusFilter" ariaLabel="Status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'success', label: 'Below 400' }, { value: 'error', label: '400 and above' }]" />
+      </div>
+    </div>
+
+    <Table
+      :framed="false"
+      :columns="COLUMNS"
+      :data="requestRows()"
+      :loading="loading()"
+      :row-actions="ROW_ACTIONS"
+      action-label-key="path"
+      paginated
+      :page-size="25"
+      :empty-title="search() || methodFilter() !== 'all' || statusFilter() !== 'all' ? 'No matching requests' : 'No requests recorded'"
+      empty-description="Request records appear after the application writes to the Request model."
+      @row-action="handleRowAction"
+    />
+  </Card>
+
+  <RequestDetailsDialog :request="selectedRequest()" @close="closeInspector" />
+</div>

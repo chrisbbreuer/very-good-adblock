@@ -1,0 +1,114 @@
+@import('../../UI/Table')
+
+<script client>
+type LicenseKeyStatus = 'active' | 'inactive' | 'unassigned'
+
+interface RelatedSummary {
+  id: number
+  label: string
+  detail?: string
+}
+
+interface LicenseKeyRow {
+  id: number
+  key: string
+  template: string
+  customer_id?: number | null
+  product_id?: number | null
+  order_id?: number | null
+  expiry_date: string
+  created_at: string
+  status: LicenseKeyStatus
+  customer?: RelatedSummary | null
+  product?: RelatedSummary | null
+  order?: RelatedSummary | null
+}
+
+const licenseKeys = useReactiveProp('license-keys', [] as LicenseKeyRow[])
+const loading = useReactiveProp('loading', false)
+/**
+ * The server pages and sorts what the parent's search matches
+ * (stacksjs/stacks#3218): how many keys match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+const COLUMNS = [
+  { key: 'key', label: 'Key', sortable: true, class: 'font-medium font-mono text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'template', label: 'Template', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'customerLabel', label: 'Customer', sortable: true, subtitleKey: 'customerDetail', class: 'whitespace-nowrap' },
+  { key: 'productLabel', label: 'Product', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'orderLabel', label: 'Order', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'created_at', label: 'Created', type: 'date' as const, sortable: true, emptyText: 'Not set', class: 'whitespace-nowrap' },
+  { key: 'expiry_date', label: 'Expires', type: 'date' as const, sortable: true, emptyText: 'Not set', class: 'whitespace-nowrap' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      inactive: 'bg-stone-100 text-stone-600 dark:bg-neutral-700 dark:text-neutral-300',
+      unassigned: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    },
+    badgeLabels: { active: 'Active', inactive: 'Inactive', unassigned: 'Unassigned' },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => licenseKeys().map(licenseKey => ({
+  ...licenseKey,
+  customerLabel: licenseKey.customer?.label || 'Unassigned',
+  customerDetail: licenseKey.customer?.detail || '',
+  productLabel: licenseKey.product?.label || 'Unassigned',
+  orderLabel: licenseKey.order?.label || 'Unassigned',
+  actionName: `license key ${licenseKey.key}, record ${licenseKey.id}`,
+})))
+
+function handleRowAction(payload: { action: string, row: LicenseKeyRow }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box,
+  and the server pages and sorts what it matches. The table stays mounted
+  while a page loads.
+--}}
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No license keys found"
+  empty-description="Add a license key, or adjust the search."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+/>

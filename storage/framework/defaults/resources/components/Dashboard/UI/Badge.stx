@@ -1,0 +1,43 @@
+<script server>
+import { badgeClasses, badgeDotClasses } from '../../../../functions/dashboard-badge'
+
+interface BadgeProps {
+  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  rounded?: 'default' | 'full'
+  outline?: boolean
+  dot?: boolean
+}
+
+const { variant = 'default', size = 'sm', rounded = 'full', outline = false, dot = false } = defineProps<BadgeProps>()
+// `text` was removed as a prop because `text` is auto-imported as a
+// global from @stacksjs/validation (the schema text() validator). Even
+// when no caller passes `text`, the global shadows the prop default and
+// `{{ text }}` rendered the validator function source into every Badge.
+// Use the slot for the badge label instead.
+
+// The first paint. The client script keeps both in step afterwards.
+const badgeClass = badgeClasses(variant, size, rounded, outline)
+const dotClass = badgeDotClasses(variant)
+</script>
+<script client>
+import { badgeClassToggles, badgeDotClassToggles, badgeShowsDot } from '../../../../functions/dashboard-badge'
+
+// Read live as well: callers bind `:variant` to data that arrives after
+// hydration, and the value the server render saw never changed
+// (stacksjs/stacks#3179).
+const liveVariant = useReactiveProp('variant', 'default')
+const liveSize = useReactiveProp('size', 'sm')
+const liveRounded = useReactiveProp('rounded', 'full')
+const liveOutline = useReactiveProp('outline', false)
+const liveDot = useReactiveProp('dot', false)
+const liveBadgeClass = derived(() => badgeClassToggles(liveVariant(), liveSize(), liveRounded(), liveOutline()))
+const liveDotClass = derived(() => badgeDotClassToggles(liveVariant()))
+const showDot = derived(() => badgeShowsDot(liveDot()))
+</script>
+<span class="{{ badgeClass }}" :class="liveBadgeClass()">
+    @if(dot)
+      <span class="{{ dotClass }}" :class="liveDotClass()" :if="showDot()"></span>
+    @endif
+    <slot />
+  </span>

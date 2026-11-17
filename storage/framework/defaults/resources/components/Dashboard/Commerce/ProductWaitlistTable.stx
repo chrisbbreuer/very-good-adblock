@@ -1,0 +1,87 @@
+@import('../UI/Table')
+
+<script client>
+import type { ProductWaitlistRecord } from '../../../../app/Actions/Dashboard/Commerce/product-waitlist-records'
+
+const records = useReactiveProp('records', [] as ProductWaitlistRecord[])
+const loading = useReactiveProp('loading', false)
+/**
+ * The server pages and sorts what the parent's search and filter match
+ * (stacksjs/stacks#3218): how many entries match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+const STATUS_CLASSES = {
+  purchased: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30',
+  notified: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/30',
+  waiting: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30',
+}
+
+const COLUMNS = [
+  { key: 'name', label: 'Customer', sortable: true, emptyText: 'Unnamed', subtitleKey: 'contact', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'productName', label: 'Product', sortable: true },
+  { key: 'quantity', label: 'Quantity', type: 'number' as const, sortable: true, align: 'right' as const, class: 'font-mono' },
+  { key: 'status', label: 'Status', type: 'badge' as const, sortable: true, badgeClasses: STATUS_CLASSES, emptyText: 'unknown' },
+  { key: 'notificationPreference', label: 'Preference', sortable: true, emptyText: 'Not recorded', class: 'capitalize' },
+  { key: 'createdAt', label: 'Created', type: 'date' as const, sortable: true, emptyText: 'Not recorded', class: 'whitespace-nowrap' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit waitlist entry for' },
+  { action: 'delete', label: 'Delete waitlist entry for' },
+]
+
+/**
+ * `contact` is computed per row because a column reads a field: the contact
+ * line falls back through email then phone. The product's name comes with
+ * the entry.
+ */
+const rows = derived(() => records().map(entry => ({
+  ...entry,
+  contact: entry.email || entry.phone || 'No contact recorded',
+  productName: entry.productName || (entry.productId ? `Product ${entry.productId}` : 'Not linked'),
+})))
+
+function handleRowAction(payload: { action: string, row: ProductWaitlistRecord }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box and
+  the filter select, and the server pages and sorts what they match.
+--}}
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="name"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No product waitlist records found"
+  empty-description="Add an entry or adjust the current filters."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+/>

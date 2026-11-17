@@ -1,0 +1,197 @@
+import type { Attributes } from '@stacksjs/types'
+import { defineModel, selfOwnership } from '@stacksjs/orm'
+import { makeHashSync } from '@stacksjs/security'
+// soon, these will be auto-imported
+import { schema } from '@stacksjs/validation/runtime'
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../password-policy'
+
+export default defineModel({
+  name: 'User', // defaults to the sanitized file name
+  table: 'users', // defaults to the lowercase, plural name of the model name (or the name of the model file)
+  primaryKey: 'id', // defaults to `id`
+  autoIncrement: true, // defaults to true
+
+  // Define composite indexes
+  indexes: [
+    {
+      name: 'users_email_name_index',
+      columns: ['email', 'name'],
+    },
+  ],
+
+  // A caller may write their own row and no other (stacksjs/stacks#2375). The
+  // owner column IS the primary key here, so without this `User` is the worst
+  // case the issue describes: an authenticated caller able to PATCH any user.
+  ownership: selfOwnership(),
+
+  traits: {
+    gdpr: { erasure: 'anonymize', basis: 'contract', purpose: 'User account and sign-in' },
+    useAuth: {
+      usePasskey: true,
+    },
+    // Not every app bills through the User model — leave `billable`
+    // off by default here. An app that wants checkout()/
+    // createStripeUser()/activeSubscription() etc. (createBillableMethods
+    // in orm/define-model.ts) should `buddy publish:model User` and
+    // enable the trait on its own app/Models/User.ts override, alongside
+    // the matching users.stripe_id guarantee-ALTER already provided by
+    // ensureUsersAuthColumns() regardless of this flag.
+    billable: false,
+    useUuid: true,
+    useTimestamps: true, // defaults to true, `timestampable` used as an alias
+    useSocials: ['github'],
+    useSearch: {
+      displayable: ['id', 'name', 'email'], // the fields a hit returns
+      searchable: ['name', 'email'], // the fields a query matches against
+      sortable: ['created_at', 'updated_at'], // the fields results can be ordered by
+      filterable: [], // the fields results can be narrowed by
+      // options: {}, // you may pass options to the search engine
+    },
+
+    useSeeder: {
+      // defaults to a count of 10, `seedable` used as an alias
+      count: 10,
+    },
+
+    useApi: {
+      uri: 'users', // your-url.com/api/users
+
+      routes: ['index', 'store', 'show'],
+      // Registration is handled by the dedicated, rate-limited
+      // `/register` action. The generated User CRUD surface exposes PII
+      // and must only be available to authenticated operators.
+      middleware: ['auth'],
+    },
+  },
+
+  hasOne: ['Subscriber', 'Courier', 'Author'],
+
+  hasMany: [
+    'Customer',
+    'TeamMember',
+  ],
+
+  attributes: {
+    name: {
+      personal: true,
+      order: 2,
+      fillable: true,
+      validation: {
+        // The same floor registration applies. This rule said five while its
+        // message said three, so "Ava" could sign up and then could not have
+        // a letter of her name corrected. The ceiling is the column's.
+        rule: schema.string().required().min(2).max(100),
+        message: {
+          min: 'Name must have a minimum of 2 characters',
+          max: 'Name must have a maximum of 100 characters',
+        },
+      },
+
+      factory: faker => faker.person.fullName(),
+    },
+
+    email: {
+      personal: true,
+      unique: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().email().required(),
+        message: {
+          required: 'Email is required',
+          email: 'Email must be a valid email address',
+        },
+      },
+
+      // Built from the name seeded above it, so a demo user reads as one
+      // person: "Alex Castillo" was seeded as kimberly.lee@..., and every row
+      // of the dashboard's Users page looked like a data error. Titles and
+      // suffixes ("Dr.", "Jr.") are not part of anyone's address.
+      factory: (faker, { name }) => {
+        const words = String(name ?? '').split(/\s+/).filter(word => word && !word.endsWith('.') && !/^(?:jr|sr|ii|iii|iv|md|phd|dds)$/i.test(word))
+        if (words.length === 0)
+          return faker.internet.email()
+        return faker.internet.email({ firstName: words[0], lastName: words.at(-1) }).toLowerCase()
+      },
+    },
+    password: {
+      personal: { export: false },
+      order: 3,
+      hidden: true,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+        message: {
+          required: 'Password is required',
+          min: `Password must have a minimum of ${PASSWORD_MIN_LENGTH} characters`,
+          max: `Password must have a maximum of ${PASSWORD_MAX_LENGTH} characters`,
+        },
+      },
+
+      // Must satisfy the rule above, or seeded users fail their own model's
+      // validation. `123456` did once the minimum moved to 8 (#2226).
+      factory: () => 'password1234',
+    },
+
+    avatar: {
+      personal: true,
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(2048),
+        message: {
+          max: 'Avatar URL must be at most 2048 characters',
+        },
+      },
+
+      factory: faker => faker.image.avatar(),
+    },
+  },
+  get: {
+    salutationName: (attributes: Attributes) => {
+      return `Mr. ${attributes.name}`
+    },
+  },
+
+  set: {
+    // Hashed in place, so `User.create(...)` is the row and not a promise of
+    // one. That holds the thread for the length of the hash (about a quarter
+    // of a second at 12 rounds). An app that would rather wait for it without
+    // blocking makes this `async` with `makeHash`, and awaits its User writes.
+    password: (attributes: Attributes) => makeHashSync(attributes.password, { algorithm: 'bcrypt' }),
+  },
+  dashboard: {
+    highlight: true,
+    // The list is for telling accounts apart. The two-factor step, the
+    // billing id and the rest are on the account's own page.
+    columns: ['name', 'email', 'emailVerifiedAt', 'createdAt'],
+    // The row of numbers above the list: how many, how many are new, how
+    // many confirmed their email.
+    regions: { listTop: 'DataStatCards' },
+    // An avatar is a picture, not the address of one.
+    fields: {
+      // Chosen as a file, and shown as the picture it is.
+      avatar: { format: 'image', input: 'upload', accept: 'image/*' },
+    },
+    // Operators add, edit and remove accounts from the dashboard. Not through
+    // `useApi` above: a generated PATCH would let any signed-in caller change
+    // their own email and password outside the flows that verify them.
+    // `store` is by invitation: no form can supply a password, so the account
+    // is created and its holder is mailed a link to choose one.
+    writes: ['store', 'update', 'destroy'],
+    // What support is asked for most: the person cannot sign in, or lost the
+    // invitation. The button runs an action; the model only names it.
+    actions: [
+      {
+        name: 'send-password-reset',
+        label: 'Send password reset',
+        action: 'Actions/Dashboard/Users/UserPasswordResetAction',
+        icon: 'i-hugeicons-reset-password',
+        confirm: 'They are emailed a link to choose a new password. Their current password keeps working until they use it.',
+        // On the account's own page, where who it is can be read first. Not
+        // one press away on every row of a list.
+        on: ['record'],
+      },
+    ],
+  },
+} as const)

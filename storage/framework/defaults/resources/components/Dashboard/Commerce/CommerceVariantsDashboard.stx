@@ -1,0 +1,231 @@
+<script client>
+import type {
+  ProductVariantRecord,
+  ProductVariantSummary,
+} from '../../../../app/Actions/Dashboard/Commerce/product-variant-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface VariantProduct {
+  id: string
+  name: string
+}
+
+interface ProductVariantIndexResponse {
+  records: ProductVariantRecord[]
+  total: number
+  page: number
+  summary: ProductVariantSummary
+  types: string[]
+  products: VariantProduct[]
+}
+
+interface ProductVariantWritePayload {
+  variant: string
+  type: string
+  description: string
+  options: string[]
+  status: 'active' | 'inactive' | 'draft'
+  productId: number | null
+}
+
+const emptySummary: ProductVariantSummary = { total: 0, active: 0, draft: 0, linkedProducts: 0 }
+// The products that have a variant, for the product filter; the dialog searches every product.
+const products = state<VariantProduct[]>([])
+const types = state<string[]>([])
+const summary = state<ProductVariantSummary>({ ...emptySummary })
+const statusFilter = state('all')
+const typeFilter = state('all')
+const productFilter = state('all')
+const sort = state('variant')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<ProductVariantRecord | null>(null)
+const deletingRecord = state<ProductVariantRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  variant: { sort: 'variant', direction: 'asc' },
+  options: { sort: 'options', direction: 'desc' },
+  product: { sort: 'product', direction: 'asc' },
+  newest: { sort: 'newest', direction: 'desc' },
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218), where
+// this page used to do all of that with the newest 500 variants.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<ProductVariantRecord>({
+  fetch: params => dashboardApi<ProductVariantIndexResponse>(`/api/dashboard/commerce/variants?${params}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.variant!,
+  columnSorts: { variant: 'variant', productName: 'product', status: 'status', createdAt: 'created' },
+  filters: () => ({ status: statusFilter(), type: typeFilter(), product: productFilter() }),
+  onLoad: (result) => {
+    const data = result as ProductVariantIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    types.set(Array.isArray(data.types) ? data.types : [])
+    products.set(Array.isArray(data.products) ? data.products : [])
+  },
+  onError: error => pushToast('error', 'Could not load product variants', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function variantTypes(): string[] {
+  return types()
+}
+
+function loadVariants(): Promise<void> {
+  return load()
+}
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching product ${count === 1 ? 'variant' : 'variants'}`
+}
+
+function metricCards(): Array<{ label: string, value: string }> {
+  return [
+    { label: 'Product variants', value: String(summary().total) },
+    { label: 'Active', value: String(summary().active) },
+    { label: 'Draft', value: String(summary().draft) },
+    { label: 'Linked products', value: String(summary().linkedProducts) },
+  ]
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: ProductVariantRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (!saving()) {
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    validationErrors.set({})
+  }
+}
+
+async function saveVariant(payload: ProductVariantWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(editing ? `/api/dashboard/commerce/variants/${current.id}` : '/api/dashboard/commerce/variants', {
+      method: editing ? 'PATCH' : 'POST',
+      body: {
+        variant: payload.variant,
+        type: payload.type,
+        description: payload.description,
+        options: JSON.stringify(payload.options),
+        status: payload.status,
+        productId: payload.productId,
+      },
+    })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Product variant updated' : 'Product variant added')
+    await loadVariants()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save product variant', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: ProductVariantRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteVariant(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/variants/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Product variant deleted')
+    await loadVariants()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete product variant', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadVariants()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Product variants" description="Manage native ProductVariant records, option sets, and product relationships.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadVariants"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add variant</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Product variant metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search product variants" ariaLabel="Search product variants" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Variant status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'draft', label: 'Draft' }]" />
+      <Select v-model:value="typeFilter" ariaLabel="Variant type" placeholder="" :options="[{ value: 'all', label: 'All types' }, ...variantTypes().map(type => ({ value: type, label: type }))]" />
+      <Select v-model:value="productFilter" ariaLabel="Variant product" placeholder="" :options="[{ value: 'all', label: 'All products' }, ...products().map(product => ({ value: product.id, label: product.name }))]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+      <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">
+        Sort
+        <Select v-model:value="sort" ariaLabel="Sort" size="sm" placeholder="" :options="[{ value: 'variant', label: 'Name' }, { value: 'options', label: 'Most options' }, { value: 'product', label: 'Product' }, { value: 'newest', label: 'Newest' }]" />
+      </label>
+    </div>
+
+    <CommerceVariantsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<CommerceVariantDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :types="variantTypes()" :busy="saving()" :errors="validationErrors()" @submit="saveVariant" @close="closeDialog()" />
+<CommerceVariantDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" @confirm="deleteVariant()" @close="closeDelete()" />

@@ -1,0 +1,98 @@
+---
+name: stacks-slug
+description: Use when generating URL slugs in Stacks - creating unique slugs with database collision detection, the uniqueSlug function with table/column configuration, or basic slugification. Covers @stacksjs/slug.
+license: MIT
+compatibility: Bun >= 1.3.0, TypeScript
+allowed-tools: Read Edit Write Bash Grep Glob
+---
+
+# Stacks Slug
+
+URL-friendly slug generation with database uniqueness checking.
+
+## Key Paths
+- Core package: `storage/framework/core/slug/src/`
+
+## Unique Slug (with Database Check)
+
+```typescript
+import { uniqueSlug } from '@stacksjs/slug'
+
+// No table/column supplied: plain slugification, no database collision check
+const slug = await uniqueSlug('My Blog Post Title')
+// → 'my-blog-post-title'
+
+// Supply BOTH table and column to check collisions
+const slug = await uniqueSlug('Product Name', {
+  table: 'products',     // database table to check
+  column: 'slug'         // required for database checking
+})
+```
+
+### How Collision Detection Works
+1. Slugifies the input string
+2. Queries the database for existing slug
+3. If collision found, appends `-2`, `-3`, etc.
+4. Returns the first available slug
+
+## Basic Slugify (No Database Check)
+
+```typescript
+import { slug } from '@stacksjs/strings'
+
+slug('Hello World!')           // 'hello-world'
+slug('Ünïcödé Têxt')          // 'unicode-text'
+slug('  Extra   Spaces  ')    // 'extra-spaces'
+```
+
+`@stacksjs/slug` exports only `uniqueSlug`. The sync helpers live in
+`@stacksjs/strings`: `slug()` lowercases and strips punctuation, while the
+lower-level `slugify()` defaults to `lower: false` and keeps case.
+
+## Model Usage
+
+Models typically use slugs via the `slug` attribute:
+
+```typescript
+defineModel({
+  name: 'Post',
+  attributes: {
+    title: { validation: { rule: schema.string() } },
+    slug: {
+      unique: true,
+      validation: { rule: schema.string() },
+      // Populate explicitly in the action using uniqueSlug(title, options)
+    }
+  }
+})
+```
+
+## SlugifyOptions
+
+```typescript
+interface SlugifyOptions {
+  table: TableNames      // database table for uniqueness check
+  column: string         // no implicit column default
+}
+```
+
+## Gotchas
+- Omitting either table or column returns the base slug with no query.
+- A title with no letters or digits at all (`!!!`, an emoji) gets a random
+  eight-character slug from `uniqueSlug()`, never `""`; `slug()` still returns `""`.
+- The check and insert are separate: keep a UNIQUE index and handle/retry an
+  insert conflict. A helper cannot reserve the returned slug against a race.
+- Collision attempts are bounded; after repeated conflicts the helper returns
+  a cryptographically randomized suffix instead of looping forever.
+- Declaring a slug attribute does not itself populate it from the title.
+- `uniqueSlug()` is async - it queries the database
+- `slug()` is sync - no database interaction
+- Collision detection appends `-2`, `-3`, etc. (not random suffixes)
+- Unicode characters are transliterated (u → u, e → e, etc.) where ts-slug's charmap
+  romanizes the script (Latin, Greek, Cyrillic, Hebrew, Arabic, Devanagari, Georgian);
+  any other script, such as Japanese, Chinese, Korean or Thai, keeps its letters
+  (`日本語のタイトル` stays as it is; percent-encoded in a URL)
+- Any dash separates words: an em or en dash becomes a hyphen
+- For string-only slugification without DB, use `slug()` from `@stacksjs/strings` instead
+- Tags and Categories both use unique slugs by default
+- Slug columns should have a unique index in the database

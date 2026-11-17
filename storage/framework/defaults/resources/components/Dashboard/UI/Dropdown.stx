@@ -1,0 +1,72 @@
+<script client>
+type DropdownAlign = 'left' | 'right'
+type DropdownWidth = 'auto' | 'sm' | 'md' | 'lg' | 'full'
+
+const requestedOpen = useReactiveProp('open', false)
+const align = useReactiveProp('align', 'left' as DropdownAlign)
+const width = useReactiveProp('width', 'auto' as DropdownWidth)
+const disabled = useReactiveProp('disabled', false)
+const isOpen = state(requestedOpen())
+const root = useRef('dropdownRoot')
+const menu = useRef('dropdownMenu')
+const emit = defineEmits(['update:open', 'open', 'close'])
+
+const widthClasses: Record<DropdownWidth, string> = {
+  auto: 'min-w-[12rem]',
+  sm: 'w-48',
+  md: 'w-56',
+  lg: 'w-64',
+  full: 'w-full',
+}
+
+effect(() => {
+  isOpen.set(requestedOpen())
+})
+
+function setOpen(next: boolean): void {
+  if (disabled() && next)
+    return
+  if (isOpen() === next)
+    return
+  isOpen.set(next)
+  emit('update:open', next)
+  emit(next ? 'open' : 'close')
+  if (next)
+    void nextTick(() => menu.current?.focus())
+}
+
+function toggle(): void {
+  setOpen(!isOpen())
+}
+
+function menuClass(): string {
+  const side = align() === 'right' ? 'right-0' : 'left-0'
+  return `${widthClasses[width()] || widthClasses.auto} ${side}`
+}
+
+useClickOutside(root, () => setOpen(false))
+</script>
+
+<div ref="dropdownRoot" class="inline-block relative text-left" @keydown.escape="setOpen(false)">
+  <button
+    type="button"
+    class="contents disabled:opacity-50 disabled:cursor-not-allowed"
+    :aria-expanded="String(isOpen())"
+    aria-haspopup="menu"
+    :disabled="disabled()"
+    @click="toggle"
+  >
+    <slot name="trigger" />
+  </button>
+
+  <div
+    :if="isOpen()"
+    ref="dropdownMenu"
+    role="menu"
+    tabindex="-1"
+    class="absolute z-50 mt-1.5 py-1 bg-white/95 dark:bg-neutral-800/95 border border-black/10 rounded-lg dark:border-white/10 focus:outline-none shadow-black/10 shadow-lg dark:shadow-black/30 backdrop-blur-xl backdrop-saturate-150 origin-top"
+    :class="menuClass()"
+  >
+    <slot />
+  </div>
+</div>

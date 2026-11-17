@@ -1,0 +1,251 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface TaxonomyRecord {
+  id: string
+  name: string
+  slug: string
+  description: string
+  active: boolean
+  postCount: number
+}
+
+interface TaxonomyDraft {
+  name: string
+  slug: string
+  description: string
+}
+
+const resource = useReactiveProp('resource', 'categories')
+const title = useReactiveProp('title', 'Categories')
+const description = useReactiveProp('description', '')
+const records = state<TaxonomyRecord[]>([])
+const loading = state(true)
+const loadError = state('')
+const dialogOpen = state(false)
+const saving = state(false)
+const saveError = state('')
+const deletingRecord = state<TaxonomyRecord | null>(null)
+const deleting = state(false)
+const deleteError = state('')
+
+function singular(): string {
+  return resource() === 'tags' ? 'tag' : 'category'
+}
+
+function normalize(record: any): TaxonomyRecord {
+  return {
+    id: String(record?.id || ''),
+    name: String(record?.name || ''),
+    slug: String(record?.slug || ''),
+    description: String(record?.description || ''),
+    active: record?.is_active !== false && record?.is_active !== 0,
+    postCount: Number(record?.post_count || 0),
+  }
+}
+
+/**
+ * Derived rather than constant: this component serves both categories and
+ * tags, and the fourth column is the post count for tags and the active state
+ * for categories - a different heading and a different value.
+ */
+function columns() {
+  return [
+    { key: 'name', label: 'Name', sortable: true, class: 'font-medium text-gray-900 dark:text-white' },
+    { key: 'slug', label: 'Slug', sortable: true, class: 'font-mono text-gray-500 dark:text-neutral-400' },
+    { key: 'description', label: 'Description', emptyText: 'No description', class: 'max-w-md truncate text-gray-500 dark:text-neutral-400' },
+    {
+      key: 'stateLabel',
+      label: resource() === 'tags' ? 'Posts' : 'Status',
+      sortable: true,
+      class: 'text-gray-500 dark:text-neutral-400',
+    },
+  ]
+}
+
+const ROW_ACTIONS = [
+  { action: 'delete', label: 'Delete' },
+]
+
+/** `UI/Table` owns the search; the fourth cell is derived onto the row. */
+function visibleRecords(): TaxonomyRecord[] {
+  return records().map(record => ({
+    ...record,
+    stateLabel: resource() === 'tags'
+      ? String(record.postCount)
+      : record.active ? 'Active' : 'Inactive',
+  })) as TaxonomyRecord[]
+}
+
+function handleRowAction(payload: { action: string, row: TaxonomyRecord }): void {
+  openDelete(payload.row)
+}
+
+function secondaryMetricLabel(): string {
+  return resource() === 'tags' ? 'Assigned posts' : 'Active'
+}
+
+function secondaryMetric(): number {
+  return resource() === 'tags'
+    ? records().reduce((sum, record) => sum + record.postCount, 0)
+    : records().filter(record => record.active).length
+}
+
+async function loadRecords(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<Record<string, unknown>>(`/api/dashboard/${resource()}`)
+    const rows = data[resource()]
+    if (!Array.isArray(rows))
+      throw new TypeError(`${title()} were not returned in the expected shape.`)
+    records.set(rows.map(normalize))
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', `Could not load ${resource()}`, { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openCreate(): void {
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function closeCreate(): void {
+  if (!saving())
+    dialogOpen.set(false)
+}
+
+async function createRecord(draft: TaxonomyDraft): Promise<void> {
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/${resource()}`, {
+      method: 'POST',
+      body: draft,
+    })
+    dialogOpen.set(false)
+    pushToast('success', `${singular().replace(/^\w/, letter => letter.toUpperCase())} created`)
+    await loadRecords()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: TaxonomyRecord): void {
+  deletingRecord.set(record)
+  deleteError.set('')
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+function deleteTitle(): string {
+  return `Delete ${singular()}?`
+}
+
+function deleteDescription(): string {
+  const record = deletingRecord()
+  return record ? `${record.name} will be permanently removed.` : ''
+}
+
+function deleteLabel(): string {
+  return `Delete ${singular()}`
+}
+
+async function deleteRecord(): Promise<void> {
+  const record = deletingRecord()
+  if (!record)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/${resource()}/${record.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', `${singular().replace(/^\w/, letter => letter.toUpperCase())} deleted`)
+    await loadRecords()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadRecords()
+})
+</script>
+
+<div class="space-y-6 max-w-full min-w-0">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Content</p>
+      <h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">{{ title() }}</h1>
+      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ description() }}</p>
+    </div>
+    <div class="flex gap-2">
+      <Button :loading="loading()" variant="secondary" @click="loadRecords()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+      <Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>New {{ singular() }}</Button>
+    </div>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadRecords()">Retry</Button></div>
+
+  <section :aria-label="title() + ' metrics'" class="grid gap-3 grid-cols-1 sm:grid-cols-3">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Total</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ records().length }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">{{ secondaryMetricLabel() }}</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ secondaryMetric() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Newest</p><p class="mt-2 font-semibold text-gray-900 text-lg truncate dark:text-white">{{ records()[0]?.name || 'None' }}</p></article>
+  </section>
+
+  <section class="overflow-hidden max-w-full min-w-0 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <Table
+      :columns="columns()"
+      :data="visibleRecords()"
+      :loading="loading()"
+      :row-actions="ROW_ACTIONS"
+      action-label-key="name"
+      searchable
+      :search-placeholder="'Search ' + resource()"
+      paginated
+      :page-size="25"
+      :empty-title="'No ' + resource() + ' found'"
+      :empty-description="'Adjust the search or create a ' + singular() + '.'"
+      @row-action="handleRowAction"
+    />
+  </section>
+</div>
+
+<TaxonomyEditorDialog
+  :open="dialogOpen()"
+  :kind="singular()"
+  :busy="saving()"
+  :error="saveError()"
+  @close="closeCreate"
+  @submit="createRecord"
+/>
+
+<ConfirmDialog
+  :isOpen="Boolean(deletingRecord())"
+  :title="deleteTitle()"
+  :description="deleteDescription()"
+  :confirmLabel="deleteLabel()"
+  :busy="deleting()"
+  :error="deleteError()"
+  @close="closeDelete"
+  @confirm="deleteRecord"
+/>

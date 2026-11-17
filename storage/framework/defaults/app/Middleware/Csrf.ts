@@ -1,0 +1,409 @@
+import { timingSafeEqual } from 'node:crypto'
+import { HttpError } from '@stacksjs/error-handling/http-error'
+import type { EnhancedRequest } from '@stacksjs/router'
+import { Middleware, parseBearerToken } from '@stacksjs/router/middleware'
+
+/**
+ * CSRF Protection Middleware (default-on for unsafe methods)
+ *
+ * Design decision: enforce by default.
+ *  Historical Stacks ran the CSRF middleware as opt-in, which left every
+ *  POST/PUT/PATCH/DELETE route undefended unless an author remembered to
+ *  add `.middleware('csrf')`. Forgetting is a security regression by
+ *  default — flipping the polarity (default-on, explicit opt-out) is the
+ *  modern Rails/Laravel posture.
+ *
+ * Pattern: stateless double-submit cookie.
+ *   1. Server issues a 32-byte random token in a non-HttpOnly cookie
+ *      (`X-CSRF-Token`) on safe (GET/HEAD/OPTIONS) responses.
+ *   2. Client-side JS reads that cookie and echoes it back on unsafe
+ *      requests via the `X-CSRF-Token` header (or a `_token` body field
+ *      for traditional form submissions).
+ *   3. Server compares header/body value to cookie value with a
+ *      timing-safe equality check.
+ *
+ * Why double-submit (and not server-stored tokens):
+ *   - Stateless. No session/cache lookup on the hot path — just a
+ *     constant-time string compare.
+ *   - Same origin policy means a cross-site attacker can't read the
+ *     cookie value, so they can't forge the matching header.
+ *   - Cookie is `SameSite=Lax`, so most cross-site contexts won't even
+ *     ship it; the double-submit check is a belt-and-braces layer for
+ *     the gaps SameSite leaves (e.g. top-level GET → POST chains via
+ *     forms).
+ *
+ * Bypass (in priority order):
+ *   1. Safe methods (GET/HEAD/OPTIONS) — no body to forge, no check.
+ *   2. `Authorization: Bearer …` present — API token clients are
+ *      immune by definition (a CSRF attacker can't read tokens from
+ *      Authorization headers, only forge cookie-auth requests).
+ *   3. Per-action `skipCsrf: true` — webhooks/callbacks that legitimately
+ *      can't carry a CSRF cookie. The action sets this on its default
+ *      export and the router's CSRF check skips it.
+ *   4. Per-route `.skipCsrf()` — same intent, route-level.
+ *
+ * @example
+ * ```ts
+ * // Implicit — every POST is CSRF-checked
+ * route.post('/posts', 'Actions/CreatePost')
+ *
+ * // Explicit opt-out for a webhook
+ * route.post('/webhooks/stripe', 'Actions/StripeWebhook').skipCsrf()
+ *
+ * // Or via the action itself
+ * export default {
+ *   skipCsrf: true,
+ *   async handle(req) { … },
+ * }
+ * ```
+ */
+
+export const CSRF_COOKIE_NAME = 'X-CSRF-Token'
+const CSRF_SECURE_TRANSPORT = Symbol.for('@stacksjs/router:csrf-secure-transport')
+const CSRF_HEADER_NAME = 'x-csrf-token'
+/** `FORM_REFUSAL` in @stacksjs/router, by its registered name: this module does not load the router. */
+const CSRF_FORM_REFUSAL = Symbol.for('stacks.formRefusal')
+const CSRF_FORM_MESSAGE = 'This form was open too long to be sent safely, so nothing was saved. Check it and send it again.'
+const CSRF_COOKIE_PREFIX = `${CSRF_COOKIE_NAME}=`
+const LEGACY_CSRF_COOKIE_PREFIX = 'csrf-token='
+const JOINED_CSRF_COOKIE_PREFIX = `, ${CSRF_COOKIE_PREFIX}`
+const JOINED_LEGACY_CSRF_COOKIE_PREFIX = `, ${LEGACY_CSRF_COOKIE_PREFIX}`
+const CSRF_COOKIE_SUFFIX = '; Path=/; SameSite=Lax; Max-Age=7200'
+const CSRF_COOKIE_SECURE_SUFFIX = `${CSRF_COOKIE_SUFFIX}; Secure`
+const TOKEN_BYTES = 32
+const TOKEN_HEX_LENGTH = TOKEN_BYTES * 2
+const TOKEN_RANDOM_BYTES = Buffer.allocUnsafe(TOKEN_BYTES)
+const TOKEN_ENCODER = new TextEncoder()
+const LEFT_TOKEN_BYTES = new Uint8Array(TOKEN_HEX_LENGTH)
+const RIGHT_TOKEN_BYTES = new Uint8Array(TOKEN_HEX_LENGTH)
+
+/**
+ * Generate a fresh CSRF token (hex-encoded, 32 random bytes → 64 chars).
+ *
+ * @example
+ * ```ts
+ * const token = generateCsrfToken()
+ * // → 'a3f1...cd9e'
+ * ```
+ */
+export function generateCsrfToken(): string {
+  crypto.getRandomValues(TOKEN_RANDOM_BYTES)
+  return TOKEN_RANDOM_BYTES.toHex()
+}
+
+/**
+ * Seed the CSRF cookie on the outgoing response if the incoming request
+ * didn't already carry one, or with the token the router minted before
+ * rendering (`minted`) so a server-rendered page's forms and the browser's
+ * cookie hold the same string. Used by the router as a post-response step
+ * on safe-method (GET/HEAD/OPTIONS) responses so SPAs get a usable
+ * cookie value before they ever submit an unsafe request.
+ *
+ * The audit (stacksjs/stacks#1859 INVESTIGATE → confirmed) found that
+ * the CSRF middleware was reading the cookie but nothing was ever
+ * writing it — every browser POST without a Bearer token therefore
+ * failed CSRF by default. This helper closes that gap.
+ *
+ * The cookie is:
+ * - `SameSite=Lax` (sufficient for cross-site CSRF mitigation while
+ *   still allowing top-level navigation to set it)
+ * - **NOT** `HttpOnly` (SPA JS needs to read the value and echo it as
+ *   a header — the whole point of the double-submit pattern)
+ * - `Secure` only over HTTPS (so localhost dev still works)
+ * - 2-hour `Max-Age` — short enough to limit replay if leaked, long
+ *   enough that idle tabs don't constantly re-fetch tokens
+ */
+/**
+ * Whether a response is already handing the browser a CSRF token.
+ *
+ * `getSetCookie` is the only way to read multiple `Set-Cookie` headers back;
+ * `get` joins them into one string, which is not something a cookie value can
+ * be parsed out of reliably. Older runtimes without it fall back to the joined
+ * form, where a substring match is still correct for the question being asked.
+ */
+function responseAlreadySeeds(response: Response): boolean {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] }
+  const cookies = typeof headers.getSetCookie === 'function'
+    ? headers.getSetCookie()
+    : [headers.get('set-cookie') || '']
+
+  for (const cookie of cookies) {
+    if (
+      cookie.startsWith(CSRF_COOKIE_PREFIX)
+      || cookie.startsWith(LEGACY_CSRF_COOKIE_PREFIX)
+      || cookie.includes(JOINED_CSRF_COOKIE_PREFIX)
+      || cookie.includes(JOINED_LEGACY_CSRF_COOKIE_PREFIX)
+    ) return true
+  }
+  return false
+}
+
+export function createCsrfCookie(req: Request, minted?: string): string {
+  const token = minted || generateCsrfToken()
+  const knownSecureTransport = (req as unknown as Record<symbol, unknown>)[CSRF_SECURE_TRANSPORT]
+  const suffix = knownSecureTransport === true || (knownSecureTransport === undefined && req.url.startsWith('https://'))
+    ? CSRF_COOKIE_SECURE_SUFFIX
+    : CSRF_COOKIE_SUFFIX
+  return `${CSRF_COOKIE_PREFIX}${token}${suffix}`
+}
+
+/**
+ * Whether a browser could go on to use a CSRF token from this response.
+ *
+ * A page carries the forms that submit it, and an API answer is what an SPA
+ * reads before its next request. A stylesheet, script, font or image is
+ * neither, and a cookie on one is worse than useless: a response that sets a
+ * cookie is one no shared cache will store, so seeding every static file kept
+ * the site's whole asset set out of the CDN (every file came back
+ * `cf-cache-status: BYPASS`). A cacheable file carrying a per-visitor token is
+ * also the shape of a leak, should any cache in the path store it anyway.
+ *
+ * No content type at all (a redirect, an empty answer) keeps the old
+ * behaviour: it says nothing about what the browser is looking at.
+ */
+export function responseMayUseCsrfToken(response: Response): boolean {
+  const type = ((response.headers.get('content-type') || '').split(';')[0] ?? '').trim().toLowerCase()
+  if (!type)
+    return true
+  return type === 'text/html'
+    || type === 'application/xhtml+xml'
+    || type === 'application/json'
+    || type.endsWith('+json')
+}
+
+/**
+ * Whether a response told shared caches they may keep it: its `Cache-Control`
+ * says `public` or gives an `s-maxage`, and says neither `private` nor
+ * `no-store`.
+ *
+ * Such a response is, by its own account, the same for everyone, so it must
+ * not carry a per-visitor cookie. A CDN refuses to store a response that sets
+ * one (Cloudflare answers `cf-cache-status: BYPASS`), so seeding here kept
+ * every shareable API read out of the edge; and a cache that stored it anyway
+ * would hand one visitor's token to everybody behind it.
+ */
+export function responseDeclaresShared(response: Response): boolean {
+  const value = (response.headers.get('cache-control') || '').toLowerCase()
+  if (!value || /\b(?:private|no-store)\b/.test(value))
+    return false
+  return /\bpublic\b/.test(value) || /\bs-maxage\s*=/.test(value)
+}
+
+export function seedCsrfCookieIfMissing(req: Request, response: Response, minted?: string, responseHasNoCookies = false): Response {
+  if (!responseMayUseCsrfToken(response))
+    return response
+
+  // Nothing depends on a shareable response seeding the cookie: a page that
+  // carries forms is per-visitor and never says `public`, and a client about to
+  // submit without a cookie can ask for one from a response that is not shared.
+  // This holds for every layer that seeds - the API router, and the page server
+  // that proxies `/api` to it - because they all come through here.
+  if (responseDeclaresShared(response))
+    return response
+
+  // A token the router minted before rendering wins over "the header already
+  // has one", because it put that value in the header itself - and the page
+  // has already embedded it in every form it drew. Generating a second token
+  // here would store one string in the browser while the page carries another,
+  // which fails in a way indistinguishable from having no token at all.
+  // By the cookie's exact name (`csrfCookieToken` parses the jar): a
+  // substring test counted NextAuth's `next-auth.csrf-token` as ours, so the
+  // real cookie was never set and every form post failed.
+  if (!minted && csrfCookieToken(req) !== '')
+    return response
+
+  // A token already on its way to the browser counts as present, exactly like
+  // one in the request. Something upstream can mint before the render - the
+  // stx dev server does, so a page's forms carry a token on a first visit -
+  // and appending a second here would leave the browser storing the last
+  // Set-Cookie while the page embedded the first. Two tokens fail the same way
+  // no token does, and are far harder to see.
+  if (!responseHasNoCookies && responseAlreadySeeds(response))
+    return response
+
+  const cookie = createCsrfCookie(req, minted)
+
+  // Append (not Set) so multiple Set-Cookie headers can coexist with any
+  // cookies the action handler set itself.
+  try {
+    response.headers.append('Set-Cookie', cookie)
+    return response
+  }
+  catch {
+    // Response headers can be immutable (e.g., when the response was
+    // built from a static asset). Clone with a fresh Headers object
+    // to attach the cookie.
+    const headers = new Headers(response.headers)
+    headers.append('Set-Cookie', cookie)
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+  }
+}
+
+/**
+ * Read just the CSRF cookies without building a map of unrelated cookies.
+ * Last duplicate wins; the canonical name takes precedence over the legacy
+ * name unless its final value is empty. Malformed pairs are skipped.
+ */
+export function csrfCookieToken(req: Request): string {
+  const header = req.headers.get('cookie')
+  if (!header) return ''
+  // The cookie this framework emits has one exact, whitespace-free shape.
+  // Recognize it before scanning for separators or trimming; browsers send
+  // this common single-cookie form on every authenticated unsafe request.
+  if (header.length === CSRF_COOKIE_PREFIX.length + TOKEN_HEX_LENGTH && header.startsWith(CSRF_COOKIE_PREFIX))
+    return header.slice(CSRF_COOKIE_PREFIX.length)
+  if (!header.includes(';')) {
+    if (header.startsWith(CSRF_COOKIE_PREFIX))
+      return header.slice(CSRF_COOKIE_PREFIX.length).trim()
+    if (header.startsWith(LEGACY_CSRF_COOKIE_PREFIX))
+      return header.slice(LEGACY_CSRF_COOKIE_PREFIX.length).trim()
+  }
+  let canonical = ''
+  let legacy = ''
+  let start = 0
+  while (start < header.length) {
+    // Scan each name only once, stopping at '=' or a malformed pair's ';'.
+    let equals = start
+    while (equals < header.length && header.charCodeAt(equals) !== 61 && header.charCodeAt(equals) !== 59)
+      equals++
+    if (equals === header.length)
+      break
+    if (header.charCodeAt(equals) === 59) {
+      start = equals + 1
+      continue
+    }
+    const separator = header.indexOf(';', equals + 1)
+    const end = separator === -1 ? header.length : separator
+    const name = header.slice(start, equals).trim()
+    if (name === CSRF_COOKIE_NAME)
+      canonical = header.slice(equals + 1, end).trim()
+    else if (name === 'csrf-token')
+      legacy = header.slice(equals + 1, end).trim()
+    start = end + 1
+  }
+  return canonical || legacy
+}
+
+/**
+ * Constant-time string compare. `===` leaks token length & match-prefix
+ * length via timing — `timingSafeEqual` does not.
+ */
+function safeEqual(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false
+  if (a.length !== b.length) return false
+  try {
+    // Generated tokens are fixed-width ASCII hex. Reuse module-local scratch
+    // arrays for that dominant path: this function is synchronous, so another
+    // request cannot interleave between encoding and comparison. If either
+    // value is not 64 bytes of UTF-8, retain the allocation-based fallback.
+    if (a.length === TOKEN_HEX_LENGTH) {
+      const left = TOKEN_ENCODER.encodeInto(a, LEFT_TOKEN_BYTES)
+      const right = TOKEN_ENCODER.encodeInto(b, RIGHT_TOKEN_BYTES)
+      if (
+        left.read === TOKEN_HEX_LENGTH
+        && left.written === TOKEN_HEX_LENGTH
+        && right.read === TOKEN_HEX_LENGTH
+        && right.written === TOKEN_HEX_LENGTH
+      ) {
+        return timingSafeEqual(LEFT_TOKEN_BYTES, RIGHT_TOKEN_BYTES)
+      }
+    }
+    return timingSafeEqual(TOKEN_ENCODER.encode(a), TOKEN_ENCODER.encode(b))
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * Returns true when the request carries a `Authorization: Bearer …`
+ * credential — those clients are exempt from CSRF (they're not riding
+ * an ambient cookie credential, so cross-site forgery doesn't apply).
+ */
+function hasBearerToken(req: Request): boolean {
+  // The same parser Auth uses, so a request is exempt here exactly when Auth
+  // will authenticate it by that token rather than by its cookie.
+  return parseBearerToken(req.headers.get('authorization')) !== null
+}
+
+/**
+ * Validate one request with the framework's native CSRF contract.
+ *
+ * Exported so direct framework-owned handlers that intentionally sit outside
+ * the router, such as the local dashboard config editor, can enforce the same
+ * double-submit and bearer-token rules without duplicating security logic.
+ */
+function assertValidCsrfRequest(request: Request | EnhancedRequest): void {
+  // Fetch normalizes standard methods when constructing the Request.
+  const method = request.method
+
+  // Safe methods don't mutate state — no token check needed.
+  // Token *seeding* (set the cookie if it's missing) happens after
+  // the response is built; we don't have a post-response hook
+  // here, so action handlers / SPAs can call `generateCsrfToken()`
+  // themselves on the first GET they need it for.
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
+
+  // Per-action opt-out: an action exporting `skipCsrf: true` (or
+  // `csrf: false`) has declared it can't participate in CSRF
+  // (webhooks, third-party callbacks). The router stamps a hint on
+  // the request when it resolves such an action; if that hint is
+  // present, skip enforcement.
+  const enhanced = request as EnhancedRequest
+  if (enhanced._skipCsrf === true) return
+
+  // Look up the submitted token. Header is the SPA path; body field
+  // is the traditional form-post path. We accept either.
+  const headerToken = request.headers.get(CSRF_HEADER_NAME)
+
+  // A browser or SPA that supplied an explicit CSRF header should take the
+  // matching-token path first. Bearer-only clients still exit immediately,
+  // while a malformed CSRF header on a bearer request retains the exemption
+  // after validation fails below.
+  if (!headerToken && hasBearerToken(request)) return
+
+  const body = enhanced.jsonBody || enhanced.formBody || {}
+  // A parsed body is `unknown`-valued: the token is validated as a string
+  // two lines down, so read it as one rather than asserting it is one.
+  const rawBodyToken = (body as Record<string, unknown> | undefined)?._token
+    ?? (body as Record<string, unknown> | undefined)?.csrf_token
+  const bodyToken: string | undefined = typeof rawBodyToken === 'string' ? rawBodyToken : undefined
+
+  const submitted = (typeof headerToken === 'string' && headerToken)
+    || (typeof bodyToken === 'string' && bodyToken)
+    || ''
+
+  const cookieToken = csrfCookieToken(request)
+
+  if (submitted && cookieToken && safeEqual(submitted, cookieToken)) return
+
+  // Preserve bearer precedence when a client happens to send both headers.
+  if (headerToken && hasBearerToken(request)) return
+
+  // 419 is the convention Laravel popularized for "CSRF token
+  // mismatch" — it's not in the IANA list but most SPAs already
+  // know how to refresh on 419. We use 403 for the strict-correct
+  // status code instead (419 is non-standard).
+  const refusal = new HttpError(403, 'CSRF token mismatch')
+  // A browser form from this application's own page (a tab left open past
+  // the token's life, a second tab that replaced it) goes back to that page
+  // with this, and what was typed, instead of the 403 body. A script and a
+  // form from anywhere else get the 403 as before (stacksjs/stacks#3311).
+  Object.defineProperty(refusal, CSRF_FORM_REFUSAL, { value: { message: CSRF_FORM_MESSAGE, status: 403 } })
+  throw refusal
+}
+
+export async function validateCsrfRequest(request: Request | EnhancedRequest): Promise<void> {
+  assertValidCsrfRequest(request)
+}
+
+export default new Middleware({
+  name: 'csrf',
+  // Run early — before auth, so we don't waste auth work on a request
+  // we're going to reject anyway. After maintenance/throttle though.
+  priority: 2,
+
+  handle(request) {
+    assertValidCsrfRequest(request)
+  },
+})

@@ -1,0 +1,440 @@
+{
+  "publisher": "Stacks",
+  "name": "vscode-stacks",
+  "displayName": "Stacks",
+  "version": "0.75.616",
+  "description": "Stacks, built into VS Code: stx templates, pickier linting and formatting, encrypted env files, the dev server preview and every buddy command. No other extensions required.",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/chrisbbreuer",
+  "sponsor": {
+    "url": "https://github.com/sponsors/chrisbbreuer"
+  },
+  "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/defaults/ide/vscode",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stacksjs/stacks.git",
+    "directory": "./storage/framework/defaults/ide/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/stacksjs/stacks/issues"
+  },
+  "keywords": [
+    "stacks",
+    "stacksjs",
+    "stx",
+    "pickier",
+    "lint",
+    "format",
+    "dotenv",
+    "env",
+    "buddy",
+    "preview",
+    "dev server"
+  ],
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters",
+    "Other"
+  ],
+  "icon": "logo.png",
+  "main": "./dist/extension.js",
+  "files": [
+    "dist/extension.js",
+    "dist/pickier-worker.js",
+    "dist/pickier-worker.bunfig.toml",
+    "dist/stx/**",
+    "dist/stx-typescript-plugin/**",
+    "LICENSE.md",
+    "README.md",
+    "logo.png"
+  ],
+  "engines": {
+    "vscode": "^1.109.5"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "workspaceContains:buddy",
+    "workspaceContains:config/app.ts",
+    "onLanguage:stx"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The Stacks commands run the workspace's own ./buddy script, so they need a trusted workspace."
+    },
+    "virtualWorkspaces": false
+  },
+  "scripts": {
+    "build": "bun build.ts",
+    "vscode:prepublish": "bun run build",
+    "test": "bun test ./tests",
+    "typecheck": "bun x --bun tsc --noEmit -p tsconfig.json",
+    "sync:stx": "bun scripts/stx-contributes.ts --write",
+    "package": "bun scripts/package.ts",
+    "release": "bun scripts/package.ts --publish"
+  },
+  "galleryBanner": {
+    "color": "#d7e4f5",
+    "theme": "light"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "stacks.openPreview",
+        "title": "Open Preview",
+        "category": "Stacks",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "stacks.startDevServer",
+        "title": "Start Dev Server",
+        "category": "Stacks",
+        "icon": "$(play)"
+      },
+      {
+        "command": "stacks.runBuddyCommand",
+        "title": "Run Buddy Command...",
+        "category": "Stacks",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "stacks.pickier.fixAll",
+        "title": "Fix All Lint Problems",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.pickier.restart",
+        "title": "Restart Pickier",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.env.get",
+        "title": "Env: Get Value...",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.env.set",
+        "title": "Env: Set Value...",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.env.encrypt",
+        "title": "Env: Encrypt File",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.env.decrypt",
+        "title": "Env: Decrypt File",
+        "category": "Stacks"
+      },
+      {
+        "command": "stacks.env.rotate",
+        "title": "Env: Rotate Keys",
+        "category": "Stacks"
+      },
+      {
+        "command": "stx.sortClasses",
+        "title": "Sort Utility Classes",
+        "category": "stx"
+      },
+      {
+        "command": "stx.reloadUtilityClasses",
+        "title": "Reload Utility Class Configuration",
+        "category": "stx"
+      },
+      {
+        "command": "stx.extractToComponent",
+        "title": "Extract to Component",
+        "category": "stx"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "stacks.openPreview",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.startDevServer",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.runBuddyCommand",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.pickier.fixAll",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.pickier.restart",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.env.get",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.env.set",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.env.encrypt",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.env.decrypt",
+          "when": "stacks.isProject"
+        },
+        {
+          "command": "stacks.env.rotate",
+          "when": "stacks.isProject"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "title": "Stacks",
+        "properties": {
+          "stacks.preview.url": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "URL `Stacks: Open Preview` always opens, e.g. `http://localhost:3000/dashboard`. Leave empty to find the running dev server the way `./buddy dev` picks its URL (`APP_URL`, `PORT`, `APP_PATH`)."
+          },
+          "stacks.preview.preferLocalhost": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Preview `http://localhost:<PORT>` even when `APP_URL` gives the app a pretty `https://` domain. Useful when the local certificate is not trusted, which leaves the Simple Browser blank."
+          },
+          "stacks.devServer.args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "markdownDescription": "Extra arguments for `./buddy dev`, e.g. `[\"frontend\"]` or `[\"--site\"]`. They are passed to the shell as written."
+          },
+          "stacks.devServer.openPreview": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Open the preview in the Simple Browser once `Stacks: Start Dev Server` is up, instead of letting `./buddy dev` open the system browser."
+          },
+          "stacks.statusBar.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the Stacks item in the status bar, which opens the preview."
+          },
+          "stacks.pickier.enable": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Lint with the project's own pickier and config, the same as `./buddy lint`, and offer it as a formatter and a `source.fixAll.pickier` code action."
+          },
+          "stacks.pickier.run": {
+            "type": "string",
+            "enum": [
+              "onType",
+              "onSave"
+            ],
+            "default": "onType",
+            "markdownDescription": "Lint as you type, or only when a file is saved."
+          },
+          "stacks.bunPath": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The Bun binary that runs pickier. Leave empty to use the project's `pantry/.bin/bun`, then `bun` on the `PATH`."
+          },
+          "stacks.env.decryptOnHover": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Hovering an `encrypted:` value in an env file shows it decrypted, with the private key from `.env.keys` or `DOTENV_PRIVATE_KEY*`. The plaintext is only shown, never written anywhere."
+          },
+          "stacks.env.missingKeys": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Flag keys `.env.example` declares that `.env` does not set."
+          }
+        }
+      },
+      {
+        "title": "stx",
+        "properties": {
+          "stxTypescriptPlugin.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Type-check the TypeScript in stx files (script blocks and template expressions) with the TypeScript server, and offer its hovers, completions and go to definition there"
+          },
+          "stx.diagnostics.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable diagnostics (errors and warnings) for stx files"
+          },
+          "stx.diagnostics.validateUnclosedDirectives": {
+            "type": "boolean",
+            "default": true,
+            "description": "Validate unclosed directives like @if without @endif"
+          },
+          "stx.diagnostics.validateMismatchedDirectives": {
+            "type": "boolean",
+            "default": true,
+            "description": "Validate mismatched directives like @if closed with @endforeach"
+          },
+          "stx.diagnostics.validateTemplatePaths": {
+            "type": "boolean",
+            "default": true,
+            "description": "Validate that template paths in @include and @component directives exist"
+          },
+          "stx.diagnostics.validateComponentProps": {
+            "type": "boolean",
+            "default": true,
+            "description": "Validate required and unknown props passed through @component directives"
+          },
+          "stx.completion.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable auto-completion for stx directives"
+          },
+          "stx.completion.showSnippets": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show snippet completions with placeholders for directive parameters"
+          },
+          "stx.hover.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable hover documentation for stx directives"
+          },
+          "stx.hover.showExamples": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show code examples in hover documentation"
+          },
+          "stx.codeActions.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable quick fixes and code actions"
+          },
+          "stx.folding.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable code folding for directive blocks"
+          },
+          "stx.semanticHighlighting.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable semantic syntax highlighting for directives"
+          },
+          "stx.utilityClasses.enable": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable utility class features (tooltips, color previews, sorting)"
+          },
+          "stx.utilityClasses.framework": {
+            "type": "string",
+            "enum": [
+              "tailwind",
+              "unocss",
+              "auto"
+            ],
+            "default": "auto",
+            "markdownDescription": "Utility CSS framework to use. `auto` will detect from config files"
+          },
+          "stx.utilityClasses.colorPreview": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show inline color decorations for color utility classes"
+          },
+          "stx.utilityClasses.hoverPreview": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show CSS output when hovering over utility classes"
+          },
+          "stx.utilityClasses.underline": {
+            "type": "boolean",
+            "default": true,
+            "description": "Underline matched utility classes"
+          },
+          "stx.utilityClasses.sortOnSave": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically sort utility classes on file save"
+          },
+          "stx.utilityClasses.colorPreviewRadius": {
+            "type": "string",
+            "default": "0",
+            "description": "Border radius for color preview blocks ('0' for square like Tailwind, '50%' for circle)"
+          },
+          "stx.utilityClasses.selectionStyle": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show CSS preview for selected utility classes"
+          },
+          "stx.utilityClasses.autocomplete": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable autocomplete for utility classes"
+          },
+          "stx.utilityClasses.remToPxRatio": {
+            "type": "number",
+            "default": 16,
+            "minimum": 0,
+            "markdownDescription": "Pixels per `rem` for the px values utility-class hovers show next to `rem` values. `0` hides them. Replaces `css.remToPxRatio`, which is still read when this is not set."
+          }
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "files.associations": {
+        "buddy": "shellscript"
+      },
+      "npm.packageManager": "bun",
+      "typescript.preferGoToSourceDefinition": true,
+      "typescript.tsdk": "node_modules/typescript/lib"
+    },
+    "languages": [
+      {
+        "id": "stx",
+        "aliases": [
+          "stx",
+          "STX"
+        ],
+        "extensions": [
+          ".stx"
+        ],
+        "configuration": "./dist/stx/languages/stx.configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "stx",
+        "scopeName": "text.html.ts.stx",
+        "path": "./dist/stx/syntaxes/stx.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.css": "css",
+          "source.js": "javascript",
+          "source.ts": "typescript",
+          "meta.embedded.block.typescript": "typescript",
+          "meta.embedded.block.javascript": "javascript",
+          "meta.embedded.line.typescript": "typescript",
+          "meta.component.parameters.stx": "typescript"
+        }
+      }
+    ],
+    "typescriptServerPlugins": [
+      {
+        "name": "@stacksjs/stx-typescript-plugin",
+        "enableForWorkspaceTypeScriptVersions": true,
+        "languages": [
+          "stx"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "@stacksjs/stx-vscode": "^0.2.359",
+    "@types/vscode": "~1.109.0",
+    "@vscode/vsce": "^4.0.0"
+  }
+}

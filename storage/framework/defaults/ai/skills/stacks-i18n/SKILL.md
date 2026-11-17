@@ -1,0 +1,258 @@
+---
+name: stacks-i18n
+description: Use when working with internationalization in a Stacks application - translations, locale management, pluralization, date/number/currency formatting, or loading translation files. Covers @stacksjs/i18n with translator, formatter, loader, and pluralization modules.
+license: MIT
+compatibility: Bun >= 1.3.0, TypeScript
+allowed-tools: Read Edit Write Bash Grep Glob
+---
+
+# Stacks i18n
+
+## Key Paths
+- Core package: `storage/framework/core/i18n/src/`
+- Locale files: `locales/` (en.yml, de.yml)
+- Package: `@stacksjs/i18n`
+
+## Source Files
+```
+i18n/src/
+├── index.ts              # Main entry point and exports
+├── types.ts              # All type definitions
+├── translator.ts         # I18n class, global API (t, tc, te, tm)
+├── formatter.ts          # Locale-aware formatting (dates, numbers, currency, lists)
+├── loader.ts             # File-based translation loader (JSON, YAML, JS/TS)
+└── pluralization.ts      # CLDR plural rules, from the runtime's Intl.PluralRules
+```
+
+## Core Types
+
+```typescript
+type TranslationMessages = { [key: string]: string | TranslationMessages }
+type Translations = { [locale: string]: TranslationMessages }
+type InterpolationValues = Record<string, string | number | boolean | null | undefined>
+
+interface I18nConfig {
+  locale: string                    // default: 'en'
+  fallbackLocale: string            // default: 'en'
+  availableLocales?: string[]
+  messages?: Translations
+  missingHandler?: (locale: string, key: string) => string | undefined
+  warnMissing?: boolean             // default: true
+  escapeValues?: boolean            // default: false
+  keySeparator?: string             // default: '.'
+  pluralSeparator?: string          // default: '|'
+  dateTimeFormats?: DateTimeFormats
+  numberFormats?: NumberFormats
+}
+```
+
+## Translation API
+
+### Instance-Based
+```typescript
+import { createI18n, useI18n } from '@stacksjs/i18n'
+
+const i18n = createI18n({
+  locale: 'en',
+  fallbackLocale: 'en',
+  messages: {
+    en: { greeting: 'Hello, {name}!' },
+    de: { greeting: 'Hallo, {name}!' },
+  },
+})
+
+i18n.t('greeting', { name: 'World' })  // 'Hello, World!'
+i18n.setLocale('de')
+i18n.t('greeting', { name: 'Welt' })   // 'Hallo, Welt!'
+```
+
+### Global API
+```typescript
+import { t, tc, te, tm, trans, setLocale, getLocale, addTranslations, configure } from '@stacksjs/i18n'
+
+t('greeting', { name: 'World' })         // Translate with interpolation
+tc('items', 5, { count: 5 })             // Plural translation
+te('greeting')                            // Key exists? → boolean
+tm('section')                             // Raw message object
+trans('greeting')                         // Alias for t()
+
+setLocale('fr')
+getLocale()                               // 'fr'
+addTranslations('fr', { greeting: 'Bonjour, {name}!' })
+```
+
+### Lookup Flow
+```
+1. Look up key in target locale
+2. If not found → try fallback locale
+3. If still not found → call missingHandler → warn → return key string
+```
+
+## Pluralization
+
+CLDR plural rules, pipe-separated forms:
+
+```typescript
+addTranslations('en', { items: 'no items | one item | {count} items' })
+tc('items', 0)    // 'no items'
+tc('items', 1)    // 'one item'
+tc('items', 5)    // '5 items'
+```
+
+### Supported Languages
+
+Every language the runtime's CLDR data covers, through `Intl.PluralRules`,
+for the full locale (`pt` counts 0 as `one`, `pt-PT` does not). A language it
+has no data for says `other` for every number; `hasPluralRule(locale)` tells
+you which. `addPluralRule(locale, rule)` overrides a language. The rules were
+a hand-written table of 33 languages until it turned out to leave out Catalan,
+Croatian, Serbian, Bulgarian and `nb` (they said `other` for 1) and to get
+Hebrew's `two` and Latvian's `zero` wrong.
+
+```typescript
+import { getPluralCategory, addPluralRule, hasPluralRule } from '@stacksjs/i18n'
+getPluralCategory(1, 'en')     // 'one'
+getPluralCategory(5, 'en')     // 'other'
+```
+
+## Formatting
+
+### Date/Time
+```typescript
+import { formatDate, formatTime, formatDateTime, formatRelativeTime } from '@stacksjs/i18n'
+
+formatDate(new Date(), 'long')                    // 'March 23, 2026'
+formatDate(new Date(), 'short')                   // '3/23/26'
+formatTime(new Date(), 'short')                   // '2:30 PM'
+formatDateTime(new Date(), 'medium', 'short')     // 'Mar 23, 2026, 2:30 PM'
+formatRelativeTime(pastDate)                      // '3 hours ago'
+```
+
+### Numbers & Currency
+```typescript
+import { formatNumber, formatCurrency, formatPercent, formatUnit, formatBytes } from '@stacksjs/i18n'
+
+formatNumber(1234567)                              // '1,234,567'
+formatNumber(1234567, { compact: true })           // '1.2M'
+formatCurrency(29.99)                              // '$29.99'
+formatCurrency(29.99, 'EUR', {}, 'de')             // '29,99 €'
+formatPercent(0.85)                                // '85%'
+formatUnit(60, 'kilometer-per-hour', 'short')      // '60 km/h'
+formatBytes(1536)                                  // '1.50 KB'
+```
+
+### Lists & Display Names
+```typescript
+import { formatList, getLanguageName, getRegionName, isRTL } from '@stacksjs/i18n'
+
+formatList(['Alice', 'Bob', 'Charlie'])            // 'Alice, Bob, and Charlie'
+formatList(['A', 'B'], 'disjunction')              // 'A or B'
+getLanguageName('de')                               // 'German'
+getRegionName('JP')                                 // 'Japan'
+isRTL('ar')                                         // true
+```
+
+### String Collation
+```typescript
+import { sortStrings, compareStrings } from '@stacksjs/i18n'
+sortStrings(['ö', 'a', 'ü'], {}, 'de')            // Locale-aware sort
+```
+
+## Translation File Loader
+
+```typescript
+import { loadFromDirectory, loadFile, createLoader } from '@stacksjs/i18n'
+
+const translations = await loadFromDirectory({
+  directory: './locales',
+  extensions: ['.json', '.yaml', '.yml', '.ts', '.js'],
+  recursive: false,
+})
+
+const loader = createLoader('./locales')
+const all = await loader.load()
+const fr = await loader.loadLocale('fr', 'messages.yml')
+```
+
+## Request and generated-type integration
+
+`ensureLocalesLoaded()` loads the application's locale files once and applies
+`config.app.locale` and fallbackLocale. `resolveRequestLocale(request)` chooses
+the STX locale header/prefix, locale query parameter, locale cookie,
+Accept-Language, then the default. `applyRequestLocale(request)` loads and
+sets the global translator. These are framework integration primitives; a
+global `setLocale` remains singleton state and is not a promise of concurrent
+async request isolation. Use an explicit `createI18n()` instance when independent
+operations must keep different locales.
+
+`createLocaleSwitchResponse(request, localeCode, config)` sets a locale cookie
+and redirects to an equivalent localized path. `stripLocalePrefix` and
+`localizePath` share its path rules. The default locale remains unprefixed;
+other supported locales receive their prefix. Use this redirect helper for a deliberate server navigation. For an in-place
+app language switch, use the reactive browser composable below.
+
+The package re-exports the ts-i18n disk/codegen surface as
+`loadTranslationsFromDisk`, `generateI18nTypes`, `generateI18nTypesFromModule`,
+`generateI18nSampleConfig`, `writeI18nOutputs`, and `createSimpleTranslator`.
+This codegen is separate from runtime `loadTranslations(messages)`; choose
+the right operation rather than passing disk options to the runtime merge.
+Tests in `core/i18n/tests/bootstrap.test.ts`, `loader.test.ts`, and
+`scaffolded-locales.test.ts` retain request/loading evidence.
+
+## Locale file example
+
+```yaml
+# locales/en.yml
+default:
+  button:
+    about: About
+    back: Back
+  intro:
+    desc: Rapid Application Development
+    hi: 'Hi, {name}!'
+```
+
+## Gotchas
+- **Dual API** - instance-based (`createI18n()`) and global (`t()`) both exist. Global uses a singleton
+- **YAML parsed with Bun.YAML** - not a third-party parser
+- **Missing keys return the key itself** - not an error, not empty string
+- **Pluralization uses `|` separator** - not ICU MessageFormat
+- **CLDR rules come from the runtime** - `Intl.PluralRules`, no data shipped and no table to fall out of date
+- **HTML escaping is opt-in** - `escapeValues: true` in config
+- **Formatting uses Intl APIs** - delegates to `Intl.DateTimeFormat`, `Intl.NumberFormat`, etc.
+
+## Reactive browser and native screens
+
+Use `createI18n` from `@stacksjs/i18n/client` in browser modules requiring a
+framework-independent translator. This entry has no filesystem loader or app
+configuration imports. File loading and request helpers remain in the root entry.
+
+Use `useI18n` from `@stacksjs/i18n/stx` inside shared STX browser/native modules.
+Its locale and message reads participate in native STX reactivity. The root
+server entry also re-exports this composable. Keep the instance shared by the
+screen's modules; create separate instances for independent server requests.
+
+```ts
+import { useI18n } from '@stacksjs/i18n/stx'
+
+const words = useI18n({
+  locale: 'en',
+  messages: { en: { verified: 'Email verified' }, de: { verified: 'E-Mail bestätigt' } },
+})
+// STX binding: <p :text="words.t('verified')"></p>
+words.setLocale('de') // Updates that binding; the mounted form survives.
+const stop = words.subscribe(() => console.log(words.locale))
+stop() // Remove an optional observer when its owner is disposed.
+```
+
+`setLocale`, assigning `.locale`, and `addTranslations` invalidate reads.
+Selecting the current locale is a no-op. Instances do not change one another.
+The app owns cookie/account preference persistence and `<html lang>` metadata;
+none of these APIs navigate, refetch HTML, reset forms or repeat verification.
+Persist preferences separately from immediate UI updates. Every visible label
+must be a reactive binding, including shared navigation and error messages.
+Existing server-rendered text alone does not become reactive automatically.
+
+`core/i18n/tests/client-i18n.test.ts` verifies browser-safe bundling, reactive
+translation/plural/number updates, preserved unrelated state, subscriptions and
+regional plural fallback. Add app browser tests for the complete switch flow.

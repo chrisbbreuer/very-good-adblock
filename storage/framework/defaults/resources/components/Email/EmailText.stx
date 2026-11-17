@@ -1,0 +1,33 @@
+<script server>
+// Email paragraph (stacksjs/stacks#1901 B1).
+//
+// Wraps text in a paragraph with normalised line-height + colour,
+// and a `size` enum covering the 80% case (sm / md / lg / heading).
+// For arbitrary styling override `color` / `spacing` directly.
+interface EmailTextProps {
+  align?: 'left' | 'center' | 'right'
+  size?: 'sm' | 'md' | 'lg' | 'heading'
+  color?: string
+  spacing?: string
+}
+
+const props = defineProps<EmailTextProps>()
+const align = props.align || 'left'
+const size = props.size || 'md'
+const color = props.color || (size === 'heading' ? '#18181b' : size === 'sm' ? '#71717a' : '#3f3f46')
+// Hooks for the dark-mode rules in <EmailLayout>. A colour passed as a prop is
+// the template's own choice, so it gets no hook and dark mode leaves it alone.
+const role = props.color ? '' : size === 'heading' ? 'email-heading' : size === 'sm' ? 'email-muted' : 'email-text'
+const spacing = props.spacing || '16px'
+
+const sizeStyles: Record<string, string> = {
+  sm: 'font-size:14px;line-height:1.5;',
+  md: 'font-size:16px;line-height:1.6;',
+  lg: 'font-size:18px;line-height:1.6;',
+  heading: 'font-size:22px;line-height:1.3;font-weight:600;letter-spacing:-0.01em;',
+}
+const sizeStyle = sizeStyles[size] || sizeStyles.md
+</script>
+<p class="{{ role }}" style="margin:0 0 {{ spacing }} 0;text-align:{{ align }};color:{{ color }};{{ sizeStyle }}">
+  <slot />
+</p>

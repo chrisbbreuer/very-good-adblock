@@ -1,0 +1,32 @@
+<script>
+interface SettingsFormManagerProps {
+  name?: string
+}
+
+const { name = '' } = defineProps<SettingsFormManagerProps>()
+
+function title(): string {
+  return name
+    .split(/[-_]/)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+</script>
+
+<Card variant="default" padding="lg">
+  <div class="flex gap-4 items-start">
+    <div class="flex flex-none items-center justify-center h-10 w-10 text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg">
+      <span class="h-5 w-5 i-hugeicons-settings-02"></span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <h2 class="font-semibold text-neutral-900 dark:text-white">{{ title() }} configuration</h2>
+      <p class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">
+        Configuration editing now lives in the unified Settings workspace.
+      </p>
+      <a href="/settings" class="inline-flex gap-2 items-center mt-4 font-medium text-blue-600 text-sm dark:text-blue-400 hover:underline">
+        Open Settings
+        <span class="h-4 w-4 i-hugeicons-arrow-right-02"></span>
+      </a>
+    </div>
+  </div>
+</Card>

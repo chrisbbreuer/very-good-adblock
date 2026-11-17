@@ -1,0 +1,104 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'FailedJob',
+  table: 'failed_jobs',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+  },
+
+  attributes: {
+    connection: {
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Connection must have a maximum of 100 characters',
+          string: 'Connection must be a string',
+        },
+      },
+      factory: () => 'default',
+    },
+
+    queue: {
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(255),
+        message: {
+          max: 'Queue must have a maximum of 255 characters',
+        },
+      },
+      factory: () => 'default',
+    },
+
+    // Both `text`: a payload is a serialized job envelope and an exception
+    // carries a stack trace, and neither fits the default varchar(255) that
+    // Postgres enforces.
+    payload: {
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string().required(),
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+
+    exception: {
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string().required(),
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+
+    attempts: {
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+    },
+
+    maxAttempts: {
+      fillable: true,
+      validation: {
+        rule: schema.number().min(1),
+      },
+    },
+
+    durationMs: {
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+    },
+
+    failed_at: {
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: () => '2024-12-23 13:32:19',
+    },
+  },
+
+  dashboard: {
+    columns: ['queue', 'connection', 'exception', 'attempts', 'failedAt'],
+    // A failed job can be run again from its row or its page, one or many.
+    actions: [
+      {
+        name: 'retry',
+        label: 'Retry',
+        action: 'Actions/Dashboard/Jobs/JobRetryAction',
+        icon: 'i-hugeicons-refresh',
+        confirm: 'It is put back on its queue to run again.',
+        on: ['record', 'row', 'bulk'],
+      },
+    ],
+  },
+} as const)

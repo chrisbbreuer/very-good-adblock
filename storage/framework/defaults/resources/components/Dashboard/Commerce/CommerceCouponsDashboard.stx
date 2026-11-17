@@ -1,0 +1,242 @@
+<script client>
+import type {
+  CouponDiscountType,
+  CouponRecord,
+  CouponStatus,
+  CouponSummary,
+} from '../../../../app/Actions/Dashboard/Commerce/coupon-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface CouponIndexResponse {
+  records: CouponRecord[]
+  total: number
+  page: number
+  summary: CouponSummary
+  currency: string
+}
+
+interface CouponWritePayload {
+  code: string
+  description: string
+  status: CouponStatus
+  isActive: boolean
+  discountType: CouponDiscountType
+  discountValue: number
+  minOrderAmount?: number
+  maxDiscountAmount?: number
+  freeProductId?: string
+  usageLimit?: number
+  startDate?: string
+  endDate?: string
+}
+
+const emptySummary: CouponSummary = { total: 0, enabled: 0, active: 0, scheduled: 0, expired: 0, percentage: 0, fixedAmount: 0, redemptions: 0, mostUsed: [] }
+const summary = state<CouponSummary>({ ...emptySummary })
+/** The store currency: fixed amounts are minor units of it. */
+const currency = state('USD')
+const statusFilter = state('all')
+const enabledFilter = state('all')
+const typeFilter = state('all')
+const sort = state('newest')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<CouponRecord | null>(null)
+const detailsRecord = state<CouponRecord | null>(null)
+const deletingRecord = state<CouponRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  newest: { sort: 'newest', direction: 'desc' },
+  code: { sort: 'code', direction: 'asc' },
+  usage: { sort: 'usage', direction: 'desc' },
+  expiry: { sort: 'expiry', direction: 'asc' },
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218), where
+// this page used to do all of that with the newest 500 coupons.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<CouponRecord>({
+  fetch: query => dashboardApi<CouponIndexResponse>(`/api/dashboard/commerce/coupons?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.newest!,
+  columnSorts: { codeLabel: 'code', status: 'status', availability: 'availability', startDate: 'start', endDate: 'expiry' },
+  filters: () => ({ status: statusFilter(), enabled: enabledFilter(), type: typeFilter() }),
+  onLoad: (result) => {
+    const data = result as CouponIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    currency.set(data.currency || 'USD')
+  },
+  onError: error => pushToast('error', 'Could not load coupons', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'coupon' : 'coupons'}`
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  return [
+    { label: 'Coupons', value: String(current.total), detail: 'Persisted Coupon records' },
+    { label: 'Enabled', value: String(current.enabled), detail: `${current.total - current.enabled} disabled` },
+    { label: 'Scheduled', value: String(current.scheduled), detail: `${current.expired} expired` },
+    { label: 'Redemptions', value: current.redemptions.toLocaleString(), detail: 'Recorded usage count' },
+  ]
+}
+
+/** Every matching coupon as CSV, built by the server, not just the page shown. */
+function exportHref(): string {
+  return `/api/dashboard/commerce/coupons/export?${params()}`
+}
+
+function loadCoupons(): Promise<void> {
+  return load()
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: CouponRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function saveCoupon(payload: CouponWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  const body = {
+    ...payload,
+    usageCount: editing ? current.usageCount : 0,
+  }
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(editing ? `/api/dashboard/commerce/coupons/${current.id}` : '/api/dashboard/commerce/coupons', {
+      method: editing ? 'PATCH' : 'POST',
+      body,
+    })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Coupon updated' : 'Coupon added')
+    await loadCoupons()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save coupon', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDetails(record: CouponRecord): void {
+  detailsRecord.set(record)
+}
+
+function closeDetails(): void {
+  detailsRecord.set(null)
+}
+
+function openDelete(record: CouponRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteCoupon(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/coupons/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    detailsRecord.set(null)
+    pushToast('success', 'Coupon deleted', { detail: current.code })
+    await loadCoupons()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete coupon', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadCoupons()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Coupons" description="Manage native Coupon records, availability, limits, and redemption state.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadCoupons()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" variant="secondary" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add coupon</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Coupon metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <CommerceCouponBreakdown :summary="summary()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-6">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search codes, descriptions, or products" ariaLabel="Search coupons" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Coupon status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'Active', label: 'Active' }, { value: 'Scheduled', label: 'Scheduled' }, { value: 'Expired', label: 'Expired' }]" />
+      <Select v-model:value="enabledFilter" ariaLabel="Coupon availability" placeholder="" :options="[{ value: 'all', label: 'Any availability' }, { value: 'enabled', label: 'Enabled' }, { value: 'disabled', label: 'Disabled' }]" />
+      <Select v-model:value="typeFilter" ariaLabel="Discount type" placeholder="" :options="[{ value: 'all', label: 'All discount types' }, { value: 'percentage', label: 'Percentage' }, { value: 'fixed_amount', label: 'Fixed amount' }]" />
+      <Select v-model:value="sort" ariaLabel="Sort coupons" placeholder="" :options="[{ value: 'newest', label: 'Newest' }, { value: 'code', label: 'Code' }, { value: 'usage', label: 'Most used' }, { value: 'expiry', label: 'Expiry date' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+    </div>
+
+    <CommerceCouponsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" :currency="currency()" @view="openDetails" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<CommerceCouponDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :currency="currency()" :busy="saving()" :errors="validationErrors()" @submit="saveCoupon" @close="closeDialog()" />
+<CommerceCouponDetailsDialog :open="Boolean(detailsRecord())" :record="detailsRecord()" :currency="currency()" @edit="openEdit" @delete="openDelete" @close="closeDetails()" />
+<CommerceCouponDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" @confirm="deleteCoupon()" @close="closeDelete()" />

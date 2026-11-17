@@ -1,0 +1,207 @@
+<script client>
+import type { PaymentBreakdown } from '../../../../app/Actions/Dashboard/Commerce/commerce-payment-list'
+import type { PaymentRecord, PaymentSummary } from '../../../../app/Actions/Dashboard/Commerce/payment-records'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface CommercePaymentsResponse {
+  records: PaymentRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: PaymentSummary
+  breakdown: PaymentBreakdown
+  statuses: string[]
+  methods: string[]
+}
+
+const emptySummary: PaymentSummary = { total: 0, successful: 0, currencies: [], capturedByCurrency: {}, refundedByCurrency: {}, successRate: 0 }
+// The server's answer for the current search, filters and range
+// (stacksjs/stacks#3218): it searches, filters, sorts, pages and summarises
+// every payment, where this page used to do all of that with the newest 500.
+const summary = state<PaymentSummary>({ ...emptySummary })
+const breakdown = state<PaymentBreakdown>({ statuses: [], methods: [], currencies: [] })
+const statusChoices = state<string[]>([])
+const methodChoices = state<string[]>([])
+const statusFilter = state('all')
+const methodFilter = state('all')
+const timeRange = state('30')
+const sort = state('newest')
+const detailsRecord = state<PaymentRecord | null>(null)
+const refundRecord = state<PaymentRecord | null>(null)
+const refunding = state(false)
+
+/** The select's four orders, as the server's sort and direction. */
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  newest: { sort: 'created', direction: 'desc' },
+  oldest: { sort: 'created', direction: 'asc' },
+  amount: { sort: 'amount', direction: 'desc' },
+  status: { sort: 'status', direction: 'asc' },
+}
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  paymentLabel: 'id',
+  billingLabel: 'billing',
+  amount: 'amount',
+  methodLabel: 'method',
+  statusTone: 'status',
+  createdAt: 'created',
+}
+
+function statuses(): string[] {
+  return statusChoices()
+}
+
+function methods(): string[] {
+  return methodChoices()
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218). The
+// range is a filter like the others; "all" is left out, which the server
+// reads as every payment, as it reads days=all.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<PaymentRecord>({
+  fetch: query => dashboardApi<CommercePaymentsResponse>(`/api/dashboard/commerce/payments?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.newest!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ days: timeRange(), status: statusFilter(), method: methodFilter() }),
+  onLoad: (result) => {
+    const data = result as CommercePaymentsResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    breakdown.set(data.breakdown ?? { statuses: [], methods: [], currencies: [] })
+    statusChoices.set(Array.isArray(data.statuses) ? data.statuses : [])
+    methodChoices.set(Array.isArray(data.methods) ? data.methods : [])
+  },
+  onError: error => pushToast('error', 'Could not load payments', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'payment' : 'payments'}`
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  return [
+    { label: 'Transactions', value: String(current.total), detail: 'In the current view' },
+    { label: 'Successful', value: String(current.successful), detail: 'Captured at least once' },
+    { label: 'Success rate', value: `${current.successRate}%`, detail: 'Successful vs failed' },
+    {
+      label: 'Currencies',
+      value: String(current.currencies.length),
+      detail: 'Kept separate in totals',
+    },
+  ]
+}
+
+/** Every matching payment as CSV, built by the server, not just the page shown. */
+function exportHref(): string {
+  return `/api/dashboard/commerce/payments/export?${params()}`
+}
+
+function loadPayments(): Promise<void> {
+  return load()
+}
+
+function openDetails(record: PaymentRecord): void {
+  detailsRecord.set(record)
+}
+
+function closeDetails(): void {
+  detailsRecord.set(null)
+}
+
+function openRefund(): void {
+  const record = detailsRecord()
+  if (!record)
+    return
+  detailsRecord.set(null)
+  refundRecord.set(record)
+}
+
+function closeRefund(): void {
+  if (!refunding())
+    refundRecord.set(null)
+}
+
+async function recordRefund(amount: number): Promise<void> {
+  const payment = refundRecord()
+  if (!payment)
+    return
+  refunding.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/payments/${payment.id}/refund`, {
+      method: 'POST',
+      body: { amount },
+    })
+    refundRecord.set(null)
+    pushToast('success', 'Refund recorded', {
+      detail: 'The local payment ledger now reflects the processor-confirmed refund.',
+    })
+    await loadPayments()
+  }
+  catch (error) {
+    pushToast('error', 'Could not record refund', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    refunding.set(false)
+  }
+}
+
+onMount(() => {
+  void loadPayments()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Payments" description="Inspect native Payment records, export the current view, and record confirmed refunds.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadPayments"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export current view</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Payment metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <CommercePaymentsBreakdown :breakdown="breakdown()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search payments" ariaLabel="Search payments" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Payment status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, ...statuses().map(status => ({ value: status, label: status }))]" />
+      <Select v-model:value="methodFilter" ariaLabel="Payment method" placeholder="" :options="[{ value: 'all', label: 'All methods' }, ...methods().map(method => ({ value: method, label: method }))]" />
+      <Select v-model:value="timeRange" ariaLabel="Payment time range" placeholder="" :options="[{ value: '1', label: 'Last 24 hours' }, { value: '7', label: 'Last 7 days' }, { value: '30', label: 'Last 30 days' }, { value: '90', label: 'Last 90 days' }, { value: '365', label: 'Last year' }, { value: 'all', label: 'All time' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+      <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">
+        Sort
+        <Select v-model:value="sort" ariaLabel="Sort" size="sm" placeholder="" :options="[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'amount', label: 'Highest amount' }, { value: 'status', label: 'Status' }]" />
+      </label>
+    </div>
+
+    <CommercePaymentsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @view="openDetails" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<PaymentDetailsDialog :open="Boolean(detailsRecord())" :record="detailsRecord()" @request-refund="openRefund" @close="closeDetails()" />
+<PaymentRefundDialog :open="Boolean(refundRecord())" :record="refundRecord()" :busy="refunding()" @submit="recordRefund" @close="closeRefund()" />

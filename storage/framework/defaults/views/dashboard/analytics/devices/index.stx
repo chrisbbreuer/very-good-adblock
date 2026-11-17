@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Device Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="devices"
+    title="Device Analytics"
+    description="Visitor device classes derived from recorded user agents."
+    emptyMessage="No device user agents were recorded for this period."
+  />
+</PageLayout>
+@endsection

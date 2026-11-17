@@ -1,0 +1,60 @@
+import { Action } from '@stacksjs/actions/runtime'
+import { Auth, authCookieForBrowserSession, resolveBrowserSessionPolicy, verifyTwoFactorCredential, withTwoFactorChallenge } from '@stacksjs/auth'
+import { response } from '@stacksjs/router'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default new Action({
+  name: 'VerifyTwoFactorLoginAction',
+  description: 'Exchange a LoginAction 2FA challenge + TOTP code for a real token pack',
+  method: 'POST',
+
+  validations: {
+    challenge_token: {
+      rule: schema.string().min(1).required(),
+      message: 'A challenge token is required.',
+    },
+    code: {
+      rule: schema.string().min(6).max(64).required(),
+      message: 'Enter an authenticator code or a recovery code.',
+    },
+  },
+
+  async handle(request: RequestInstance) {
+    const challengeToken = request.get('challenge_token')
+    const code = request.get('code')
+
+    // Single-use: a second attempt with the same challenge token
+    // (whether the code was right or wrong) must start over from
+    // LoginAction, not retry — mirrors the WebAuthn challenge
+    // delete-on-read semantics in passkey.ts (stacksjs/stacks#1866).
+    const result = await withTwoFactorChallenge(challengeToken, async (userId, challenge) => {
+      if (!await verifyTwoFactorCredential(userId, code)) return null
+      const policy = resolveBrowserSessionPolicy(challenge.remembered)
+      return Auth.loginUsingId(userId, {
+        expiresInMinutes: policy.expiresInMinutes,
+        withRefreshToken: policy.withRefreshToken,
+      })
+    })
+    if (!result)
+      return response.unauthorized('Invalid or expired login attempt. Please sign in again.')
+
+    const user = result.user
+
+    // This is where a 2FA account's session actually begins — LoginAction
+    // deliberately mints nothing for these users until the code is verified —
+    // so the cookie belongs here too. Setting it only on LoginAction would
+    // have left every 2FA account exactly where it started (#2306).
+    return response.json({
+      access_token: result.token,
+      refresh_token: result.refreshToken,
+      token_type: 'Bearer',
+      expires_in: result.expiresIn,
+      token: result.token,
+      user: {
+        id: user?.id,
+        email: user?.email,
+        name: user?.name,
+      },
+    }, { headers: { 'Set-Cookie': authCookieForBrowserSession(result.token, result.expiresIn) } })
+  },
+})

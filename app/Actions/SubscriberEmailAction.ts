@@ -40,12 +40,11 @@ export async function subscribe(params: Record<string, string>): Promise<Subscri
   return { success: true, message: 'Subscribed' }
 }
 
-// `Action` defaults its model parameter to `string`, but this action declares
-// no `model:` and types its handler's request bare, so the framework resolves
-// the body to `Record<string, any>` — the documented "no narrowing" fallback —
-// and infers the same for the class. Say so, rather than annotating a default
-// the value cannot satisfy.
-const SubscriberEmailAction: Action<Record<string, any>> = new Action({
+// No `model:` and a bare request type, so the body resolves to the framework's
+// `Record<string, any>` fallback. The payload and result slots are spelled out
+// because `--isolatedDeclarations` needs an explicit type and the handler
+// returns a `SubscribeResult`, not the generic `ActionResult`.
+const SubscriberEmailAction: Action<Record<string, any>, undefined, '', RequestInstance, SubscribeResult> = new Action({
   name: 'SubscriberEmailAction',
   description: 'Store a Very Good AdBlock newsletter subscription',
   method: 'POST',

@@ -1,0 +1,82 @@
+<script client>
+interface AuthorRecord {
+  id: string
+  name: string
+  email: string
+  bio: string
+  avatar: string
+}
+
+interface AuthorDraft {
+  name: string
+  email: string
+  bio: string
+  avatar: string
+}
+
+const open = useReactiveProp('open', false)
+const author = useReactiveProp('author', null as AuthorRecord | null)
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const name = state('')
+const email = state('')
+const bio = state('')
+const avatar = state('')
+const emit = defineEmits(['close', 'submit'])
+let wasOpen = false
+
+effect(() => {
+  const isOpen = open()
+  if (isOpen && !wasOpen) {
+    const record = author()
+    name.set(record?.name || '')
+    email.set(record?.email || '')
+    bio.set(record?.bio || '')
+    avatar.set(record?.avatar || '')
+  }
+  wasOpen = isOpen
+})
+
+function close(): void {
+  if (!busy())
+    emit('close')
+}
+
+function submit(): void {
+  const draft: AuthorDraft = {
+    name: name().trim(),
+    email: email().trim(),
+    bio: bio().trim(),
+    avatar: avatar().trim(),
+  }
+  emit('submit', draft)
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="author() ? 'Edit author' : 'New author'"
+  description="Keep author identity and publishing attribution up to date."
+  :closable="!busy()"
+  @close="close"
+>
+  <form id="author-editor-form" class="grid gap-4" @submit.prevent="submit">
+    <Input v-model:value="name" name="name" label="Name" :required="true" :minLength="5" :maxLength="255" autocomplete="name" />
+    <Input v-model:value="email" name="email" label="Email" type="email" :required="true" autocomplete="email" />
+    <Textarea v-model:value="bio" name="bio" label="Bio" :rows="3" :maxLength="500" />
+    <Input v-model:value="avatar" name="avatar" label="Avatar URL" type="url" inputmode="url" placeholder="https://example.com/avatar.jpg" />
+  </form>
+
+  <div :if="error()" role="alert" class="mt-4 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+    {{ error() }}
+  </div>
+
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="close">Cancel</Button>
+      <Button type="submit" form="author-editor-form" :disabled="name().trim().length < 5 || !email().trim()" :loading="busy()">
+        {{ author() ? 'Save changes' : 'Create author' }}
+      </Button>
+    </div>
+  </template>
+</Modal>

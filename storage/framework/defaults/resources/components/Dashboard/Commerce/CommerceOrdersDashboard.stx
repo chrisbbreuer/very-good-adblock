@@ -1,0 +1,275 @@
+<script client>
+import type {
+  CommerceOrderRecord,
+  CommerceOrderSummary,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-order-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+interface OrderIndexResponse {
+  records: CommerceOrderRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: CommerceOrderSummary
+  statuses: string[]
+  orderTypes: string[]
+  defaultCurrency: string
+}
+
+interface OrderWritePayload {
+  customerId?: number
+  couponId?: number
+  status: string
+  totalAmount: number
+  currency: string
+  taxAmount: number
+  discountAmount: number
+  deliveryFee: number
+  tipAmount: number
+  orderType: string
+  deliveryAddress?: string
+  specialInstructions?: string
+  estimatedDeliveryTime?: string
+  appliedCouponId?: string
+}
+
+const emptySummary: CommerceOrderSummary = {
+  total: 0,
+  pending: 0,
+  inProgress: 0,
+  completed: 0,
+  cancelled: 0,
+  currencyTotals: [],
+}
+const summary = state<CommerceOrderSummary>({ ...emptySummary })
+const statuses = state<string[]>([])
+const orderTypes = state<string[]>([])
+const defaultCurrency = state('USD')
+const statusFilter = state('all')
+const typeFilter = state('all')
+const sort = state('newest')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<CommerceOrderRecord | null>(null)
+const detailsRecord = state<CommerceOrderRecord | null>(null)
+const deletingRecord = state<CommerceOrderRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+function formatMoney(value: number, currency: string): string {
+  return formatCurrency(value, currency)
+}
+
+function label(value: string): string {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+/** The select's four orders, as the server's sort and direction. */
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  'newest': { sort: 'created', direction: 'desc' },
+  'oldest': { sort: 'created', direction: 'asc' },
+  'total-high': { sort: 'total', direction: 'desc' },
+  'total-low': { sort: 'total', direction: 'asc' },
+}
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  orderLabel: 'id',
+  customerLabel: 'customer',
+  totalAmount: 'total',
+  fulfillmentLabel: 'type',
+  statusTone: 'status',
+  createdAt: 'created',
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<CommerceOrderRecord>({
+  fetch: query => dashboardApi<OrderIndexResponse>(`/api/dashboard/commerce/orders?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS["newest"]!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ status: statusFilter(), type: typeFilter() }),
+  onLoad: (result) => {
+    const data = result as OrderIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    statuses.set(Array.isArray(data.statuses) ? data.statuses : [])
+    orderTypes.set(Array.isArray(data.orderTypes) ? data.orderTypes : [])
+    defaultCurrency.set(data.defaultCurrency || 'USD')
+  },
+  onError: error => pushToast('error', "Could not load orders", { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'order' : 'orders'}`
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  return [
+    { label: 'Orders', value: String(current.total), detail: 'Persisted Order records' },
+    { label: 'Pending', value: String(current.pending), detail: 'Awaiting preparation' },
+    { label: 'In progress', value: String(current.inProgress), detail: 'Preparing, ready, or shipped' },
+    { label: 'Completed', value: String(current.completed), detail: 'Delivered, completed, or paid' },
+    { label: 'Cancelled', value: String(current.cancelled), detail: 'Cancelled or refunded' },
+  ]
+}
+
+/** Every matching order as CSV, built by the server, not just the page shown. */
+function exportHref(): string {
+  return `/api/dashboard/commerce/orders/export?${params()}`
+}
+
+function loadOrders(): Promise<void> {
+  return load()
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: CommerceOrderRecord): void {
+  detailsRecord.set(null)
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function saveOrder(payload: OrderWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(editing ? `/api/dashboard/commerce/orders/${current.id}` : '/api/dashboard/commerce/orders', {
+      method: editing ? 'PATCH' : 'POST',
+      body: payload,
+    })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Order updated' : 'Order added')
+    await loadOrders()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save order', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDetails(record: CommerceOrderRecord): void {
+  detailsRecord.set(record)
+}
+
+function closeDetails(): void {
+  detailsRecord.set(null)
+}
+
+function openDelete(record: CommerceOrderRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteOrder(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/orders/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    detailsRecord.set(null)
+    pushToast('success', 'Order deleted', { detail: `Order ${current.id}` })
+    await loadOrders()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete order', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadOrders()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Orders" description="Manage native Order records, customer assignments, totals, and fulfillment state.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadOrders()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" variant="secondary" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add order</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Order metrics" columns="grid-cols-2 lg:grid-cols-5" :items="metricCards()" />
+
+  <section :if="summary().currencyTotals.length > 0" aria-label="Order currency totals" class="flex flex-wrap gap-2 items-center">
+    <span class="text-gray-500 text-xs dark:text-neutral-400">Recorded order value</span>
+    <span :for="value in summary().currencyTotals" :key="value.currency" class="px-2.5 py-1 font-medium text-gray-700 text-xs dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-gray-200 rounded-full dark:border-neutral-700">{{ formatMoney(value.amount, value.currency) }}</span>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search order, customer, status, or address" ariaLabel="Search orders" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Order status" placeholder="" :options="[{ value: 'all', label: 'Any status' }, ...statuses().map(option => ({ value: option, label: label(option) }))]" />
+      <Select v-model:value="typeFilter" ariaLabel="Order type" placeholder="" :options="[{ value: 'all', label: 'Any order type' }, ...orderTypes().map(option => ({ value: option, label: label(option) }))]" />
+      <Select v-model:value="sort" ariaLabel="Sort orders" placeholder="" :options="[{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'total-high', label: 'Highest total' }, { value: 'total-low', label: 'Lowest total' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+    </div>
+
+    <CommerceOrdersTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @view="openDetails" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<CommerceOrderDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :statuses="statuses()" :order-types="orderTypes()" :default-currency="defaultCurrency()" :busy="saving()" :errors="validationErrors()" @submit="saveOrder" @close="closeDialog()" />
+<CommerceOrderDetailsDialog :open="Boolean(detailsRecord())" :record="detailsRecord()" @edit="openEdit" @delete="openDelete" @close="closeDetails()" />
+<CommerceOrderDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" @confirm="deleteOrder()" @close="closeDelete()" />

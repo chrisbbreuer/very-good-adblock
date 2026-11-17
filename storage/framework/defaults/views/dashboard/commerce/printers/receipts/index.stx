@@ -1,0 +1,10 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Print Logs')
+
+<div class="p-4 lg:p-8 min-h-[100dvh] dark:bg-neutral-900">
+  <PrintLogsDashboard />
+</div>
+
+@endsection

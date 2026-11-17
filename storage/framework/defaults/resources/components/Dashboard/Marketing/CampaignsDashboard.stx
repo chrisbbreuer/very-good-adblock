@@ -1,0 +1,297 @@
+<script client>
+import type {
+  CampaignListOption,
+  CampaignRecord,
+  CampaignSummary,
+} from '../../../../app/Actions/Dashboard/Marketing/campaign-records'
+import type { CampaignDeliveryOperation } from '../../../../app/Actions/Dashboard/Marketing/campaign-delivery'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface CampaignIndexResponse {
+  records: CampaignRecord[]
+  summary: CampaignSummary
+  lists: CampaignListOption[]
+  defaultCurrency: string
+}
+
+interface CampaignPayload {
+  name: string
+  description: string
+  type: string
+  status: string
+  subject: string
+  template: string
+  text: string
+  fromName: string
+  fromAddress: string
+  emailListId: string | null
+  scheduledAt: string | null
+  /** Integer minor units of `currency`, or null for no budget. */
+  budget: number | null
+  /** Integer minor units of `currency`. */
+  spent: number
+  currency: string
+  startDate: string
+  endDate: string
+}
+
+interface CampaignDeliveryRequest {
+  mode: CampaignDeliveryOperation
+  record: CampaignRecord
+}
+
+const emptySummary: CampaignSummary = {
+  total: 0,
+  live: 0,
+  sent: 0,
+  recipients: 0,
+  failedDeliveries: 0,
+}
+const records = state<CampaignRecord[]>([])
+const summary = state<CampaignSummary>({ ...emptySummary })
+const lists = state<CampaignListOption[]>([])
+const defaultCurrency = state('USD')
+const loading = state(true)
+const loadError = state('')
+const search = state('')
+const typeFilter = state('all')
+const statusFilter = state('all')
+const listFilter = state('all')
+const sort = state('newest')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<CampaignRecord | null>(null)
+const deletingRecord = state<CampaignRecord | null>(null)
+const saving = state(false)
+const saveError = state('')
+const deleting = state(false)
+const deleteError = state('')
+const deliveryMode = state<CampaignDeliveryOperation>('send')
+const deliveryRecord = state<CampaignRecord | null>(null)
+const deliveryBusy = state(false)
+const deliveryError = state('')
+
+function filteredRecords(): CampaignRecord[] {
+  const query = search().trim().toLowerCase()
+  return [...records()]
+    .filter((record) => {
+      if (typeFilter() !== 'all' && record.type !== typeFilter())
+        return false
+      if (statusFilter() !== 'all' && record.status !== statusFilter())
+        return false
+      if (listFilter() !== 'all' && record.emailListId !== listFilter())
+        return false
+      return !query || [
+        record.name,
+        record.description,
+        record.subject,
+        record.type,
+        record.status,
+        record.emailListName,
+      ].some(value => value.toLowerCase().includes(query))
+    })
+    .sort((left, right) => {
+      if (sort() === 'audience')
+        return right.audienceSize - left.audienceSize || left.name.localeCompare(right.name)
+      if (sort() === 'sent')
+        return right.sentCount - left.sentCount || left.name.localeCompare(right.name)
+      if (sort() === 'name')
+        return left.name.localeCompare(right.name)
+      return Number(right.id) - Number(left.id)
+    })
+}
+
+/**
+ * What the table is showing: a change returns it to the first page, as this
+ * page's own pager did before the table took over paging.
+ */
+function viewKey(): string {
+  return JSON.stringify([search(), typeFilter(), statusFilter(), listFilter(), sort()])
+}
+
+async function loadCampaigns(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<CampaignIndexResponse>('/api/dashboard/marketing/campaigns')
+    if (!data || !Array.isArray(data.records) || !data.summary || !Array.isArray(data.lists))
+      throw new TypeError('Campaign resources were not returned in the expected shape.')
+    records.set(data.records)
+    summary.set(data.summary)
+    lists.set(data.lists)
+    defaultCurrency.set(data.defaultCurrency || 'USD')
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not load campaigns', { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function openEdit(record: CampaignRecord): void {
+  if (['sending', 'sent'].includes(record.status))
+    return
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  saveError.set('')
+}
+
+async function saveCampaign(payload: CampaignPayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(
+      editing ? `/api/dashboard/marketing/campaigns/${current.id}` : '/api/dashboard/marketing/campaigns',
+      {
+        method: editing ? 'PATCH' : 'POST',
+        body: payload,
+      },
+    )
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Campaign updated' : 'Campaign added')
+    await loadCampaigns()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: CampaignRecord): void {
+  deletingRecord.set(record)
+  deleteError.set('')
+}
+
+function closeDelete(): void {
+  if (deleting())
+    return
+  deletingRecord.set(null)
+  deleteError.set('')
+}
+
+async function deleteCampaign(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/marketing/campaigns/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Campaign deleted')
+    await loadCampaigns()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+function openDelivery(request: CampaignDeliveryRequest): void {
+  deliveryMode.set(request.mode)
+  deliveryRecord.set(request.record)
+  deliveryError.set('')
+}
+
+function closeDelivery(): void {
+  if (deliveryBusy())
+    return
+  deliveryRecord.set(null)
+  deliveryError.set('')
+}
+
+async function confirmDelivery(payload: { scheduledAt?: string }): Promise<void> {
+  const current = deliveryRecord()
+  if (!current)
+    return
+  deliveryBusy.set(true)
+  deliveryError.set('')
+  try {
+    const mode = deliveryMode()
+    await dashboardApi(`/api/dashboard/marketing/campaigns/${current.id}/${mode}`, {
+      method: 'POST',
+      body: mode === 'schedule' ? payload : undefined,
+    })
+    deliveryRecord.set(null)
+    pushToast(
+      'success',
+      mode === 'schedule'
+        ? 'Campaign scheduled'
+        : mode === 'cancel'
+          ? 'Campaign delivery cancelled'
+          : 'Campaign queued for delivery',
+    )
+    await loadCampaigns()
+  }
+  catch (error) {
+    deliveryError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deliveryBusy.set(false)
+  }
+}
+
+onMount(() => {
+  void loadCampaigns()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Campaigns" description="Manage Campaign records with real audience and delivery aggregates.">
+  <div class="flex gap-2">
+    <Button :loading="loading()" variant="secondary" @click="loadCampaigns()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button @click="openAdd()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add campaign</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadCampaigns()">Retry</Button></div>
+
+  <section aria-label="Campaign metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-5">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Campaigns</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().total }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Persisted records</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Live</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().live }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Scheduled, sending, or active</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Completed</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().sent }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Sent or completed</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Recipients</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().recipients.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Persisted successful sends</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Delivery issues</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().failedDeliveries.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Failed, bounced, or complained</p></article>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <SearchFilter v-model:searchValue="search" placeholder="Search campaigns" ariaLabel="Search campaigns" />
+      <Select v-model:value="typeFilter" ariaLabel="Filter campaign type" placeholder="" :options="[{ value: 'all', label: 'All types' }, { value: 'email', label: 'Email' }, { value: 'sms', label: 'SMS' }, { value: 'push', label: 'Push' }, { value: 'social', label: 'Social' }, { value: 'multi-channel', label: 'Multi-channel' }]" />
+      <Select v-model:value="statusFilter" ariaLabel="Filter campaign status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'draft', label: 'Draft' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'sending', label: 'Sending' }, { value: 'sent', label: 'Sent' }, { value: 'active', label: 'Active' }, { value: 'completed', label: 'Completed' }, { value: 'paused', label: 'Paused' }, { value: 'cancelled', label: 'Cancelled' }, { value: 'failed', label: 'Failed' }, { value: 'archived', label: 'Archived' }]" />
+      <Select v-model:value="listFilter" ariaLabel="Filter campaign list" placeholder="" :options="[{ value: 'all', label: 'All email lists' }, ...lists().map(list => ({ value: list.id, label: list.name }))]" />
+      <Select v-model:value="sort" ariaLabel="Sort campaigns" placeholder="" :options="[{ value: 'newest', label: 'Newest' }, { value: 'name', label: 'Name' }, { value: 'audience', label: 'Largest audience' }, { value: 'sent', label: 'Most sent' }]" />
+    </div>
+    <CampaignsTable :sort-reset-key="sort()" :page-reset-key="viewKey()" :records="filteredRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" @deliver="openDelivery" />
+  </section>
+</div>
+
+<CampaignDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :lists="lists()" :defaultCurrency="defaultCurrency()" :busy="saving()" :error="saveError()" @submit="saveCampaign" @close="closeDialog()" />
+<CampaignDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" :error="deleteError()" @confirm="deleteCampaign()" @close="closeDelete()" />
+<CampaignDeliveryDialog :open="Boolean(deliveryRecord())" :mode="deliveryMode()" :record="deliveryRecord()" :busy="deliveryBusy()" :error="deliveryError()" @confirm="confirmDelivery" @close="closeDelivery()" />

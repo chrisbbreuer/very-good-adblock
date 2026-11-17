@@ -1,0 +1,12 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Email Notifications')
+
+<NotificationDeliveries
+  channel="email"
+  title="Email Notifications"
+  description="Monitor real email transport attempts, inspect provider context, and retry failed deliveries."
+/>
+
+@endsection

@@ -1,0 +1,223 @@
+<script client>
+import type { SearchResultItem, SearchResults, SearchUnavailable } from '../../../functions/search'
+import { fetchGlobalSearch } from '../../../functions/search'
+
+const query = state('')
+const results = state<SearchResults>({})
+const unavailable = state<SearchUnavailable[]>([])
+const isSearching = state(false)
+const isOpen = state(false)
+const selectedIndex = state(0)
+const error = state('')
+const searchInput = useRef('globalSearchInput')
+let searchRequest: AbortController | null = null
+
+function flatResults(): SearchResultItem[] {
+  return Object.values(results()).flat()
+}
+
+function resultGroups(): Array<{ type: string, items: SearchResultItem[] }> {
+  return Object.entries(results()).map(([type, items]) => ({ type, items }))
+}
+
+function resultIndex(item: SearchResultItem): number {
+  return flatResults().indexOf(item)
+}
+
+function open(): void {
+  isOpen.set(true)
+  selectedIndex.set(0)
+  void nextTick(() => searchInput.current?.focus())
+}
+
+function close(): void {
+  isOpen.set(false)
+  query.set('')
+  results.set({})
+  unavailable.set([])
+  error.set('')
+  searchRequest?.abort()
+}
+
+async function runSearch(value: string): Promise<void> {
+  searchRequest?.abort()
+  if (!value.trim()) {
+    results.set({})
+    unavailable.set([])
+    isSearching.set(false)
+    error.set('')
+    return
+  }
+
+  const request = new AbortController()
+  searchRequest = request
+  isSearching.set(true)
+  error.set('')
+  try {
+    const response = await fetchGlobalSearch(value.trim(), request.signal)
+    results.set(response.results)
+    unavailable.set(response.unavailable)
+    selectedIndex.set(0)
+  }
+  catch (reason) {
+    if (reason instanceof DOMException && reason.name === 'AbortError') return
+    results.set({})
+    unavailable.set([])
+    error.set(reason instanceof Error ? reason.message : 'Search is temporarily unavailable.')
+  }
+  finally {
+    if (searchRequest === request) {
+      searchRequest = null
+      isSearching.set(false)
+    }
+  }
+}
+
+const scheduleSearch = useDebounce((value: string) => {
+  void runSearch(value)
+}, 250)
+
+function moveUp(): void {
+  const items = flatResults()
+  if (items.length === 0) return
+  selectedIndex.set(selectedIndex() <= 0 ? items.length - 1 : selectedIndex() - 1)
+}
+
+function moveDown(): void {
+  const items = flatResults()
+  if (items.length === 0) return
+  selectedIndex.set(selectedIndex() >= items.length - 1 ? 0 : selectedIndex() + 1)
+}
+
+function openResult(item: SearchResultItem): void {
+  close()
+  navigate(item.href)
+}
+
+function selectCurrent(): void {
+  const item = flatResults()[selectedIndex()]
+  if (item) openResult(item)
+}
+
+function handleDialogKeydown(event: KeyboardEvent): void {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    moveUp()
+  }
+  else if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    moveDown()
+  }
+  else if (event.key === 'Enter') {
+    event.preventDefault()
+    selectCurrent()
+  }
+}
+
+function handleGlobalKeydown(event: KeyboardEvent): void {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    isOpen() ? close() : open()
+  }
+}
+
+useEventListener('keydown', handleGlobalKeydown)
+
+onDestroy(() => {
+  searchRequest?.abort()
+})
+</script>
+
+<Modal
+  :isOpen="isOpen()"
+  ariaLabel="Search dashboard"
+  size="md"
+  position="top"
+  panelClassName="overflow-hidden border border-neutral-200 dark:border-neutral-700"
+  contentClassName="p-0"
+  :showCloseButton="false"
+  @close="close()"
+>
+  <div @keydown="handleDialogKeydown">
+    <div class="flex items-center px-4 border-b border-neutral-200 dark:border-neutral-700">
+      <span class="shrink-0 h-5 w-5 text-neutral-400 i-hugeicons-search-02"></span>
+      <input
+        ref="globalSearchInput"
+        x-model="query"
+        type="search"
+        autofocus
+        placeholder="Search model records"
+        aria-label="Search model records"
+        class="px-3 py-4 w-full text-neutral-900 text-sm dark:text-white placeholder:text-neutral-400 bg-transparent border-none focus:outline-none focus:ring-0"
+        @input="scheduleSearch($event.target.value)"
+      />
+      <span :if="isSearching()" class="shrink-0 h-5 w-5 text-blue-500 animate-spin i-hugeicons-loading-03"></span>
+      <kbd :if="!isSearching()" class="shrink-0 px-1.5 py-0.5 font-medium text-[10px] text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 rounded dark:border-neutral-600">
+        ESC
+      </kbd>
+    </div>
+
+    <div class="overflow-y-auto max-h-80">
+      <div :if="error()" role="alert" class="px-4 py-8 text-center">
+        <span class="mb-2 mx-auto h-8 w-8 text-red-400 i-hugeicons-alert-02"></span>
+        <p class="text-red-600 text-sm dark:text-red-400">{{ error() }}</p>
+      </div>
+
+      <div :if="!error() && unavailable().length > 0" role="status" class="mt-3 mx-3 px-3 py-2 text-amber-700 text-xs dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+        {{ unavailable().length }} searchable {{ unavailable().length === 1 ? 'model is' : 'models are' }} unavailable. Run migrations or fix the reported model configuration.
+      </div>
+
+      <template :if="!error() && Object.keys(results()).length > 0">
+        <div :for="group in resultGroups()" class="contents">
+          <div class="pb-1 pt-3 px-3">
+            <h3 class="px-1 font-semibold text-neutral-500 text-xs tracking-wider uppercase dark:text-neutral-400">
+              {{ group.type }}
+            </h3>
+          </div>
+          <button :for="item in group.items"
+            type="button"
+            class="flex gap-3 items-center px-4 py-2.5 w-full text-left transition-colors"
+            :class="resultIndex(item) === selectedIndex() ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800'"
+            @mouseenter="selectedIndex.set(resultIndex(item))"
+            @click="openResult(item)"
+          >
+            <span :class="'shrink-0 h-5 w-5 text-neutral-400 ' + item.icon"></span>
+            <span class="flex-1 min-w-0">
+              <span class="block font-medium text-neutral-900 text-sm truncate dark:text-white">
+                {{ item.title }}
+              </span>
+              <span :if="item.subtitle" class="block text-neutral-500 text-xs truncate dark:text-neutral-400">
+                {{ item.subtitle }}
+              </span>
+            </span>
+            <span class="shrink-0 h-4 w-4 text-neutral-300 dark:text-neutral-600 i-hugeicons-arrow-right-01"></span>
+          </button>
+        </div>
+      </template>
+
+      <div :if="!error() && query().trim() && !isSearching() && Object.keys(results()).length === 0" class="px-4 py-8 text-center">
+        <span class="mb-2 mx-auto h-8 w-8 text-neutral-300 dark:text-neutral-600 i-hugeicons-search-02"></span>
+        <p class="text-neutral-500 text-sm dark:text-neutral-400">No results found for "{{ query() }}"</p>
+      </div>
+
+      <div :if="!error() && !query().trim() && !isSearching()" class="px-4 py-8 text-center">
+        <p class="text-neutral-500 text-sm dark:text-neutral-400">Search fields declared by each model's useSearch trait.</p>
+      </div>
+    </div>
+
+    <div class="flex gap-4 items-center px-4 py-2.5 text-neutral-500 text-xs dark:text-neutral-400 border-neutral-200 border-t dark:border-neutral-700">
+      <span class="flex gap-1 items-center">
+        <kbd class="px-1 py-0.5 text-[10px] bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 rounded dark:border-neutral-600">↑↓</kbd>
+        Navigate
+      </span>
+      <span class="flex gap-1 items-center">
+        <kbd class="px-1 py-0.5 text-[10px] bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 rounded dark:border-neutral-600">↵</kbd>
+        Open
+      </span>
+      <span class="flex gap-1 items-center">
+        <kbd class="px-1 py-0.5 text-[10px] bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 rounded dark:border-neutral-600">esc</kbd>
+        Close
+      </span>
+    </div>
+  </div>
+</Modal>

@@ -1,0 +1,308 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '@stacksjs/defaults/functions/dashboard-api'
+import { pushToast } from '@stacksjs/defaults/functions/toasts'
+
+interface PostRow {
+  id: number
+  title: string
+  content?: string | null
+  excerpt?: string | null
+  status?: string | null
+  focus_keyword?: string | null
+  meta_description?: string | null
+  canonical_url?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+}
+
+interface PostResponse {
+  rows: PostRow[]
+  page: number
+  lastPage: number
+  error?: string | null
+}
+
+interface UpdateResponse {
+  ok: boolean
+  error?: string
+  errors?: Record<string, string[]>
+}
+
+interface SeoEntry extends PostRow {
+  score: number
+}
+
+interface SeoDraft {
+  focusKeyword: string | null
+  metaDescription: string | null
+  canonicalUrl: string | null
+}
+
+const entries = state<SeoEntry[]>([])
+const loading = state(true)
+const saving = state(false)
+const error = state('')
+const editError = state('')
+const searchQuery = state('')
+const scoreFilter = state<'all' | 'good' | 'medium' | 'poor'>('all')
+const editingEntry = state<SeoEntry | null>(null)
+
+function seoScore(post: PostRow): number {
+  const title = String(post.title || '').trim()
+  const content = `${post.excerpt || ''} ${post.content || ''}`.toLowerCase()
+  const keyword = String(post.focus_keyword || '').trim().toLowerCase()
+  const description = String(post.meta_description || '').trim()
+  const canonical = String(post.canonical_url || '').trim()
+  let score = 0
+
+  if (title.length >= 10 && title.length <= 60)
+    score += 20
+  else if (title.length > 0)
+    score += 10
+  if (description.length >= 120 && description.length <= 160)
+    score += 25
+  else if (description.length > 0)
+    score += 12
+  if (keyword)
+    score += 15
+  if (keyword && title.toLowerCase().includes(keyword))
+    score += 15
+  if (keyword && content.includes(keyword))
+    score += 10
+  if (canonical)
+    score += 15
+
+  return score
+}
+
+async function loadEntries(): Promise<void> {
+  loading.set(true)
+  error.set('')
+  try {
+    const rows: PostRow[] = []
+    let page = 1
+    let lastPage = 1
+    do {
+      const response = await dashboardApi<PostResponse>(
+        `/api/dashboard/models/post?per_page=200&page=${page}&sort=updated_at&dir=desc`,
+      )
+      if (response.error)
+        throw new Error(response.error)
+      rows.push(...(response.rows ?? []))
+      lastPage = response.lastPage || 1
+      page += 1
+    } while (page <= lastPage)
+
+    entries.set(rows.map(post => ({ ...post, score: seoScore(post) })))
+  }
+  catch (cause) {
+    error.set(cause instanceof Error ? cause.message : 'Unable to load SEO data.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+const filteredEntries = derived(() => {
+  const needle = searchQuery().trim().toLowerCase()
+  return entries().filter((entry) => {
+    const matchesScore = scoreFilter() === 'all'
+      || (scoreFilter() === 'good' && entry.score >= 80)
+      || (scoreFilter() === 'medium' && entry.score >= 50 && entry.score < 80)
+      || (scoreFilter() === 'poor' && entry.score < 50)
+    const matchesSearch = !needle
+      || entry.title.toLowerCase().includes(needle)
+      || String(entry.focus_keyword || '').toLowerCase().includes(needle)
+    return matchesScore && matchesSearch
+  })
+})
+
+/**
+ * The score pill is banded by range, not by value, so `badgeClasses` is keyed
+ * on a derived band and `badgeLabelKey` puts the number itself in the pill.
+ */
+const SEO_ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit SEO for' },
+]
+
+const SEO_COLUMNS = [
+  { key: 'title', label: 'Post', sortable: true, subtitleKey: 'postMetaLabel', class: 'font-medium text-neutral-900 dark:text-white' },
+  { key: 'focus_keyword', label: 'Focus keyword', sortable: true, emptyText: 'Not set', class: 'text-neutral-600 dark:text-neutral-300' },
+  { key: 'meta_description', label: 'Meta description', emptyText: 'Not set', class: 'max-w-md truncate text-neutral-600 dark:text-neutral-300' },
+  {
+    key: 'scoreBand',
+    label: 'Score',
+    type: 'badge' as const,
+    align: 'right' as const,
+    sortable: true,
+    badgeLabelKey: 'score',
+    badgeClasses: {
+      good: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
+      medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+      poor: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+    },
+  },
+  { key: 'updatedLabel', label: 'Updated', sortable: true, class: 'whitespace-nowrap text-neutral-500 dark:text-neutral-400' },
+]
+
+/** The page's own filter bar still owns search and the score filter. */
+const seoRows = derived(() => filteredEntries().map(entry => ({
+  ...entry,
+  postMetaLabel: `Post #${entry.id} \u00B7 ${entry.status || 'unknown'}`,
+  scoreBand: entry.score >= 80 ? 'good' : entry.score >= 50 ? 'medium' : 'poor',
+  updatedLabel: formatDate(entry.updated_at || entry.created_at),
+})))
+
+const totalPosts = derived(() => entries().length)
+const optimizedCount = derived(() => entries().filter(entry => entry.score >= 80).length)
+const needsWorkCount = derived(() => entries().filter(entry => entry.score < 50).length)
+const avgScore = derived(() => {
+  if (entries().length === 0)
+    return 0
+  return Math.round(entries().reduce((total, entry) => total + entry.score, 0) / entries().length)
+})
+
+function formatDate(value?: string | null): string {
+  if (!value)
+    return 'Not updated'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return String(value)
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function openEdit(entry: SeoEntry): void {
+  editingEntry.set(entry)
+  editError.set('')
+}
+
+function closeEdit(): void {
+  if (saving())
+    return
+  editingEntry.set(null)
+  editError.set('')
+}
+
+async function saveEdit(draft: SeoDraft): Promise<void> {
+  const entry = editingEntry()
+  if (!entry || saving())
+    return
+
+  saving.set(true)
+  editError.set('')
+  try {
+    const response = await dashboardApi<UpdateResponse>(
+      `/api/dashboard/models/post/${entry.id}`,
+      {
+        method: 'PATCH',
+        body: {
+          fields: {
+            focus_keyword: draft.focusKeyword,
+            meta_description: draft.metaDescription,
+            canonical_url: draft.canonicalUrl,
+          },
+        },
+      },
+    )
+    if (!response.ok) {
+      const fieldErrors = Object.values(response.errors ?? {}).flat().join(' ')
+      throw new Error(fieldErrors || response.error || 'The SEO fields could not be saved.')
+    }
+
+    editingEntry.set(null)
+    pushToast('success', 'SEO fields saved', { detail: entry.title })
+    await loadEntries()
+  }
+  catch (cause) {
+    editError.set(cause instanceof Error ? cause.message : 'The SEO fields could not be saved.')
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+void loadEntries()
+</script>
+
+<template>
+<div class="flex flex-col gap-6 mx-auto pb-12 pt-6 px-6 max-w-7xl">
+  <PageHeader
+    title="SEO"
+    description="How every post appears in search results: its title, description and focus keyword"
+  />
+
+  <div class="px-4 py-3 text-blue-800 text-sm dark:text-blue-200 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 rounded-lg dark:border-blue-500/20">
+    Scores are calculated from title length, meta description length, focus keyword placement, body relevance, and canonical URL coverage.
+  </div>
+
+  <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <Card variant="default" padding="md">
+      <dt class="font-medium text-neutral-500 text-xs dark:text-neutral-400">Average score</dt>
+      <dd class="mt-2 font-semibold tabular-nums text-3xl text-neutral-900 dark:text-white">{{ avgScore() }}</dd>
+    </Card>
+    <Card variant="default" padding="md">
+      <dt class="font-medium text-neutral-500 text-xs dark:text-neutral-400">Optimized</dt>
+      <dd class="mt-2 font-semibold tabular-nums text-3xl text-green-600 dark:text-green-400">{{ optimizedCount() }}</dd>
+    </Card>
+    <Card variant="default" padding="md">
+      <dt class="font-medium text-neutral-500 text-xs dark:text-neutral-400">Needs work</dt>
+      <dd class="mt-2 font-semibold tabular-nums text-3xl text-amber-600 dark:text-amber-400">{{ needsWorkCount() }}</dd>
+    </Card>
+    <Card variant="default" padding="md">
+      <dt class="font-medium text-neutral-500 text-xs dark:text-neutral-400">Total posts</dt>
+      <dd class="mt-2 font-semibold tabular-nums text-3xl text-neutral-900 dark:text-white">{{ totalPosts() }}</dd>
+    </Card>
+  </dl>
+
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="relative max-w-sm w-full">
+      <SearchFilter v-model:searchValue="searchQuery" placeholder="Search posts" ariaLabel="Search posts" />
+    </div>
+    <div>
+      <Select v-model:value="scoreFilter" id="seo-score-filter" ariaLabel="Filter by SEO score" placeholder="" :options="[{ value: 'all', label: 'All scores' }, { value: 'good', label: 'Good, 80 or higher' }, { value: 'medium', label: 'Medium, 50 to 79' }, { value: 'poor', label: 'Poor, below 50' }]" />
+    </div>
+  </div>
+
+  @if(error())
+    <div role="alert" class="px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 rounded-lg dark:border-red-500/20">
+      {{ error() }}
+    </div>
+  @endif
+
+  <Card variant="default" padding="none">
+    {{-- `UI/Table` renders its own loading and empty states, so the three-way
+         block this replaced is gone.
+
+         The edit control is a declarative `rowActions` icon rather than the
+         `actions` slot, which would have kept the "Edit" wording. The slot
+         hangs the page render outright on the installed stx - verified by
+         adding one to a working table, watching `/dependencies` stop
+         responding, and removing it again. See stacksjs/stx#2101. --}}
+    <Table
+      :framed="false"
+      :columns="SEO_COLUMNS"
+      :data="seoRows()"
+      :loading="loading()"
+      row-key="id"
+      paginated
+      :page-size="25"
+      empty-title="No matching posts"
+      empty-description="Adjust the search or score filter, or create a post first."
+      :row-actions="SEO_ROW_ACTIONS"
+      action-label-key="title"
+      @row-action="openEdit($event.row)"
+    />
+  </Card>
+
+  <SeoEditorDialog
+    :open="Boolean(editingEntry())"
+    :entry="editingEntry()"
+    :busy="saving()"
+    :error="editError()"
+    @close="closeEdit"
+    @submit="saveEdit"
+  />
+</div>
+</template>

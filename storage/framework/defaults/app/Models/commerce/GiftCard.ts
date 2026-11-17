@@ -1,0 +1,208 @@
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'GiftCard',
+  table: 'gift_cards',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // Rows belong to the caller's customer record, one hop from the user
+  // (stacksjs/stacks#2375). Without this the generated writes are reachable by
+  // any authenticated caller for any row.
+  ownership: customerOwnership(),
+
+  traits: {
+    gdpr: { subject: { via: 'Customer' }, erasure: 'anonymize', basis: 'contract', purpose: 'Gift cards bought by the customer' },
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'code', 'initialBalance', 'currentBalance', 'status', 'expiryDate', 'isActive'],
+      searchable: ['code', 'recipientName', 'recipientEmail', 'purchaserId'],
+      sortable: ['createdAt', 'expiryDate', 'initialBalance', 'currentBalance'],
+      filterable: ['status', 'isDigital', 'isReloadable', 'isActive'],
+    },
+
+    useSeeder: {
+      count: 20,
+    },
+
+    useApi: {
+      uri: 'gift-cards',
+      middleware: ['auth'],
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Customer'],
+  hasMany: ['Order'],
+
+  attributes: {
+    code: {
+      unique: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(50),
+        message: {
+          max: 'Code must have a maximum of 50 characters',
+        },
+      },
+      factory: faker => faker.string.alphanumeric(12).toUpperCase(),
+    },
+
+    initialBalance: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(1),
+      },
+      // Integer minor units, in the denominations cards are actually sold in: $25 to $250.
+      factory: faker => faker.helpers.arrayElement([2500, 5000, 10000, 15000, 20000, 25000]),
+    },
+
+    currentBalance: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0),
+      },
+      // Drawn below the smallest initial balance above, so a seeded card never
+      // holds more than it was issued with.
+      factory: faker => faker.number.int({ min: 0, max: 2500 }),
+    },
+
+    currency: {
+      order: 4,
+      fillable: true,
+      default: 'USD',
+      validation: {
+        rule: schema.string().required().max(3),
+      },
+      factory: faker => faker.helpers.arrayElement(['USD', 'EUR', 'GBP', 'CAD', 'AUD']),
+    },
+
+    status: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['ACTIVE', 'USED', 'EXPIRED', 'DEACTIVATED']).required(),
+      },
+      factory: faker => faker.helpers.arrayElement(['ACTIVE', 'USED', 'EXPIRED', 'DEACTIVATED']),
+    },
+
+    purchaser_id: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.string.uuid(),
+    },
+
+    recipient_email: {
+      personal: true,
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.string().email(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.internet.email(), { probability: 0.7 }),
+    },
+
+    recipientName: {
+      personal: true,
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.person.fullName(), { probability: 0.6 }),
+    },
+
+    personalMessage: {
+      personal: true,
+      order: 9,
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.4 }),
+    },
+
+    isDigital: {
+      default: false,
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.boolean(),
+      },
+      factory: faker => faker.datatype.boolean({ probability: 0.8 }), // 80% digital
+    },
+
+    isReloadable: {
+      default: false,
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.boolean(),
+      },
+      factory: faker => faker.datatype.boolean({ probability: 0.3 }), // 30% reloadable
+    },
+
+    isActive: {
+      order: 12,
+      fillable: true,
+      default: true,
+      validation: {
+        rule: schema.boolean(),
+      },
+      factory: faker => faker.datatype.boolean({ probability: 0.9 }), // 90% active
+    },
+
+    expiryDate: {
+      order: 13,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+        message: {
+          timestamp: 'Expiry date must be a valid timestamp',
+        },
+      },
+      factory: (faker) => {
+        const date = faker.date.future()
+        return date.toISOString().slice(0, 19).replace('T', ' ')
+      },
+    },
+
+    lastUsedDate: {
+      order: 14,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+        message: {
+          timestamp: 'Last used date must be a valid timestamp',
+        },
+      },
+      factory: (faker) => {
+        const date = faker.date.future()
+        return date.toISOString().slice(0, 19).replace('T', ' ')
+      },
+    },
+
+    templateId: {
+      order: 15,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.5 }),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+  },
+} as const)

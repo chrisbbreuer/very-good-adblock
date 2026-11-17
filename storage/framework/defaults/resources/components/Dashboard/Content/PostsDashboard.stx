@@ -1,0 +1,433 @@
+@import('../UI/Table')
+
+<script server>
+import { publicApplicationUrl } from '../../../../functions/public-application-url'
+
+export const blogUrl = publicApplicationUrl('/blog')
+</script>
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+type PostStatus = 'draft' | 'published' | 'archived'
+interface OptionRecord { id: string, name: string, slug: string }
+interface AuthorRecord { id: string, name: string, email: string }
+interface PostRecord {
+  id: string
+  title: string
+  excerpt: string
+  preview: string
+  poster: string
+  status: PostStatus
+  views: number
+  publishedAt: string
+  authorId: string
+  featured: boolean
+  categoryIds: string[]
+  tagIds: string[]
+}
+interface PostDraft {
+  title: string
+  excerpt: string
+  content: string
+  poster: string
+  status: PostStatus
+  authorId: string | null
+  featured: boolean
+  categoryIds: string[]
+  tagIds: string[]
+}
+
+const categories = state<OptionRecord[]>([])
+const tags = state<OptionRecord[]>([])
+const authors = state<AuthorRecord[]>([])
+const statusFilter = state('all')
+
+// The cards count every post (stacksjs/stacks#3191).
+const allCount = state(0)
+const publishedCount = state(0)
+const draftCount = state(0)
+const archivedCount = state(0)
+const totalViewCount = state(0)
+
+const loadedContent = state('')
+const contentLoading = state(false)
+const contentLoadFailed = state(false)
+let contentRequestId = 0
+
+const formOpen = state(false)
+const editingPost = state<PostRecord | null>(null)
+const saving = state(false)
+const saveError = state('')
+const deletingPost = state<PostRecord | null>(null)
+const deleting = state(false)
+const deleteError = state('')
+
+function list(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(item => String(item)).filter(Boolean) : []
+}
+
+function normalizedStatus(value: unknown): PostStatus {
+  const normalized = String(value || 'draft').toLowerCase()
+  return normalized === 'published' || normalized === 'archived' ? normalized : 'draft'
+}
+
+function normalizePost(record: any): PostRecord {
+  return {
+    id: String(record?.id || ''),
+    title: String(record?.title || ''),
+    excerpt: String(record?.excerpt || ''),
+    preview: String(record?.preview || ''),
+    poster: String(record?.poster || ''),
+    status: normalizedStatus(record?.status),
+    views: Number(record?.views || 0),
+    publishedAt: String(record?.published_at || ''),
+    authorId: record?.author_id ? String(record.author_id) : '',
+    featured: Boolean(record?.featured ?? record?.is_featured),
+    categoryIds: list(record?.categoryIds ?? record?.category_ids),
+    tagIds: list(record?.tagIds ?? record?.tag_ids),
+  }
+}
+
+function normalizeOption(record: any): OptionRecord {
+  return { id: String(record?.id || ''), name: String(record?.name || ''), slug: String(record?.slug || '') }
+}
+
+function normalizeAuthor(record: any): AuthorRecord {
+  return { id: String(record?.id || ''), name: String(record?.name || ''), email: String(record?.email || '') }
+}
+
+const COLUMNS = [
+  // Two slotted columns, so the single `cell` slot dispatches on `column.key`:
+  // the title carries a featured star and two quieter lines, and taxonomy
+  // labels its two lines "Categories:" and "Tags:".
+  { key: 'title', label: 'Post', sortable: true, slotted: true, class: 'max-w-md' },
+  { key: 'categoriesLabel', label: 'Taxonomy', slotted: true, class: 'max-w-xs' },
+  {
+    key: 'status',
+    label: 'Publishing',
+    type: 'badge' as const,
+    sortable: true,
+    subtitleKey: 'publishedLabel',
+    badgeClasses: {
+      published: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40',
+      draft: 'text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/40',
+      archived: 'text-gray-600 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-700',
+    },
+  },
+  { key: 'views', label: 'Views', type: 'number' as const, sortable: true, class: 'text-gray-500 dark:text-neutral-400' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit post' },
+  { action: 'delete', label: 'Delete post' },
+]
+
+/**
+ * The rows are already the page the server chose, so this only derives the
+ * labels onto each one, because a slot body reads fields rather than calling
+ * back into the component.
+ */
+function visiblePosts(): PostRecord[] {
+  return records()
+    .map(post => ({
+      ...post,
+      summaryLabel: post.excerpt || post.preview,
+      authorLabel: authorName(post),
+      categoriesLabel: optionNames(post.categoryIds, categories()),
+      tagsLabel: optionNames(post.tagIds, tags()),
+      publishedLabel: formatDate(post.publishedAt),
+    })) as PostRecord[]
+}
+
+function handleRowAction(payload: { action: string, row: PostRecord }): void {
+  if (payload.action === 'edit')
+    openEdit(payload.row)
+  else
+    openDelete(payload.row)
+}
+
+function postCount(value: PostStatus): number {
+  return value === 'published' ? publishedCount() : value === 'draft' ? draftCount() : archivedCount()
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-US').format(value)
+}
+
+function formatDate(value: string): string {
+  if (!value)
+    return 'Not published'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
+}
+
+function authorName(post: PostRecord): string {
+  return post.authorId ? authors().find(author => author.id === post.authorId)?.name || 'Unknown author' : 'No author'
+}
+
+function optionNames(ids: string[], options: OptionRecord[]): string {
+  const names = ids.map(id => options.find(option => option.id === id)?.name).filter((name): name is string => Boolean(name))
+  return names.length ? names.join(', ') : 'None'
+}
+
+interface PostPageResponse {
+  posts?: unknown[]
+  categories?: unknown[]
+  tags?: unknown[]
+  authors?: unknown[]
+  total?: number
+  page?: number
+  allCount?: number
+  publishedCount?: number
+  draftCount?: number
+  archivedCount?: number
+  totalViews?: number
+}
+
+// The server pages, searches, filters and sorts (stacksjs/stacks#3191);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself. Unsorted is newest first, which the
+// server reads as created_at descending.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<PostRecord>({
+  fetch: async (query) => {
+    const data = await dashboardApi<PostPageResponse>(`/api/dashboard/posts?${query}`)
+    if (!Array.isArray(data.posts) || !Array.isArray(data.categories) || !Array.isArray(data.tags) || !Array.isArray(data.authors))
+      throw new TypeError('Posts were not returned in the expected shape.')
+    return { ...data, records: data.posts.map(normalizePost) }
+  },
+  defaultSort: { sort: 'created_at', direction: 'desc' },
+  // The table's sortable columns are named as the server sorts them.
+  columnSorts: { title: 'title', status: 'status', views: 'views' },
+  filters: () => ({ status: statusFilter() }),
+  searchParam: 'search',
+  onLoad: (result) => {
+    const data = result as PostPageResponse
+    categories.set((data.categories ?? []).map(normalizeOption))
+    tags.set((data.tags ?? []).map(normalizeOption))
+    authors.set((data.authors ?? []).map(normalizeAuthor))
+    allCount.set(Number(data.allCount || 0))
+    publishedCount.set(Number(data.publishedCount || 0))
+    draftCount.set(Number(data.draftCount || 0))
+    archivedCount.set(Number(data.archivedCount || 0))
+    totalViewCount.set(Number(data.totalViews || 0))
+  },
+  onError: error => pushToast('error', 'Could not load posts', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function loadPosts(): Promise<void> {
+  return load()
+}
+
+/** The table's own search box; useServerList waits for typing to pause. */
+function changeSearch(term: string): void {
+  search.set(String(term || ''))
+}
+
+async function loadEditorContent(post: PostRecord): Promise<void> {
+  const requestId = ++contentRequestId
+  contentLoading.set(true)
+  contentLoadFailed.set(false)
+  saveError.set('')
+  try {
+    const data = await dashboardApi<{ content?: string }>(`/api/dashboard/posts/${post.id}`)
+    if (requestId === contentRequestId && formOpen() && editingPost()?.id === post.id)
+      loadedContent.set(String(data.content || ''))
+  }
+  catch (error) {
+    if (requestId === contentRequestId) {
+      contentLoadFailed.set(true)
+      saveError.set(`Couldn't load this post's content: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  finally {
+    if (requestId === contentRequestId)
+      contentLoading.set(false)
+  }
+}
+
+function retryEditorContent(): void {
+  const post = editingPost()
+  if (post)
+    void loadEditorContent(post)
+}
+
+function openCreate(): void {
+  contentRequestId += 1
+  editingPost.set(null)
+  loadedContent.set('')
+  contentLoading.set(false)
+  contentLoadFailed.set(false)
+  saveError.set('')
+  formOpen.set(true)
+}
+
+function openEdit(post: PostRecord): void {
+  editingPost.set(post)
+  loadedContent.set('')
+  contentLoading.set(true)
+  contentLoadFailed.set(false)
+  saveError.set('')
+  formOpen.set(true)
+  void loadEditorContent(post)
+}
+
+function closeForm(): void {
+  if (saving())
+    return
+  contentRequestId += 1
+  formOpen.set(false)
+}
+function openDelete(post: PostRecord): void { deletingPost.set(post); deleteError.set('') }
+function closeDelete(): void { if (!deleting()) deletingPost.set(null) }
+
+function deleteDescription(): string {
+  const post = deletingPost()
+  return post ? `${post.title} and its category and tag links will be permanently removed.` : ''
+}
+
+async function savePost(draft: PostDraft): Promise<void> {
+  const post = editingPost()
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(post ? `/api/dashboard/posts/${post.id}` : '/api/dashboard/posts', {
+      method: post ? 'PATCH' : 'POST',
+      body: draft,
+    })
+    formOpen.set(false)
+    pushToast('success', post ? 'Post updated' : 'Post created')
+    await loadPosts()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+async function deletePost(): Promise<void> {
+  const post = deletingPost()
+  if (!post)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/posts/${post.id}`, { method: 'DELETE' })
+    deletingPost.set(null)
+    pushToast('success', 'Post deleted')
+    await loadPosts()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => { void loadPosts() })
+</script>
+
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Content</p><h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">Posts</h1><p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Write and publish articles, and manage their authors, categories and tags.</p></div>
+    <div class="flex flex-wrap gap-2"><Button href="{{ blogUrl }}" target="_blank" rel="noreferrer" variant="secondary"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-view"></span>View blog</Button><Button :loading="loading()" variant="secondary" @click="loadPosts()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button><Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>New post</Button></div>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadPosts()">Retry</Button></div>
+
+  <section aria-label="Post metrics" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Total</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ allCount() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Published</p><p class="mt-2 font-semibold text-2xl text-green-700 dark:text-green-300">{{ postCount('published') }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Drafts</p><p class="mt-2 font-semibold text-2xl text-yellow-700 dark:text-yellow-300">{{ postCount('draft') }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Views</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatNumber(totalViewCount()) }}</p></article>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <Table
+      :columns="COLUMNS"
+      :data="visiblePosts()"
+      :loading="loading()"
+      :row-actions="ROW_ACTIONS"
+      action-label-key="title"
+      searchable
+      manual-search
+      search-placeholder="Search title, excerpt, or content"
+      paginated
+      manual-pagination
+      manual-sort
+      :total="total()"
+      :current-page="page()"
+      :page-size="perPage()"
+      empty-title="No posts found"
+      empty-description="Adjust the search or status filter."
+      @row-action="handleRowAction"
+      @page-change="changePage"
+      @page-size-change="changePageSize"
+      @search="changeSearch"
+      @sort="changeSort"
+    >
+      <template #toolbar>
+        <Select v-model:value="statusFilter" ariaLabel="Filter by status" size="sm" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'published', label: 'Published' }, { value: 'draft', label: 'Draft' }, { value: 'archived', label: 'Archived' }]" />
+      </template>
+
+      <template #cell="{ row, column }">
+        <template :if="column.key === 'title'">
+          <div class="flex gap-2 items-center">
+            <p class="font-medium text-gray-900 text-sm truncate dark:text-white" x-text="row.title"></p>
+            <span :if="row.featured" x-tooltip="Featured" title="Featured" class="flex-shrink-0 h-4 w-4 text-amber-500 i-hugeicons-star"></span>
+          </div>
+          <p class="mt-1 text-gray-500 text-xs truncate dark:text-neutral-400" x-text="row.summaryLabel"></p>
+          <p class="mt-1 text-gray-500 text-xs dark:text-neutral-500" x-text="row.authorLabel"></p>
+        </template>
+        <template :else>
+          <p class="text-gray-500 text-xs truncate dark:text-neutral-400"><span class="font-medium text-gray-700 dark:text-neutral-200">Categories:</span> <span x-text="row.categoriesLabel"></span></p>
+          <p class="mt-1 text-gray-500 text-xs truncate dark:text-neutral-400"><span class="font-medium text-gray-700 dark:text-neutral-200">Tags:</span> <span x-text="row.tagsLabel"></span></p>
+        </template>
+      </template>
+    </Table>
+  </section>
+</div>
+
+<PostEditorDialog
+  :open="formOpen()"
+  :post="editingPost()"
+  :categories="categories()"
+  :tags="tags()"
+  :authors="authors()"
+  :loadedContent="loadedContent()"
+  :contentLoading="contentLoading()"
+  :contentLoadFailed="contentLoadFailed()"
+  :busy="saving()"
+  :error="saveError()"
+  @close="closeForm"
+  @submit="savePost"
+  @retry="retryEditorContent"
+/>
+
+<ConfirmDialog
+  :isOpen="Boolean(deletingPost())"
+  title="Delete post?"
+  :description="deleteDescription()"
+  confirmLabel="Delete post"
+  :busy="deleting()"
+  :error="deleteError()"
+  @close="closeDelete"
+  @confirm="deletePost"
+/>

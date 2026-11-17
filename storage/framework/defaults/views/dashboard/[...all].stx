@@ -1,0 +1,11 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Page Not Found')
+
+<script server>
+definePageMeta({ status: 404 })
+</script>
+
+<NotFoundDashboard />
+@endsection

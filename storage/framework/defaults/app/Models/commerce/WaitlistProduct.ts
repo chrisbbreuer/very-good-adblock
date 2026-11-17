@@ -1,0 +1,165 @@
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'WaitlistProduct',
+  table: 'waitlist_products',
+  primaryKey: 'id',
+  autoIncrement: true,
+  belongsTo: ['Product', 'Customer'],
+  // Rows belong to the caller's customer record, one hop from the user
+  // (stacksjs/stacks#2375). Without this the generated writes are reachable by
+  // any authenticated caller for any row.
+  ownership: customerOwnership(),
+
+  traits: {
+    gdpr: { subject: { via: 'Customer' }, erasure: 'delete', basis: 'consent', purpose: 'Back-in-stock waitlist' },
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'name', 'email', 'phone', 'quantity', 'notificationPreference', 'source', 'notes', 'status'],
+      searchable: ['name', 'email', 'phone', 'source'],
+      sortable: ['name', 'quantity', 'createdAt', 'updatedAt', 'status'],
+      filterable: ['notificationPreference', 'source', 'status'],
+    },
+
+    useSeeder: {
+      count: 10,
+    },
+
+    useApi: {
+      uri: 'waitlist-products',
+      routes: ['index', 'store', 'show', 'update', 'destroy'],
+      middleware: ['auth'],
+    },
+
+    observe: true,
+  },
+
+  attributes: {
+    name: {
+      personal: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(255),
+        message: {
+          max: 'Name must have a maximum of 255 characters',
+        },
+      },
+      factory: faker => faker.person.fullName(),
+    },
+
+    email: {
+      personal: true,
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().email().max(255),
+        message: {
+          max: 'Email must have a maximum of 255 characters',
+        },
+      },
+      factory: faker => faker.internet.email(),
+    },
+
+    phone: {
+      personal: true,
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(100),
+        message: {
+          max: 'Phone number must have a maximum of 100 characters',
+        },
+      },
+      factory: faker => faker.phone.number(),
+    },
+
+    quantity: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(1),
+        message: {
+          min: 'Quantity must be at least 1',
+        },
+      },
+      factory: faker => faker.number.int({ min: 1, max: 20 }),
+    },
+
+    notificationPreference: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['sms', 'email', 'both']).required(),
+      },
+      factory: faker => faker.helpers.arrayElement(['sms', 'email', 'both']),
+    },
+
+    source: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Source must have a maximum of 100 characters',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement(['website', 'social_media', 'in-store', 'email', 'app', 'referral', 'other']),
+    },
+
+    notes: {
+      personal: true,
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(500),
+      },
+      factory: faker => faker.lorem.paragraph(),
+    },
+
+    status: {
+      default: 'waiting',
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['waiting', 'purchased', 'notified', 'cancelled']).required(),
+      },
+      factory: faker => faker.helpers.arrayElement(['waiting', 'purchased', 'notified', 'cancelled']),
+    },
+
+    notifiedAt: {
+      order: 9,
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: faker => faker.date.future().toISOString().slice(0, 19).replace('T', ' '),
+    },
+    purchasedAt: {
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: faker => faker.date.future().toISOString().slice(0, 19).replace('T', ' '),
+    },
+    cancelledAt: {
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: faker => faker.date.future().toISOString().slice(0, 19).replace('T', ' '),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      notes: { input: 'longtext' },
+    },
+  },
+} as const)

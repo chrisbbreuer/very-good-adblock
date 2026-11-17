@@ -1,0 +1,33 @@
+<script server>
+interface ChartCardProps {
+  title?: string
+  subtitle?: string
+  height?: string
+  loading?: boolean
+}
+
+const { title = '', subtitle = '', height = '300px', loading = false } = defineProps<ChartCardProps>()
+</script>
+<div class="bg-white dark:bg-neutral-800/90 border border-black/5 rounded-xl dark:border-white/5">
+  @if(title)
+    <div class="flex items-center justify-between p-5 border-b border-neutral-200/60 dark:border-white/5">
+      <div>
+        <h3 class="font-semibold text-[14px] text-neutral-900 tracking-tight dark:text-white">{{ title }}</h3>
+        @if(subtitle)
+          <p class="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">{{ subtitle }}</p>
+        @endif
+      </div>
+      <div class="flex gap-2 items-center">
+        <slot name="controls" />
+      </div>
+    </div>
+  @endif
+  <div class="relative p-5" style="height: {{ height }}">
+    @if(loading)
+      <div class="flex absolute inset-0 z-10 items-center justify-center bg-white/80 dark:bg-neutral-800/80 rounded-b-xl">
+        <span aria-hidden="true" class="h-6 w-6 text-blue-500 animate-spin i-hugeicons-loading-03"></span>
+      </div>
+    @endif
+    <slot />
+  </div>
+</div>

@@ -1,0 +1,117 @@
+@import('../UI/Table')
+
+<script client>
+import type { CampaignRecord } from '../../../../app/Actions/Dashboard/Marketing/campaign-records'
+import type { CampaignDeliveryOperation } from '../../../../app/Actions/Dashboard/Marketing/campaign-delivery'
+import { parseDashboardDate } from '../../../../functions/dashboard-dates'
+
+const records = useReactiveProp('records', [] as CampaignRecord[])
+const loading = useReactiveProp('loading', false)
+/** The parent's sort select: a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+/** The parent's search and filters: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['deliver', 'send', 'schedule', 'cancel', 'edit', 'delete'])
+
+function titleCase(value: string): string {
+  return value.replace('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+function formatDate(value: string): string {
+  if (!value)
+    return 'Not set'
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parseDashboardDate(value))
+}
+
+function percentage(value: number): string {
+  return `${value.toFixed(1)}%`
+}
+
+function canSend(record: CampaignRecord): boolean {
+  return record.type === 'email'
+    && ['draft', 'scheduled', 'paused', 'failed'].includes(record.status)
+}
+
+function canCancel(record: CampaignRecord): boolean {
+  return record.type === 'email'
+    && ['scheduled', 'sending'].includes(record.status)
+}
+
+function timingNote(record: CampaignRecord): string {
+  if (record.sentAt)
+    return 'Sent'
+  if (record.status === 'scheduled')
+    return 'Scheduled'
+  if (record.startDate)
+    return 'Starts'
+  return record.scheduledAt ? 'Originally scheduled' : 'No timing'
+}
+
+const COLUMNS = [
+  { key: 'name', label: 'Campaign', sortable: true, subtitleKey: 'kindLabel', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'emailListName', label: 'Audience', sortable: true, subtitleKey: 'audienceLabel', class: 'text-gray-900 dark:text-white' },
+  { key: 'timingLabel', label: 'Timing', subtitleKey: 'timingNote', class: 'text-gray-900 dark:text-white' },
+  { key: 'sentLabel', label: 'Delivery', subtitleKey: 'ratesLabel', class: 'text-gray-900 dark:text-white' },
+  { key: 'status', label: 'Status', type: 'badge' as const, sortable: true, badgeLabelKey: 'statusLabel' },
+]
+
+/**
+ * Delivery actions only where they apply: send and schedule to an email
+ * campaign that has not gone out, cancel while one is queued or sending.
+ * Edit and delete leave a campaign that is going or gone, which the
+ * hand-rolled buttons showed disabled.
+ */
+const ROW_ACTIONS = [
+  { action: 'send', label: 'Send now', icon: 'i-hugeicons-mail-send-02', when: { key: 'sendable', equals: true } },
+  { action: 'schedule', label: 'Schedule', icon: 'i-hugeicons-calendar-03', when: { key: 'scheduleLabel', equals: 'schedule' } },
+  { action: 'schedule', label: 'Reschedule', icon: 'i-hugeicons-calendar-03', when: { key: 'scheduleLabel', equals: 'reschedule' } },
+  { action: 'cancel', label: 'Cancel delivery of', icon: 'i-hugeicons-cancel-circle', class: 'text-red-500', when: { key: 'cancellable', equals: true } },
+  { action: 'edit', label: 'Edit', when: { key: 'editable', equals: true } },
+  { action: 'delete', label: 'Delete', when: { key: 'deletable', equals: true } },
+]
+
+const rows = derived(() => records().map(record => ({
+  ...record,
+  kindLabel: record.subject ? `${titleCase(record.type)} · ${record.subject}` : titleCase(record.type),
+  audienceLabel: `${record.audienceSize.toLocaleString()} available`,
+  timingLabel: formatDate(record.sentAt || record.scheduledAt || record.startDate),
+  timingNote: timingNote(record),
+  sentLabel: `${record.sentCount.toLocaleString()} sent`,
+  ratesLabel: `${percentage(record.openRate)} open · ${percentage(record.clickRate)} click`,
+  statusLabel: titleCase(record.status),
+  sendable: canSend(record),
+  scheduleLabel: canSend(record) ? (record.status === 'scheduled' ? 'reschedule' : 'schedule') : 'none',
+  cancellable: canCancel(record),
+  editable: !['sending', 'sent'].includes(record.status),
+  deletable: !['scheduled', 'sending', 'sent'].includes(record.status),
+})))
+
+function handleRowAction(payload: { action: string, row: CampaignRecord }): void {
+  if (payload.action === 'edit' || payload.action === 'delete')
+    emit(payload.action, payload.row)
+  else
+    emit('deliver', { mode: payload.action as CampaignDeliveryOperation, record: payload.row })
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box
+  and the filter selects. Table pages the whole filtered list the parent passes.
+--}}
+<Table
+  :sort-reset-key="sortResetKey()"
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="name"
+  paginated
+  :page-size="10"
+  empty-title="No campaigns found"
+  empty-description="Adjust the filters or add a Campaign record."
+  @row-action="handleRowAction"
+/>

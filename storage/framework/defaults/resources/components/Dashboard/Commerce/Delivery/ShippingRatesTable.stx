@@ -1,0 +1,87 @@
+@import('../../UI/Table')
+
+<script client>
+interface ResourceSummary {
+  id: number
+  name: string
+}
+
+interface ShippingRateRow {
+  id: number
+  shipping_method_id: number
+  shipping_zone_id: number
+  weight_from: number
+  weight_to: number
+  rate: number
+  shipping_method?: ResourceSummary
+  shipping_zone?: ResourceSummary
+}
+
+const rates = useReactiveProp('rates', [] as ShippingRateRow[])
+const loading = useReactiveProp('loading', false)
+/** The parent's search: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+function formatWeight(weight: number): string {
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(weight)} kg`
+}
+
+/**
+ * Shipping amounts are stored as integer cents, in USD, so the rate is a
+ * currency column with that code. Weights carry their unit and sort by the number.
+ */
+const COLUMNS = [
+  { key: 'methodLabel', label: 'Method', sortable: true, class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'zoneLabel', label: 'Zone', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'weight_from', label: 'From', sortable: true, slotted: true },
+  { key: 'weight_to', label: 'To', sortable: true, slotted: true },
+  { key: 'rate', label: 'Rate', type: 'currency' as const, currency: 'USD', sortable: true, class: 'font-medium tabular-nums text-stone-800 whitespace-nowrap dark:text-white' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => rates().map((rate) => {
+  const method = rate.shipping_method?.name || `method ${rate.shipping_method_id}`
+  const zone = rate.shipping_zone?.name || `zone ${rate.shipping_zone_id}`
+  return {
+    ...rate,
+    methodLabel: rate.shipping_method?.name || `Method #${rate.shipping_method_id}`,
+    zoneLabel: rate.shipping_zone?.name || `Zone #${rate.shipping_zone_id}`,
+    fromLabel: formatWeight(rate.weight_from),
+    toLabel: formatWeight(rate.weight_to),
+    actionName: `${method} rate for ${zone}, ${formatWeight(rate.weight_from)} to ${formatWeight(rate.weight_to)}`,
+  }
+}))
+
+function handleRowAction(payload: { action: string, row: ShippingRateRow }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box.
+  Table pages the whole filtered list the parent passes, and stays mounted
+  while it loads.
+--}}
+<Table
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  :page-size="10"
+  empty-title="No shipping rates found"
+  empty-description="Add a rate, or adjust the search."
+  @row-action="handleRowAction"
+>
+  <template #cell="{ row, column }">
+    <span :if="column.key === 'weight_from'" class="tabular-nums whitespace-nowrap" x-text="row.fromLabel"></span>
+    <span :if="column.key === 'weight_to'" class="tabular-nums whitespace-nowrap" x-text="row.toLabel"></span>
+  </template>
+</Table>

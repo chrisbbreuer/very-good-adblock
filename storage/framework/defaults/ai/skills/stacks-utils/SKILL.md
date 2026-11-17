@@ -1,0 +1,516 @@
+---
+name: stacks-utils
+description: Use when needing general utility functions in Stacks - deep merge, debounce/throttle, color output, byte formatting, markdown tables, YAML parsing, Pipeline class, ResizeObserver, Macroable, project initialization, indentation detection, or the comprehensive utility toolkit. Covers @stacksjs/utils.
+license: MIT
+compatibility: Bun >= 1.3.0, TypeScript
+allowed-tools: Read Edit Write Bash Grep Glob
+---
+
+# Stacks Utilities
+
+Umbrella package providing utility functions plus re-exports from specialized packages.
+
+## Key Paths
+- Core package: `storage/framework/core/utils/src/`
+- Package: `@stacksjs/utils`
+
+## Architecture
+
+The `index.ts` re-exports from these local modules:
+- `clean.ts` - project cleanup (`cleanProject()`)
+- `config.ts` - config builder re-exports from `@stacksjs/config`
+- `equal.ts` - deep equality
+- `export-size.ts` - re-exports from `size.ts`
+- `find.ts` - find Stacks projects on filesystem
+- `git.ts` - git status check
+- `hash.ts` - path hashing for cloud deploy
+- `helpers.ts` - project helpers (env, YAML, version, npm scripts, etc.)
+- `macroable.ts` - dynamic method registration on classes
+- `versions.ts` - semver comparison via `Bun.semver`
+- `merge.ts` - deep object merge (defu replacement)
+- `detect.ts` - indentation and newline detection
+- `debounce.ts` - debounce, throttle, delay
+- `bytes.ts` - byte formatting and parsing
+- `colors.ts` - ANSI terminal color output
+- `markdown.ts` - markdown table generation
+- `size.ts` - file/export size calculation
+- `observer.ts` - ResizeObserver polyfill
+- `pipeline.ts` - Pipeline class for data transformation chains
+
+Also re-exports from `@stacksjs/browser`:
+```typescript
+export * as browserUtils from '@stacksjs/browser'
+export { clamp, notNullish, retry, useOnline } from '@stacksjs/browser'
+```
+
+## Deep Merge (`merge.ts`)
+
+Replacement for `defu`. Only own enumerable string keys are read. Arrays concatenate; plain records recursively merge. Non-plain nested values (including URL, ArrayBuffer, Blob and class instances) retain identity. A plain record replaces a non-plain target rather than copying its indices or prototype fields. A `"__proto__"` key is skipped, as defu skips it, so a parsed request body cannot set the result's prototype.
+
+```typescript
+import { merge, mergeDefaults, createMerger, defu } from '@stacksjs/utils'
+
+merge({ a: 1 }, { b: 2 })                    // { a: 1, b: 2 }
+merge({ a: [1] }, { a: [2] })                 // { a: [1, 2] }  -- arrays concatenated
+merge({ a: { x: 1 } }, { a: { y: 2 } })      // { a: { x: 1, y: 2 } }  -- objects merged
+
+mergeDefaults(obj, defaults1, defaults2)       // merge defaults first, obj wins
+const merger = createMerger(defaults)           // reusable merger function
+defu(obj, defaults1, defaults2)                // alias for mergeDefaults
+```
+
+Key behavior: `undefined` values in source objects are skipped. Later arguments take precedence in `merge()`, but the first argument takes precedence in `mergeDefaults()`/`defu()`.
+
+## Debounce & Throttle (`debounce.ts`)
+
+```typescript
+interface DebounceOptions {
+  leading?: boolean    // default: false
+  trailing?: boolean   // default: true
+}
+
+const debouncedFn = debounce(fn, 300, { leading: false, trailing: true })
+debouncedFn.cancel()     // cancel pending invocation
+debouncedFn.flush()      // immediately invoke pending, returns result
+
+const throttledFn = throttle(fn, 100)
+throttledFn.cancel()     // cancel pending invocation
+
+await delay(1000)        // sleep for 1 second (returns Promise<void>)
+```
+
+Calls and debounce `flush()` return `ReturnType<T> | undefined`: before any
+invocation there is no result; suppressed calls return the last result,
+including a Promise for async callbacks. Both preserve the callback receiver.
+Pending arguments are consumed before invoking, so reentrant calls survive.
+`cancel()` clears pending work; throttle cancellation also resets its interval.
+Manual debounce `flush()` invokes pending work even with `trailing: false`.
+
+Note: unlike some implementations, this debounce does NOT support `maxWait`. The throttle uses `Date.now()` for timing, not setTimeout stacking.
+
+## Color Output (`colors.ts`)
+
+ANSI terminal color library. Auto-detects support via `process.env.NO_COLOR`, `process.env.FORCE_COLOR`, and `process.stdout.isTTY`.
+
+### Text Colors
+```typescript
+black('text'), red('text'), green('text'), yellow('text')
+blue('text'), magenta('text'), cyan('text'), white('text')
+gray('text'), grey('text')  // grey is alias for gray
+```
+
+### Bright Text Colors
+```typescript
+lightRed('text'), lightGreen('text'), lightYellow('text'), lightBlue('text')
+lightMagenta('text'), lightCyan('text'), lightGray('text'), lightGrey('text')
+```
+
+### Background Colors
+```typescript
+bgBlack('text'), bgRed('text'), bgGreen('text'), bgYellow('text')
+bgBlue('text'), bgMagenta('text'), bgCyan('text'), bgWhite('text')
+```
+
+### Bright Background Colors
+```typescript
+bgLightRed('text'), bgLightGreen('text'), bgLightYellow('text'), bgLightBlue('text')
+bgLightMagenta('text'), bgLightCyan('text')
+```
+
+### Text Formatting
+```typescript
+bold('text'), dim('text'), italic('text'), underline('text')
+inverse('text'), hidden('text'), strikethrough('text'), reset('text')
+```
+
+### Utilities
+```typescript
+stripColors(coloredText)    // remove all ANSI escape codes
+supportsColor()             // boolean -- is color output supported?
+```
+
+All color functions accept `string | number` and return `string`. When colors are unsupported, they return `String(text)` unchanged.
+
+## Byte Formatting (`bytes.ts`)
+
+```typescript
+interface BytesOptions {
+  precision?: number               // default: 1
+  binary?: boolean                 // use KiB/MiB/GiB (default: false, uses KB/MB/GB)
+  space?: boolean                  // space between number and unit (default: true)
+  locale?: string                  // number formatting locale (default: 'en-US')
+  minimumFractionDigits?: number   // default: 0
+  maximumFractionDigits?: number   // default: precision
+}
+
+formatBytes(1024)                          // '1 KB'
+formatBytes(1024, { binary: true })        // '1 KiB'
+formatBytes(1234567, { precision: 2 })     // '1.23 MB'
+formatBytes(-1024)                         // '-1 KB'
+formatBytes(0.5)                           // '0.5 B'
+
+parseBytes('1 KB')                         // 1000
+parseBytes('1 KiB')                        // 1024
+parseBytes('1.5 MB')                       // 1500000
+
+compareBytes('1 MB', '1 GB')               // negative number (a < b)
+compareBytes(1024, '1 KB')                 // 24 (a > b)
+
+// Aliases
+prettyBytes(1024)                          // alias for formatBytes
+readableSize(1024)                         // alias for formatBytes
+```
+
+Units: B, KB, MB, GB, TB, PB, EB, ZB, YB (decimal) or B, KiB, MiB, GiB, TiB, PiB, EiB, ZiB, YiB (binary).
+
+`parseBytes` accepts a complete decimal with an optional known decimal or
+binary unit (case-insensitive). It rejects partial numbers, unknown units,
+trailing text and non-finite output. Fractions and negative values are allowed.
+
+## Export Size Calculation (`size.ts`)
+
+```typescript
+interface ExportSize {
+  name: string          // relative path
+  size: number          // bytes
+  readable: string      // human-readable
+}
+
+interface PackageExportsSizeResult {
+  totalSize: number
+  totalReadable: string
+  exports: ExportSize[]   // sorted by size descending
+}
+
+await getFileSize('/path/to/file')          // number (bytes), returns 0 on error
+const result = await getExportsSize('./dist')  // PackageExportsSizeResult
+estimateGzipSize(size)                      // Math.floor(size * 0.3)
+estimateBrotliSize(size)                    // Math.floor(size * 0.25)
+formatExportSizes(result)                   // formatted multi-line string with table
+```
+
+`getExportsSize` scans a directory for `.js`, `.mjs`, `.cjs` files and calculates their sizes.
+
+## Pipeline (`pipeline.ts`)
+
+Laravel-inspired pipeline for chaining data transformations.
+
+```typescript
+type PipeFunction<T> = (data: T, next: (data: T) => T) => T
+interface PipeClass<T> { handle: PipeFunction<T> }
+
+// Array-based chaining
+const result = Pipeline.send(data)
+  .through([transform1, transform2, transform3])
+  .via('process')       // method name on pipe classes (default: 'handle')
+  .then((data) => data) // final transformation
+
+// Fluent pipe chaining
+const result2 = Pipeline.send(data)
+  .pipe(fn1)
+  .pipe(fn2)
+  .thenReturn()         // returns data as-is after pipeline
+
+// Pipes can be functions or objects with a handle/via method
+Pipeline.send('hello')
+  .through([
+    (data, next) => next(data.toUpperCase()),
+    (data, next) => next(data + '!'),
+  ])
+  .then(data => data)   // 'HELLO!'
+```
+
+Internally uses `reduceRight` so pipes execute in order (first pipe wraps outermost).
+`through()` snapshots its readonly input array. Builder-local `pipe()` calls and
+later edits to the caller array do not change other pipelines.
+
+## Markdown Tables (`markdown.ts`)
+
+```typescript
+interface MarkdownTableOptions {
+  align?: Array<'l' | 'c' | 'r' | 'left' | 'center' | 'right' | null>
+  padding?: boolean           // default: true
+  delimiter?: string          // default: '|'
+  delimiterStart?: boolean    // default: true
+  delimiterEnd?: boolean      // default: true
+  escapeCells?: boolean       // default: true; false accepts preformatted cells
+  alignDelimiter?: string     // default: '-'
+}
+
+markdownTable([
+  ['Name', 'Age', 'City'],
+  ['Alice', '30', 'NYC'],
+  ['Bob', '25', 'LA']
+])
+// | Name  | Age | City |
+// | ----- | --- | ---- |
+// | Alice | 30  | NYC  |
+// | Bob   | 25  | LA   |
+
+markdownTable([['Left', 'Center', 'Right'], ['a', 'b', 'c']], { align: ['l', 'c', 'r'] })
+// Uses :--- for left, :---: for center, ---: for right
+
+markdownTableFromObjects([
+  { name: 'Alice', age: 30 },
+  { name: 'Bob', age: 25 }
+])
+// Auto-generates header from object keys
+```
+
+Cell values can be `string | number | boolean | null | undefined` -- all are converted to strings.
+
+## YAML (`helpers.ts`)
+
+Uses `Bun.YAML` natively:
+```typescript
+parseYaml(yamlString)     // Bun.YAML.parse(content)
+loadYaml(content)         // alias for parseYaml
+dumpYaml(object)          // Bun.YAML.stringify(content), falls back to JSON.stringify
+```
+
+Tables normalize headers and data rows to the same column count. Text cells
+escape literal backslashes and pipes and replace CR/LF with `<br>`, keeping one
+cell from creating columns or rows. `escapeCells: false` preserves caller-owned
+Markdown escaping. This is table structure handling, not an HTML sanitizer.
+
+## Macroable (`macroable.ts`)
+
+Laravel-inspired dynamic method registration on classes.
+
+```typescript
+import { Macroable, createMacroable, macroable } from '@stacksjs/utils'
+
+// Option 1: Extend Macroable
+class MyClass extends Macroable {}
+
+MyClass.macro('greet', function() { return 'Hello!' })
+const instance = new MyClass()
+;(instance as any).greet() // 'Hello!'
+
+MyClass.hasMacro('greet')    // true
+MyClass.getMacros()          // ['greet']
+MyClass.flushMacros()        // remove all macros
+
+// Mixin multiple methods from an object
+MyClass.mixin({ hello() { return 'hi' }, bye() { return 'bye' } })
+// replace parameter (default: true for mixin, false for macro)
+MyClass.macro('greet', newFn, true)  // replace existing
+
+// Option 2: Create macroable from existing class
+const MacroClass = createMacroable(BaseClass)
+
+// Option 3: Add macroable functionality to existing class
+const Enhanced = macroable(ExistingClass)
+Enhanced.macro('newMethod', fn)
+```
+
+Static methods: `macro(name, fn, replace?)`, `mixin(obj, replace?)`, `hasMacro(name)`, `flushMacros()`, `getMacros()`.
+
+Registrations belong to the receiving constructor in all three APIs. Descendants
+see effective inherited macros; sibling mutations are isolated. Flush removes
+only own registrations, restoring original descriptors and revealing inherited
+methods again. Existing native methods need explicit `replace: true` (the third
+argument); `constructor` is reserved. Failed installation publishes no registry
+entry. `getMacros` includes effective inherited macro names.
+
+## ResizeObserver (`observer.ts`)
+
+```typescript
+isResizeObserverSupported()               // boolean
+const RO = getResizeObserver()            // native or polyfill class
+
+const cleanup = createResizeObserver(callback, element)
+const cleanup2 = createResizeObserver(callback, [el1, el2])  // multiple elements
+cleanup()                                  // disconnect observer
+
+const stop = observeElementSize(element, (entry) => {
+  console.log(entry.contentRect.width, entry.contentRect.height)
+})
+stop()                                     // stop observing
+```
+
+The polyfill polls bounding-box width/height with `requestAnimationFrame` (or a
+16-ms timeout). It delivers initial measurements and size changes, not position
+changes or every frame. Callback errors still reach host error reporting while
+monitoring continues. Unobserve/disconnect discard measurements and pending work;
+reobserving starts with a new initial delivery. This simple fallback does not
+implement native content/border/device-pixel box measurement distinctions.
+
+## Deep Equality (`equal.ts`)
+
+```typescript
+isDeepEqual(obj1, obj2)           // deep structural equality
+isDeepEqual([1, 2], [1, 2])       // true
+isDeepEqual({ a: 1 }, { a: 1 })   // true
+isDeepEqual(NaN, NaN)             // true (uses Object.is)
+```
+
+Compares arrays element-by-element, objects key-by-key, primitives with `Object.is`.
+
+## Version Comparison (`versions.ts`)
+
+Uses `Bun.semver` natively:
+```typescript
+const semver: typeof Bun.semver = Bun.semver
+
+isVersionGreaterThan('2.0.0', '1.0.0')         // true
+isVersionLessThan('1.0.0', '2.0.0')             // true
+isVersionEqual('1.0.0', '1.0.0')                 // true
+isVersionGreaterThanOrEqual('1.0.0', '1.0.0')   // true
+isVersionLessThanOrEqual('1.0.0', '2.0.0')       // true
+
+// Also exports the framework version
+import { version } from '@stacksjs/utils'  // from package.json
+```
+
+## Detection Utilities (`detect.ts`)
+
+Separate from the strings package detection -- this is the utils-specific implementation:
+
+```typescript
+interface IndentInfo {
+  amount: number
+  type: 'space' | 'tab' | null
+  indent: string
+}
+
+detectIndent(text: string): IndentInfo
+detectNewline(text: string): '\r\n' | '\n' | '\r' | null
+detectNewlineGraceful(text, fallback?): '\r\n' | '\n' | '\r'  // fallback default: '\n'
+normalizeNewlines(text, '\n'): string        // replace all newlines with specified type
+countNewlines(text): { crlf, lf, cr, total }
+```
+
+## Project Utilities (`helpers.ts`)
+
+```typescript
+await packageManager()                    // reads from framework package.json
+await frameworkVersion()                  // reads version from framework package.json
+await isAppKeySet()                       // checks process APP_KEY first, then .env
+await ensureProjectIsInitialized()        // copies .env.example if needed, checks app key
+await installIfVersionMismatch()          // currently a no-op (placeholder)
+await setEnvValue('KEY', 'value')         // set/update value in .env file
+await runNpmScript('build', options?)     // run npm script via bun, validates script exists
+hasScript(manifest, 'test')              // check if script exists in package.json manifest
+determineDebugLevel(options?)             // returns true if --verbose or app.debug === true
+determineResetPreset(preset?)             // legacy reset-array helper; prefer the actual css config contract
+isManifest(obj)                          // type guard for package.json manifest
+isOptionalString(value)                  // type guard for string | null | undefined
+isIpv6(address)                          // check if AddressInfo is IPv6 (handles node >=18 quirks)
+```
+
+## Find Stacks Projects (`find.ts`)
+
+```typescript
+await findStacksProjects(dir?, options?)   // recursively search for Stacks projects
+// A Stacks project = directory with 'buddy' file + 'storage/framework/core/buddy' structure
+// Excludes: node_modules, dist, vendor, storage/framework, ~/Documents, ~/Pictures, ~/Library, ~/.Trash, dotfolders
+```
+
+## Git Utilities (`git.ts`)
+
+```typescript
+isGitClean(): boolean     // runs `git diff-index --quiet HEAD --`, returns true if clean
+```
+
+## Clean Project (`clean.ts`)
+
+```typescript
+await cleanProject()      // removes bun.lock, yarn.lock, node_modules, dist, cdk.out, etc.
+```
+
+## Config Builders (re-exported from `@stacksjs/config`)
+
+```typescript
+defineApp()
+defineCache()
+defineCdn()
+defineChat()
+defineCli()
+defineDatabase()
+defineDependencies()
+defineDns()
+defineEmail()
+defineEmailConfig()
+defineGit()
+defineHashing()
+defineLibrary()
+defineNotification()
+definePayment()
+defineQueue()
+defineSearchEngine()
+defineServices()
+defineSms()
+defineFilesystems()
+defineUi()
+```
+
+## Hash Utilities (`hash.ts`)
+
+Internal cloud deployment helpers:
+```typescript
+originRequestFunctionHash()   // hash of cloud edge function source
+websiteSourceHash()           // hash of website/docs source (depends on docMode config)
+docsSourceHash()              // hash of docs source
+```
+
+## Glob boundary
+
+```typescript
+import { glob } from '@stacksjs/storage'
+```
+
+Glob belongs to `@stacksjs/storage`; it is not re-exported from the utils root.
+
+## Safe serialization and typed composition
+
+`safeJsonParse(text, fallback?)` and `safeJsonParseResult` make parse failure
+behavior explicit. A parse generic result type is a caller annotation, not
+validation of untrusted JSON.
+Validate decoded objects at the request boundary before treating them as a
+model, config, or provider payload.
+
+`safeJsonStringify` returns `string | undefined`, matching JSON for unsupported
+roots (undefined, functions and symbols). Shared non-cyclic objects serialize
+at every occurrence; only ancestor cycles become `[Circular]`. BigInts become
+decimal strings. User getters and `toJSON` methods can still throw.
+
+`pipe(value, ...steps)` applies ordinary typed unary functions left to right.
+`piped(...steps)` returns the composed function and `tap(effect)` returns a
+pass-through step. These differ from middleware-style `Pipeline`, whose pipes
+receive a next function. Choose the simple function seam for data transforms.
+
+`isDeepEqual` now compares Date, RegExp, Map, Set, typed arrays and ArrayBuffers
+by value and tracks active circular pairs. Cycle topology/sharing need not
+match when fields are structurally equal. Objects require matching own
+enumerable string keys. Arrays distinguish a hole from an own undefined slot;
+two corresponding holes compare equal. Host objects and Errors remain identity
+comparisons. Read retained equal tests for a non-plain object rather than
+assuming every object with similar printable fields is equal.
+
+`retry` (re-exported from the browser package) validates a finite non-negative
+safe-integer retry count before work starts. It runs once plus that retry budget.
+Delay and factor must be finite non-negative numbers. `calculateDelay` saturates
+exponential/jitter output at 2147483647 ms, preventing platform timeout overflow
+from turning long backoffs into rapid retries.
+
+`setEnvValue` preserves literal dollar replacement sequences for existing and
+appended keys. Unknown-error helpers guard accessors/proxies and return safe
+fallbacks instead of replacing the original error during extraction.
+
+## Gotchas
+- `merge()` concatenates arrays instead of replacing them -- this differs from spread/Object.assign behavior
+- `mergeDefaults()`/`defu()` gives precedence to the FIRST argument (the object), not the defaults
+- Color functions only work in terminal environments -- check `supportsColor()` first
+- `debounce` does NOT support `maxWait`; choose throttle when the desired
+  behavior is a bounded invocation rate, not a guaranteed execution deadline.
+- `throttle.cancel()` exists but there is no `throttle.flush()`
+- Pipeline uses `reduceRight` internally so pipes execute in array order, not reverse
+- YAML operations use `Bun.YAML` -- `dumpYaml` falls back to `JSON.stringify` if `Bun.YAML.stringify` is unavailable
+- `detectIndent` in utils (`detect.ts`) is a different, simpler implementation than the one in strings (`detect-indent.ts`)
+- `isDeepEqual` uses `getTypeName` from `@stacksjs/types` for type checking
+- Version comparison uses `Bun.semver.order()` which returns -1, 0, or 1
+- `cleanProject()` removes lock files and generated artifacts using native filesystem
+  operations, including nested framework `dist` and `node_modules` directories.
+  Symlink entries may be unlinked as artifacts, but aliased parents and external
+  targets are never traversed.

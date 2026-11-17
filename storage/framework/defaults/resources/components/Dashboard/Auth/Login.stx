@@ -1,0 +1,142 @@
+@import('../UI/Input', '../UI/Button')
+
+<script client>
+const emit = defineEmits(['submit'])
+const title = useReactiveProp<string>('title', 'Welcome back')
+const subtitle = useReactiveProp<string>('subtitle', 'Sign in to your account')
+const icon = useReactiveProp<string>('icon', 'i-hugeicons-cube')
+const eyebrow = useReactiveProp<string>('eyebrow', '')
+const isLoading = useReactiveProp<boolean>('isLoading', false)
+const error = useReactiveProp<string>('error', '')
+const showRememberMe = useReactiveProp<boolean>('showRememberMe', true)
+const showForgotPassword = useReactiveProp<boolean>('showForgotPassword', true)
+const showSignUp = useReactiveProp<boolean>('showSignUp', true)
+const email = state('')
+const password = state('')
+const rememberMe = state(false)
+const fieldErrors = state<Record<string, string>>({})
+
+function setFieldError(field: string, message: string): void {
+  fieldErrors.set({ ...fieldErrors(), [field]: message })
+}
+
+function fieldError(field: string): string {
+  return fieldErrors()[field] || ''
+}
+
+function validateEmail(): boolean {
+  if (!email().trim()) {
+    setFieldError('email', 'Email is required')
+    return false
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email())) {
+    setFieldError('email', 'Please enter a valid email address')
+    return false
+  }
+  setFieldError('email', '')
+  return true
+}
+
+function validatePassword(): boolean {
+  if (!password()) {
+    setFieldError('password', 'Password is required')
+    return false
+  }
+  setFieldError('password', '')
+  return true
+}
+
+function handleSubmit(): void {
+  if (!validateEmail() || !validatePassword())
+    return
+
+  emit('submit', {
+    email: email(),
+    password: password(),
+    remember: rememberMe(),
+  })
+}
+</script>
+
+<AuthCard :title="title()" :subtitle="subtitle()" :icon="icon()" :eyebrow="eyebrow()">
+
+  <div class="p-6 bg-white dark:bg-neutral-900 border border-neutral-200/60 rounded-2xl dark:border-neutral-800 shadow-black/5 shadow-xl dark:shadow-black/20">
+    <div :if="error()" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg dark:border-red-800">
+      <div class="flex gap-2 items-center">
+        <span class="h-4 w-4 text-red-600 dark:text-red-400 i-hugeicons-alert-circle"></span>
+        <p class="text-red-600 text-sm dark:text-red-400">{{ error() }}</p>
+      </div>
+    </div>
+
+    <form @submit.prevent="handleSubmit">
+      <div class="mb-4">
+        <Input
+          type="email"
+          label="Email address"
+          placeholder="you@example.com"
+          v-model:value="email"
+          @blur="validateEmail()"
+          :error="fieldError('email')"
+          required
+          :disabled="isLoading()"
+        />
+      </div>
+
+      <div class="mb-4">
+        <Input
+          type="password"
+          label="Password"
+          placeholder="Enter your password"
+          v-model:value="password"
+          @blur="validatePassword()"
+          :error="fieldError('password')"
+          required
+          :disabled="isLoading()"
+        />
+      </div>
+
+      <div class="flex items-center justify-between mb-6">
+        <label :if="showRememberMe()" class="flex gap-2 items-center cursor-pointer">
+          <input
+            type="checkbox"
+            class="h-4 w-4 text-blue-500 bg-white dark:bg-neutral-800 border-neutral-300 rounded dark:border-neutral-600 focus:ring-blue-500/40 focus:ring-offset-0"
+            x-model="rememberMe"
+            :disabled="isLoading()"
+          />
+          <span class="text-neutral-600 text-sm dark:text-neutral-400">Remember me</span>
+        </label>
+
+        <a :if="showForgotPassword()" href="/forgot-password" class="font-medium text-blue-600 text-sm dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
+          Forgot password?
+        </a>
+      </div>
+
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        fullWidth
+        :loading="isLoading()"
+        :disabled="isLoading() || !email() || !password()"
+      >
+        <span :if="isLoading()">Signing in...</span>
+        <span :if="!isLoading()">Sign in</span>
+      </Button>
+    </form>
+
+    {{--
+      Anything that belongs with the credentials, inside the same card:
+      the social sign-in buttons the /login page fills this with. It is a
+      slot because the provider list has to be computed server-side by
+      `configuredSocialProviders()`, and this component is client-only.
+    --}}
+    <slot name="social" />
+  </div>
+
+  <p :if="showSignUp()" class="mt-6 text-center text-neutral-500 text-sm dark:text-neutral-400">
+    Don't have an account?
+    <a href="/register" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
+      Sign up
+    </a>
+  </p>
+</AuthCard>

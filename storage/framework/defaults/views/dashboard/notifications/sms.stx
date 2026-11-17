@@ -1,0 +1,12 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - SMS Notifications')
+
+<NotificationDeliveries
+  channel="sms"
+  title="SMS Notifications"
+  description="Monitor real SMS transport attempts, inspect provider context, and retry failed deliveries."
+/>
+
+@endsection

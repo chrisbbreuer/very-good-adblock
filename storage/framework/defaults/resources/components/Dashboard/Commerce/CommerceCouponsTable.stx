@@ -1,0 +1,111 @@
+@import('../UI/Table')
+
+<script client>
+import type { CouponRecord } from '../../../../app/Actions/Dashboard/Commerce/coupon-records'
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+const records = useReactiveProp('records', [] as CouponRecord[])
+const loading = useReactiveProp('loading', false)
+/** The parent's sort select: a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+const currency = useReactiveProp('currency', 'USD')
+/**
+ * The server pages and sorts what the parent's search and filters match
+ * (stacksjs/stacks#3218): how many coupons match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['view', 'edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+// A percentage is a rate, not money; a fixed amount is integer minor units.
+function discount(record: CouponRecord): string {
+  return record.discountType === 'percentage'
+    ? `${record.discountValue}%`
+    : formatCurrency(record.discountValue, currency())
+}
+
+const COLUMNS = [
+  { key: 'codeLabel', label: 'Coupon', sortable: true, subtitleKey: 'descriptionLabel', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'discountLabel', label: 'Discount', subtitleKey: 'discountKind', searchable: false, class: 'font-semibold text-gray-700 whitespace-nowrap dark:text-neutral-200' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      Active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+      Scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
+    },
+  },
+  {
+    key: 'availability',
+    label: 'Availability',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: { enabled: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40' },
+    badgeLabels: { enabled: 'Enabled', disabled: 'Disabled' },
+  },
+  { key: 'usageLabel', label: 'Usage', align: 'right' as const, searchable: false, class: 'font-mono whitespace-nowrap' },
+  // Calendar dates: parseDashboardDate reads them as that day in every zone.
+  { key: 'startDate', label: 'Starts', type: 'date' as const, sortable: true, emptyText: 'No date', class: 'whitespace-nowrap' },
+  { key: 'endDate', label: 'Ends', type: 'date' as const, sortable: true, emptyText: 'No date', class: 'whitespace-nowrap' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'view', label: 'View' },
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => records().map(record => ({
+  ...record,
+  codeLabel: record.code || 'No code',
+  descriptionLabel: record.description || 'No description recorded',
+  discountLabel: discount(record),
+  discountKind: record.discountType === 'percentage' ? 'Percentage' : 'Fixed amount',
+  availability: record.isActive ? 'enabled' : 'disabled',
+  usageLabel: `${record.usageCount.toLocaleString()} / ${record.usageLimit ? record.usageLimit.toLocaleString() : 'No limit'}`,
+})))
+
+function handleRowAction(payload: { action: string, row: CouponRecord }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box
+  and the filter selects. The server pages and sorts what they match.
+--}}
+<Table
+  :sort-reset-key="sortResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="codeLabel"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No coupons found"
+  empty-description="Add a coupon or adjust the current filters."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+/>

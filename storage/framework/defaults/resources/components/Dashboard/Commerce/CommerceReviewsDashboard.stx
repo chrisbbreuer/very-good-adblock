@@ -1,0 +1,296 @@
+<script client>
+import type {
+  ReviewProductOption,
+  ReviewRecord,
+  ReviewSummary,
+} from '../../../../app/Actions/Dashboard/Commerce/review-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface ReviewIndexResponse {
+  records: ReviewRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: ReviewSummary
+  products: ReviewProductOption[]
+}
+
+interface ReviewEditPayload {
+  title: string
+  content: string
+  rating: number | null
+  isApproved: boolean
+  isFeatured: boolean
+}
+
+const title = useReactiveProp('title', 'Product Reviews')
+const description = useReactiveProp(
+  'description',
+  'Moderate native Review records and keep storefront feedback accurate.',
+)
+const emptySummary: ReviewSummary = {
+  total: 0,
+  approved: 0,
+  pending: 0,
+  featured: 0,
+  verified: 0,
+  averageRating: 0,
+}
+
+const summary = state<ReviewSummary>({ ...emptySummary })
+const products = state<ReviewProductOption[]>([])
+const productFilter = state('all')
+const ratingFilter = state('all')
+const moderationFilter = state('all')
+const sort = state('newest')
+const editingReview = state<ReviewRecord | null>(null)
+const deletingReview = state<ReviewRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const busyId = state('')
+const validationErrors = state<Record<string, string>>({})
+
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  'newest': { sort: 'created', direction: 'desc' },
+  'oldest': { sort: 'created', direction: 'asc' },
+  'rating-high': { sort: 'rating', direction: 'desc' },
+  'rating-low': { sort: 'rating', direction: 'asc' },
+  'helpful': { sort: 'helpful', direction: 'desc' },
+}
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  customerLabel: 'customer',
+  productLabel: 'product',
+  rating: 'rating',
+  moderation: 'approved',
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<ReviewRecord>({
+  fetch: query => dashboardApi<ReviewIndexResponse>(`/api/dashboard/commerce/reviews?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS["newest"]!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ product: productFilter(), rating: ratingFilter(), moderation: moderationFilter() }),
+  onLoad: (result) => {
+    const data = result as ReviewIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    products.set(Array.isArray(data.products) ? data.products : [])
+  },
+  onError: error => pushToast('error', "Could not load reviews", { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count} matching ${count === 1 ? 'review' : 'reviews'}`
+}
+
+function metricCards(): Array<{ label: string, value: string }> {
+  return [
+    { label: 'Recorded', value: String(summary().total) },
+    { label: 'Approved', value: String(summary().approved) },
+    { label: 'Pending', value: String(summary().pending) },
+    { label: 'Verified', value: String(summary().verified) },
+    { label: 'Average rating', value: `${summary().averageRating.toFixed(1)} / 5` },
+  ]
+}
+
+function loadReviews(): Promise<void> {
+  return load()
+}
+
+async function patchReview(review: ReviewRecord, payload: Record<string, unknown>, successMessage: string): Promise<void> {
+  busyId.set(review.id)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/reviews/${review.id}`, {
+      method: 'PATCH',
+      body: {
+        title: review.title,
+        content: review.content,
+        rating: review.rating,
+        ...payload,
+      },
+    })
+    pushToast('success', successMessage)
+    await loadReviews()
+  }
+  catch (error) {
+    pushToast('error', 'Could not update review', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    busyId.set('')
+  }
+}
+
+function toggleApproval(review: ReviewRecord): void {
+  void patchReview(
+    review,
+    { isApproved: !review.approved },
+    review.approved ? 'Review returned to pending' : 'Review approved',
+  )
+}
+
+function toggleFeatured(review: ReviewRecord): void {
+  void patchReview(
+    review,
+    { isFeatured: !review.featured },
+    review.featured ? 'Review removed from featured' : 'Review featured',
+  )
+}
+
+function openEdit(review: ReviewRecord): void {
+  editingReview.set(review)
+  validationErrors.set({})
+}
+
+function closeEdit(): void {
+  if (!saving()) {
+    editingReview.set(null)
+    validationErrors.set({})
+  }
+}
+
+async function saveReview(payload: ReviewEditPayload): Promise<void> {
+  const review = editingReview()
+  if (!review)
+    return
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(`/api/dashboard/commerce/reviews/${review.id}`, { method: 'PATCH', body: payload })
+    editingReview.set(null)
+    pushToast('success', 'Review updated')
+    await loadReviews()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save review', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(review: ReviewRecord): void {
+  deletingReview.set(review)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingReview.set(null)
+}
+
+async function deleteSelectedReview(): Promise<void> {
+  const review = deletingReview()
+  if (!review)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/reviews/${review.id}`, { method: 'DELETE' })
+    deletingReview.set(null)
+    pushToast('success', 'Review deleted')
+    await loadReviews()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete review', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadReviews()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader :title="title()" :description="description()">
+  <Button variant="secondary" :loading="loading()" @click="loadReviews">
+    <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+    Refresh
+  </Button>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Review metrics" columns="grid-cols-2 lg:grid-cols-5" :items="metricCards()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-5">
+      <div class="xl:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search reviews" ariaLabel="Search reviews" /></div>
+      <Select v-model:value="productFilter" ariaLabel="Product" placeholder="" :options="[{ value: 'all', label: 'All products' }, ...products().map(product => ({ value: product.id, label: product.label }))]" />
+      <Select v-model:value="ratingFilter" ariaLabel="Rating" placeholder="" :options="[{ value: 'all', label: 'All ratings' }, { value: '5', label: '5 stars' }, { value: '4', label: '4 stars' }, { value: '3', label: '3 stars' }, { value: '2', label: '2 stars' }, { value: '1', label: '1 star' }, { value: 'none', label: 'No rating' }]" />
+      <Select v-model:value="moderationFilter" ariaLabel="Moderation state" placeholder="" :options="[{ value: 'all', label: 'All states' }, { value: 'approved', label: 'Approved' }, { value: 'pending', label: 'Pending' }, { value: 'featured', label: 'Featured' }, { value: 'verified', label: 'Verified purchase' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">
+        {{ matchingLabel() }}
+      </p>
+      <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">
+        Sort
+        <Select v-model:value="sort" ariaLabel="Sort" size="sm" placeholder="" :options="[{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'rating-high', label: 'Highest rating' }, { value: 'rating-low', label: 'Lowest rating' }, { value: 'helpful', label: 'Most helpful' }]" />
+      </label>
+    </div>
+
+    <CommerceReviewsTable
+      :sort-reset-key="sort()"
+      :reviews="records()"
+      :total="total()"
+      :current-page="page()"
+      :per-page="perPage()"
+      :loading="loading()"
+      :busy-id="busyId()"
+      @approve="toggleApproval"
+      @feature="toggleFeatured"
+      @edit="openEdit"
+      @delete="openDelete"
+      @page-change="changePage"
+      @page-size-change="changePageSize"
+      @sort="changeSort"
+    />
+
+  </section>
+</div>
+
+<CommerceReviewEditDialog
+  :open="Boolean(editingReview())"
+  :review="editingReview()"
+  :busy="saving()"
+  :errors="validationErrors()"
+  @submit="saveReview"
+  @close="closeEdit()"
+/>
+
+<CommerceReviewDeleteDialog
+  :open="Boolean(deletingReview())"
+  :review="deletingReview()"
+  :busy="deleting()"
+  @confirm="deleteSelectedReview()"
+  @close="closeDelete()"
+/>

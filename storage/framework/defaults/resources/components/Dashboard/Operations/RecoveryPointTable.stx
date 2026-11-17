@@ -1,0 +1,93 @@
+@import('../UI/Table')
+
+<script client>
+import type { RecoveryPoint, RecoveryPolicy } from '../../../../functions/operations'
+
+const pointItems = useReactiveProp('points', [])
+const policyItems = useReactiveProp('policies', [])
+const busyId = useReactiveProp('busyId', '')
+const emit = defineEmits(['verify', 'restore', 'protect'])
+
+function policyName(id?: string): string {
+  return (policyItems() as RecoveryPolicy[]).find(policy => policy.id === id)?.name || 'Manual recovery point'
+}
+
+function formatBytes(value: number): string {
+  if (!value) return 'Provider managed'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
+  return `${(value / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
+/** The pill's colour: verified, failed in either way, in progress, or not yet. */
+function verificationTone(state: RecoveryPoint['verificationState']): string {
+  if (state === 'verified') return 'verified'
+  if (state === 'corrupt' || state === 'failed') return 'failed'
+  if (state === 'verifying') return 'verifying'
+  return 'unverified'
+}
+
+/** Protection is slotted, for its two independent badges. */
+const COLUMNS = [
+  { key: 'policyName', label: 'Recovery point', sortable: true, subtitleKey: 'detail', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'pointInTime', label: 'Created', type: 'datetime' as const, sortable: true, emptyText: 'Not recorded', class: 'whitespace-nowrap' },
+  {
+    key: 'verificationTone',
+    label: 'Verification',
+    type: 'badge' as const,
+    sortable: true,
+    badgeLabelKey: 'verificationState',
+    badgeClasses: {
+      verified: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40',
+      failed: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40',
+      verifying: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
+      unverified: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+    },
+  },
+  { key: 'protection', label: 'Protection', slotted: true, searchable: false },
+]
+
+const rows = derived(() => (pointItems() as RecoveryPoint[]).map(point => ({
+  ...point,
+  policyName: policyName(point.policyId),
+  detail: `${point.id} · ${point.kind} · ${formatBytes(point.sizeBytes)}`,
+  verificationTone: verificationTone(point.verificationState),
+  protection: [point.pinned ? 'Pinned' : '', point.held ? 'Held' : ''].filter(Boolean).join(', ') || 'Retention policy',
+})))
+</script>
+
+{{--
+  The actions are a slot: text buttons whose disabled and loading state
+  depends on the row and on which request is in flight.
+--}}
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  paginated
+  :page-size="25"
+  empty-title="No recovery points yet"
+  empty-description="Create and run a recovery policy to produce the first independently verifiable point."
+>
+  <template #cell="{ row }">
+    <div class="flex flex-wrap gap-1.5">
+      {{-- A directive on a component inside a slot is not evaluated, so each
+           conditional component sits in a template that carries it. --}}
+      <template :if="row.pinned"><Badge variant="primary">Pinned</Badge></template>
+      <template :if="row.held"><Badge variant="warning">Held</Badge></template>
+      <span :if="!row.pinned && !row.held" class="text-gray-500 text-xs dark:text-neutral-400">Retention policy</span>
+    </div>
+  </template>
+
+  <template #actions="{ row }">
+    <div class="inline-flex gap-2 items-center justify-end w-full whitespace-nowrap">
+      <Button size="sm" :disabled="busyId() !== '' || row.status !== 'available'" :loading="busyId() === row.id + ':verify'" @click="emit('verify', row.id)">Verify</Button>
+      <Button size="sm" variant="outline" :disabled="busyId() !== '' || row.status !== 'available' || row.verificationState !== 'verified'" @click="emit('restore', row)">Restore</Button>
+      <template :if="row.pinned">
+        <Button size="sm" variant="ghost" :disabled="busyId() !== ''" :loading="busyId() === row.id + ':protect'" @click="emit('protect', { id: row.id, pinned: false })">Unpin</Button>
+      </template>
+      <template :else>
+        <Button size="sm" variant="ghost" :disabled="busyId() !== ''" :loading="busyId() === row.id + ':protect'" @click="emit('protect', { id: row.id, pinned: true })">Pin</Button>
+      </template>
+    </div>
+  </template>
+</Table>

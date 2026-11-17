@@ -1,0 +1,304 @@
+<script client>
+// A record's own page (`/models/{slug}/{id}`), where the eye on any table row
+// leads. A breadcrumb back to the list, "View User", and the record's fields
+// as titled cards two across: what it is, its settings, its identifiers and
+// its timestamps, each field a label over its value. Edit (which opens the
+// record's edit page) and Delete appear where the model allows them, and so
+// do the model's own actions ("Mark as shipped"), each a button that runs an
+// action of the app's. A page rather than a dialog, so a record has an
+// address to share, open in a tab and come back to.
+import { useNavigation } from '@stacksjs/defaults/views/dashboard/composables/useNavigation'
+import type { ModelCustomAction, ModelRecord, ModelRelatedPanel } from '../../../../functions/dashboard-model-record'
+import { deleteModelRecord, fetchModelRecord, fetchModelRelated, modelActionAsks, modelActionIconClass, modelActionNotice, modelDeleteNotice, modelDeleteWarning, modelNameFromSlug, modelRecordBackHref, modelRecordEditHref, modelRecordHref, modelRecordListLabel, modelRecordSections, modelRecordTitle, runModelAction } from '../../../../functions/dashboard-model-record'
+import { dashboardLoaderTimer, dashboardReloadingClass } from '../../../../functions/dashboard-loading'
+import { pushToast } from '../../../../functions/toasts'
+import { modelPageStore } from '@stacksjs/defaults/views/dashboard/stores/model-page'
+
+const navigation = useNavigation()
+const record = state<ModelRecord | null>(null)
+const loading = state(true)
+// Set once a request has taken long enough to say so. The record's page
+// waits quietly before that (see dashboard-loading.ts).
+const slow = state(false)
+const loadError = state('')
+const confirmingDelete = state(false)
+const working = state(false)
+// One of the model's own actions, waiting on its confirmation.
+const confirmingAction = state<ModelCustomAction | null>(null)
+// The action that is running, by name: its button waits, the others stay.
+const running = state('')
+// One that takes input, with its form open, and what its last try was refused for.
+const askingAction = state<ModelCustomAction | null>(null)
+const actionError = state('')
+const actionErrors = state<Record<string, string[]>>({})
+
+// `/models/{slug}/{id}`: the last two segments of the address.
+function slug(): string {
+  return navigation.urlSegment(-2)
+}
+
+function recordId(): string {
+  return navigation.urlSegment(-1)
+}
+
+const from = navigation.urlQuery('from')
+const backHref = derived(() => modelRecordBackHref(slug(), from))
+/** This page, for a form opened from one of its panels to come back to. */
+const selfHref = derived(() => modelRecordHref(slug(), recordId()))
+/** The list in the breadcrumb: "Users" for /data/users, else the model's table. */
+const listLabel = derived(() => modelRecordListLabel(record(), backHref()))
+
+// Known from the address before the record comes, so the heading does not change.
+const modelName = derived(() => record()?.modelName || modelNameFromSlug(slug()))
+// The record stays on the page while it is read again (after one of its
+// actions), dimmed, and is swapped when the answer comes.
+const contentClass = derived(() => dashboardReloadingClass(loading(), 'grid gap-6 grid-cols-1 items-start lg:grid-cols-2'))
+const title = derived(() => record() ? modelRecordTitle(record()!) : '')
+// Who points at this record: its panels. Also after the record itself.
+const related = state<ModelRelatedPanel[]>([])
+// The records this one points at come named with it; one that is gone reads "Team #3".
+const sections = derived(() => record() ? modelRecordSections(record()!) : [])
+// An anonymized account has nothing left to edit, and deleting it again
+// would only anonymize what already is. The note below says what it is.
+const canEdit = derived(() => Boolean(record()?.writeCapabilities.update) && !record()?.anonymized)
+const canDelete = derived(() => Boolean(record()?.writeCapabilities.destroy) && !record()?.anonymized)
+// The model's own actions this record is offered: the server has already
+// left out the ones its `when` rules out.
+const actions = derived(() => record()?.actions ?? [])
+
+async function loadRecord(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  const settle = dashboardLoaderTimer(slow)
+  try {
+    const loaded = await fetchModelRecord(slug(), recordId())
+    record.set(loaded)
+    // For a component the app placed on this page: it follows the record.
+    modelPageStore.showRecord(slug(), recordId(), loaded)
+    // Not awaited, and a page whose panels cannot be read is still the record's page.
+    void fetchModelRelated(slug(), recordId()).then(panels => related.set(panels)).catch(() => related.set([]))
+  }
+  catch (error) {
+    record.set(null)
+    modelPageStore.showRecord(slug(), recordId(), null)
+    related.set([])
+    loadError.set(error instanceof Error ? error.message : 'This record could not be loaded.')
+  }
+  finally {
+    settle()
+    loading.set(false)
+  }
+}
+
+// A row was added, changed or removed in a panel: the panels are read again.
+// The record is left as it is on screen; only what points at it changed.
+function reloadRelated(): void {
+  void fetchModelRelated(slug(), recordId()).then(panels => related.set(panels)).catch(() => {})
+}
+
+// The edit page comes back here after saving or cancelling.
+function editRecord(): void {
+  navigate(modelRecordEditHref(slug(), recordId(), { from: backHref() === from ? from : undefined, via: 'view' }))
+}
+
+async function deleteRecord(): Promise<void> {
+  const current = record()
+  if (!current)
+    return
+  working.set(true)
+  try {
+    const outcome = await deleteModelRecord(slug(), recordId())
+    const notice = modelDeleteNotice(`${current.modelName} ${recordId()}`, outcome)
+    pushToast('success', notice.title, { detail: notice.detail })
+    confirmingDelete.set(false)
+    navigate(backHref())
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete', { detail: error instanceof Error ? error.message : String(error) })
+  }
+  finally {
+    working.set(false)
+  }
+}
+
+// An action that takes input opens its form, one that asks first its
+// confirmation, and any other runs.
+function startAction(action: ModelCustomAction): void {
+  if (modelActionAsks(action)) {
+    actionError.set('')
+    actionErrors.set({})
+    askingAction.set(action)
+  }
+  else if (action.confirm) {
+    confirmingAction.set(action)
+  }
+  else {
+    void runAction(action)
+  }
+}
+
+async function runAction(action: ModelCustomAction, input: Record<string, unknown> = {}): Promise<void> {
+  if (running())
+    return
+  running.set(action.name)
+  const result = await runModelAction(slug(), recordId(), action.name, input)
+  running.set('')
+  confirmingAction.set(null)
+  // A refusal of what was typed is answered where it was typed: the form
+  // stays open with the reason, under the field it is about.
+  if (!result.ok && askingAction()) {
+    actionError.set(result.error)
+    actionErrors.set(result.errors ?? {})
+    return
+  }
+  askingAction.set(null)
+  const notice = modelActionNotice(action, result)
+  pushToast(notice.tone, notice.title, { detail: notice.detail })
+  if (!result.ok)
+    return
+  if (result.redirect)
+    navigate(result.redirect)
+  else
+    // What the action changed is what the page should now show, and which
+    // actions the record is still offered may have changed with it.
+    await loadRecord()
+}
+
+function confirmAction(): void {
+  const action = confirmingAction()
+  if (action)
+    void runAction(action)
+}
+
+function submitAction(input: Record<string, unknown>): void {
+  const action = askingAction()
+  if (action)
+    void runAction(action, input)
+}
+
+// Said before anything is loaded: which record this page is for, so a
+// component the app placed here never shows the record of the page before.
+modelPageStore.openRecord(slug(), recordId(), () => { void loadRecord() })
+
+onMount(() => {
+  void loadRecord()
+})
+
+onDestroy(() => {
+  modelPageStore.closeRecord(slug(), recordId())
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div class="min-w-0">
+      <nav aria-label="Breadcrumb" class="flex gap-2 items-center mb-2 text-neutral-500 text-sm dark:text-neutral-400">
+        <StxLink :to="backHref()" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">{{ listLabel() }}</StxLink>
+        <span aria-hidden="true" class="h-4 w-4 i-hugeicons-arrow-right-01"></span>
+        <span aria-current="page">View</span>
+      </nav>
+      <h1 class="font-bold text-3xl text-neutral-900 tracking-tight truncate dark:text-white">View {{ modelName() }}</h1>
+    </div>
+    <div :if="record()" class="flex flex-wrap gap-2 items-center sm:justify-end">
+      <Button :for="action in actions()" variant="outline" :disabled="running() !== ''" @click="startAction(action)">
+        <span aria-hidden="true" :class="running() === action.name ? 'h-4 w-4 animate-spin i-hugeicons-loading-03' : modelActionIconClass(action)"></span>
+        {{ action.label }}
+      </Button>
+      <Button :if="canDelete()" variant="outline" @click="confirmingDelete.set(true)">
+        <span aria-hidden="true" class="h-4 w-4 text-red-500 i-hugeicons-delete-02"></span>
+        Delete
+      </Button>
+      <Button :if="canEdit()" variant="primary" @click="editRecord">Edit</Button>
+    </div>
+  </header>
+
+  <!-- What the model places above its record: `dashboard.regions.recordTop`. -->
+  <ModelRegion place="recordTop" />
+
+  <QuietLoader :if="loading() && !record()" :slow="slow()" label="Loading record" />
+
+  <div :if="!loading() && loadError()" role="alert" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-lg dark:border-red-900">
+    <span>{{ loadError() }}</span>
+    <Button variant="secondary" size="sm" @click="loadRecord">Try again</Button>
+  </div>
+
+  <div :if="record()?.anonymized" role="note" class="flex gap-3 items-start px-4 py-3 text-neutral-700 text-sm dark:text-neutral-200 bg-neutral-100 dark:bg-white/5 border border-neutral-200 rounded-lg dark:border-neutral-700">
+    <span aria-hidden="true" class="flex-none mt-0.5 h-4 w-4 text-neutral-500 i-hugeicons-user-remove-01"></span>
+    <span>This account was anonymized. Its name and email were removed and it can no longer sign in. Records that refer to it were kept.</span>
+  </div>
+
+  <div :if="record()" :class="contentClass()" :aria-busy="loading() ? 'true' : null" data-record-content>
+    <div :for="section in sections()" class="min-w-0">
+      <Card padding="none">
+        <h2 class="px-6 py-4 font-semibold text-base text-neutral-900 dark:text-white border-b border-neutral-200 dark:border-neutral-700">{{ section.title }}</h2>
+        <dl :class="section.columns === 2 ? 'grid gap-x-8 gap-y-6 grid-cols-1 sm:grid-cols-2 p-6' : 'flex flex-col gap-6 p-6'">
+          <div :for="detail in section.details" :class="detail.wide ? 'min-w-0 sm:col-span-2' : 'min-w-0'">
+            <dt class="font-medium text-neutral-900 text-sm dark:text-white">{{ detail.label }}</dt>
+            <dd class="mt-1.5 text-sm">
+              <span :if="detail.kind === 'boolean'" class="inline-flex gap-1.5 items-center text-neutral-700 dark:text-neutral-200">
+                <span aria-hidden="true" :class="detail.yes ? 'h-5 w-5 text-green-600 dark:text-green-400 i-hugeicons-checkmark-circle-02' : 'h-5 w-5 text-neutral-400 dark:text-neutral-500 i-hugeicons-cancel-circle'"></span>
+                {{ detail.value }}
+              </span>
+              <ModelBadge :if="detail.kind === 'badge'" :text="detail.value" :tone="detail.tone || 'neutral'" />
+              <pre :if="detail.kind === 'json'" class="overflow-x-auto p-3 font-mono text-neutral-800 text-xs dark:text-neutral-200 bg-neutral-50 dark:bg-neutral-900 rounded-lg">{{ detail.value }}</pre>
+              <StxLink :if="detail.kind === 'link'" :to="detail.href" class="inline-flex gap-1.5 items-center font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                {{ detail.value }}
+                <span aria-hidden="true" class="h-3.5 w-3.5 i-hugeicons-arrow-right-01"></span>
+              </StxLink>
+              <a :if="detail.kind === 'external'" :href="detail.href" target="_blank" rel="noopener noreferrer" class="inline-flex gap-1.5 items-center max-w-full font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                <span class="truncate">{{ detail.value }}</span>
+                <span aria-hidden="true" class="flex-none h-3.5 w-3.5 i-hugeicons-link-square-02"></span>
+              </a>
+              <a :if="detail.kind === 'image'" :href="detail.href" target="_blank" rel="noopener noreferrer" class="inline-block">
+                <img :src="detail.href" :alt="detail.label" loading="lazy" class="object-contain max-h-40 max-w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 rounded-lg dark:border-neutral-700" />
+              </a>
+              <code :if="detail.kind === 'code'" class="px-1.5 py-0.5 break-all font-mono text-[13px] text-neutral-800 dark:text-neutral-200 bg-neutral-100 dark:bg-neutral-800 rounded">{{ detail.value }}</code>
+              <span :if="detail.kind === 'text'" :class="detail.empty ? 'text-neutral-400 dark:text-neutral-500' : 'break-words whitespace-pre-line text-neutral-700 dark:text-neutral-200'">{{ detail.value }}</span>
+            </dd>
+          </div>
+        </dl>
+      </Card>
+    </div>
+  </div>
+
+  <ModelRelatedPanels
+    :if="record() && related().length > 0"
+    :panels="related()"
+    :parentId="recordId()"
+    :from="selfHref()"
+    @changed="reloadRelated"
+  />
+
+  <!-- What the model places under its record: `dashboard.regions.recordBottom`. -->
+  <ModelRegion place="recordBottom" />
+
+  <ConfirmDialog
+    :isOpen="confirmingDelete()"
+    :title="'Delete this ' + modelName().toLowerCase() + '?'"
+    :description="modelDeleteWarning(title() || modelName(), Boolean(record()?.writeCapabilities.anonymize))"
+    :busy="working()"
+    :confirmLabel="working() ? 'Deleting' : 'Delete'"
+    @close="confirmingDelete.set(false)"
+    @confirm="deleteRecord"
+  />
+
+  <ConfirmDialog
+    :isOpen="Boolean(confirmingAction())"
+    :title="(confirmingAction()?.label || 'Run this action') + '?'"
+    :description="confirmingAction()?.confirm || ''"
+    :variant="confirmingAction()?.destructive ? 'danger' : 'warning'"
+    :busy="running() !== ''"
+    :confirmLabel="confirmingAction()?.label || 'Run'"
+    @close="confirmingAction.set(null)"
+    @confirm="confirmAction"
+  />
+
+  <ModelActionForm
+    :action="askingAction()"
+    :busy="running() !== ''"
+    :error="actionError()"
+    :errors="actionErrors()"
+    @close="askingAction.set(null)"
+    @submit="submitAction"
+  />
+</div>

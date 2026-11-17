@@ -1,0 +1,10 @@
+@extends('layouts/default')
+
+@section('content')
+
+@title('Dashboard - Campaigns')
+<PageLayout>
+  <CampaignsDashboard />
+</PageLayout>
+
+@endsection

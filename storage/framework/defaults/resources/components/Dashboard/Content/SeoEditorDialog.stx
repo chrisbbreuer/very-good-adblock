@@ -1,0 +1,74 @@
+<script client>
+interface SeoEntry {
+  title: string
+  focus_keyword?: string | null
+  meta_description?: string | null
+  canonical_url?: string | null
+}
+
+interface SeoDraft {
+  focusKeyword: string | null
+  metaDescription: string | null
+  canonicalUrl: string | null
+}
+
+const open = useReactiveProp('open', false)
+const entry = useReactiveProp('entry', null as SeoEntry | null)
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const focusKeyword = state('')
+const metaDescription = state('')
+const canonicalUrl = state('')
+const emit = defineEmits(['close', 'submit'])
+let wasOpen = false
+
+effect(() => {
+  const isOpen = open()
+  if (isOpen && !wasOpen) {
+    const record = entry()
+    focusKeyword.set(record?.focus_keyword || '')
+    metaDescription.set(record?.meta_description || '')
+    canonicalUrl.set(record?.canonical_url || '')
+  }
+  wasOpen = isOpen
+})
+
+function close(): void {
+  if (!busy())
+    emit('close')
+}
+
+function submit(): void {
+  const draft: SeoDraft = {
+    focusKeyword: focusKeyword().trim() || null,
+    metaDescription: metaDescription().trim() || null,
+    canonicalUrl: canonicalUrl().trim() || null,
+  }
+  emit('submit', draft)
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  title="Edit SEO metadata"
+  :description="entry()?.title || ''"
+  :closable="!busy()"
+  @close="close"
+>
+  <form id="seo-editor-form" class="grid gap-4" @submit.prevent="submit">
+    <Input v-model:value="focusKeyword" id="seo-focus-keyword" name="focus_keyword" label="Focus keyword" :maxLength="100" />
+    <Textarea v-model:value="metaDescription" id="seo-meta-description" name="meta_description" label="Meta description" :rows="4" :maxLength="160" :showCount="true" />
+    <Input v-model:value="canonicalUrl" id="seo-canonical-url" name="canonical_url" label="Canonical URL" type="url" inputmode="url" placeholder="https://example.com/post" />
+  </form>
+
+  <div :if="error()" role="alert" class="mt-4 px-3 py-2 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 rounded-lg dark:border-red-500/20">
+    {{ error() }}
+  </div>
+
+  <template #footer>
+    <div class="flex gap-2 items-center justify-end w-full">
+      <Button type="button" variant="secondary" :disabled="busy()" @click="close">Cancel</Button>
+      <Button type="submit" form="seo-editor-form" :loading="busy()">Save metadata</Button>
+    </div>
+  </template>
+</Modal>

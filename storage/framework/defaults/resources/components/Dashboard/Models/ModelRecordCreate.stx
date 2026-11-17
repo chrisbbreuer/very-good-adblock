@@ -1,0 +1,154 @@
+<script client>
+// The page that creates a record (`/models/{slug}/create`), where the Create
+// button on a model's list leads. Laid out like the record's view and edit
+// pages: a breadcrumb back to the list, "Create Team", and the fields the
+// model's API accepts for a new record. A refusal stays on the page, with
+// each field's message under its field. A created record opens on its own
+// page.
+import { useNavigation } from '@stacksjs/defaults/views/dashboard/composables/useNavigation'
+import type { ModelCreateForm, ModelFormValues } from '../../../../functions/dashboard-model-record'
+import { createModelRecord, fetchModelCreateForm, modelNameFromSlug, modelFormPayload, modelFormPrefill, modelFormValues, modelRecordBackHref, modelRecordHref, modelRecordListLabel, userInviteHref } from '../../../../functions/dashboard-model-record'
+import { dashboardLoaderTimer } from '../../../../functions/dashboard-loading'
+import { pushToast } from '../../../../functions/toasts'
+
+const navigation = useNavigation()
+const form = state<ModelCreateForm | null>(null)
+const values = state<ModelFormValues>({})
+const loading = state(true)
+// Set once the request has taken long enough to say so (dashboard-loading.ts).
+const slow = state(false)
+const loadError = state('')
+const creating = state(false)
+const createError = state('')
+const createErrors = state<Record<string, string[]>>({})
+
+// `/models/{slug}/create`
+function slug(): string {
+  return navigation.urlSegment(-2)
+}
+
+const from = navigation.urlQuery('from')
+const listHref = derived(() => modelRecordBackHref(slug(), from))
+const listLabel = derived(() => modelRecordListLabel(form(), listHref()))
+// Known from the address before the form comes, so the heading does not change.
+const modelName = derived(() => form()?.modelName || modelNameFromSlug(slug()))
+const fields = derived(() => form()?.fields ?? [])
+const canCreate = derived(() => Boolean(form()?.canCreate) && fields().length > 0)
+/** A model added by invitation has no form here; the page points at the one that does. */
+const canInvite = derived(() => !canCreate() && Boolean(form()?.canInvite))
+
+function openInvite(): void {
+  navigate(userInviteHref(listHref()))
+}
+
+function setValue(change: { name: string, value: string | boolean }): void {
+  values.set({ ...values(), [change.name]: change.value })
+}
+
+async function loadForm(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  const settle = dashboardLoaderTimer(slow)
+  try {
+    const loaded = await fetchModelCreateForm(slug())
+    form.set(loaded)
+    // Opened from a record's panel, the form starts with that record chosen.
+    values.set({ ...modelFormValues(loaded.fields), ...modelFormPrefill(loaded.fields, name => navigation.urlQuery(name)) })
+  }
+  catch (error) {
+    form.set(null)
+    loadError.set(error instanceof Error ? error.message : 'This form could not be loaded.')
+  }
+  finally {
+    settle()
+    loading.set(false)
+  }
+}
+
+async function create(): Promise<void> {
+  if (creating())
+    return
+  creating.set(true)
+  createError.set('')
+  createErrors.set({})
+  try {
+    const result = await createModelRecord(slug(), modelFormPayload(fields(), values()))
+    if (!result.ok) {
+      createError.set(result.error)
+      createErrors.set(result.errors)
+      return
+    }
+    pushToast('success', `${modelName()} created`, { detail: result.id ? `Record ${result.id}` : undefined })
+    navigate(result.id === null ? listHref() : modelRecordHref(slug(), result.id, listHref() === from ? from : undefined))
+  }
+  finally {
+    creating.set(false)
+  }
+}
+
+function cancel(): void {
+  if (!creating())
+    navigate(listHref())
+}
+
+onMount(() => {
+  void loadForm()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <header class="min-w-0">
+    <nav aria-label="Breadcrumb" class="flex gap-2 items-center mb-2 text-neutral-500 text-sm dark:text-neutral-400">
+      <StxLink :to="listHref()" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">{{ listLabel() }}</StxLink>
+      <span aria-hidden="true" class="h-4 w-4 i-hugeicons-arrow-right-01"></span>
+      <span aria-current="page">Create</span>
+    </nav>
+    <h1 class="font-bold text-3xl text-neutral-900 tracking-tight truncate dark:text-white">Create {{ modelName() }}</h1>
+  </header>
+
+  <QuietLoader :if="loading()" :slow="slow()" label="Loading form" />
+
+  <div :if="!loading() && loadError()" role="alert" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-lg dark:border-red-900">
+    <span>{{ loadError() }}</span>
+    <Button variant="secondary" size="sm" @click="loadForm">Try again</Button>
+  </div>
+
+  <EmptyState
+    :if="!loading() && form() && !canCreate() && !canInvite()"
+    icon="i-hugeicons-square-lock-02"
+    :title="modelName() + ' records cannot be created here'"
+    description="This model does not accept new records through the dashboard."
+  />
+
+  <div :if="!loading() && canInvite()" class="flex flex-col gap-4 items-start">
+    <EmptyState
+      icon="i-hugeicons-mail-send-01"
+      :title="modelName() + ' records are added by invitation'"
+      description="The account is created and the person is emailed a link to choose their own password."
+    />
+    <Button variant="primary" @click="openInvite">{{ 'Invite ' + modelName().toLowerCase() }}</Button>
+  </div>
+
+  <form :if="!loading() && canCreate()" id="model-create-form" class="flex flex-col gap-6" @submit.prevent="create">
+    <div :if="createError()" role="alert" class="px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-lg dark:border-red-900">
+      {{ createError() }}
+    </div>
+
+    <div class="max-w-3xl">
+      <Card padding="none">
+        <div class="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+          <h2 class="font-semibold text-base text-neutral-900 dark:text-white">{{ modelName() }} Details</h2>
+          <p class="mt-1 text-neutral-500 text-xs dark:text-neutral-400">The fields a new {{ modelName().toLowerCase() }} can be given. Anything else is set by the application.</p>
+        </div>
+        <div class="p-6">
+          <ModelFieldInputs :fields="fields()" :slug="slug()" :values="values()" :errors="createErrors()" :disabled="creating()" @change="setValue" />
+        </div>
+      </Card>
+    </div>
+
+    <div class="flex gap-3 items-center">
+      <Button type="submit" variant="primary" :loading="creating()">{{ 'Create ' + modelName() }}</Button>
+      <Button variant="secondary" :disabled="creating()" @click="cancel">Cancel</Button>
+    </div>
+  </form>
+</div>

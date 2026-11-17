@@ -1,0 +1,28 @@
+<script client>
+/**
+ * The title block at the top of a dashboard screen.
+ *
+ * Thirty-five screens carried the same header, the same heading pair and the
+ * same two sets of classes (stacksjs/stacks#2917).
+ *
+ * The actions stay in the caller, inside the slot, and so does their wrapper.
+ * That is deliberate: the wrapper differs six ways across the callers (`flex
+ * gap-2`, `flex flex-wrap gap-2`, `flex gap-2 items-center` and three more),
+ * and a prop for it would be a class string passed through a component,
+ * which is worse than leaving the div where its author put it.
+ *
+ * Twenty-three other screens have a header that looks like this one and is
+ * shaped differently inside. They are deliberately NOT converted; see the
+ * issue for the count and the reason.
+ */
+const title = useReactiveProp('title', '')
+const description = useReactiveProp('description', '')
+</script>
+
+<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+  <div>
+    <h1 class="font-bold text-2xl text-gray-900 dark:text-white">{{ title() }}</h1>
+    <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ description() }}</p>
+  </div>
+  <slot />
+</header>

@@ -1,0 +1,90 @@
+<script client>
+type CheckboxSize = 'sm' | 'md' | 'lg'
+
+const liveChecked = useReactiveProp('checked', false)
+const liveLabel = useReactiveProp('label', '')
+const liveDescription = useReactiveProp('description', '')
+const liveDisabled = useReactiveProp('disabled', false)
+const liveIndeterminate = useReactiveProp('indeterminate', false)
+const liveSize = useReactiveProp('size', 'md' as CheckboxSize)
+const liveError = useReactiveProp('error', '')
+const liveName = useReactiveProp('name', '')
+const liveId = useReactiveProp('id', '')
+const liveAriaLabel = useReactiveProp('ariaLabel', '')
+const emit = defineEmits(['update:checked', 'update:indeterminate', 'change'])
+const generatedId = useId('checkbox')
+
+const sizeClasses: Record<CheckboxSize, { control: string, icon: string, label: string, description: string }> = {
+  sm: { control: 'h-4 w-4', icon: 'h-3 w-3', label: 'text-sm', description: 'text-xs' },
+  md: { control: 'h-5 w-5', icon: 'h-3.5 w-3.5', label: 'text-sm', description: 'text-sm' },
+  lg: { control: 'h-6 w-6', icon: 'h-4 w-4', label: 'text-base', description: 'text-sm' },
+}
+
+const checkboxId = derived(() => liveId() || generatedId)
+const hasCopy = derived(() => Boolean(liveLabel() || liveDescription()))
+const wrapperClass = derived(() => [
+  'relative flex items-start',
+  hasCopy() ? 'gap-3' : '',
+  liveDisabled() ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+].join(' '))
+const controlClass = derived(() => [
+  sizeClasses[liveSize()]?.control || sizeClasses.md.control,
+  'relative mt-0.5 flex shrink-0 items-center justify-center rounded border-2 transition-all duration-150',
+  liveChecked() || liveIndeterminate()
+    ? 'border-blue-600 bg-blue-600'
+    : 'border-neutral-300 bg-white hover:border-blue-400 dark:border-neutral-600 dark:bg-neutral-900 dark:hover:border-blue-500',
+  liveError() ? 'border-red-500' : '',
+  liveDisabled() ? 'opacity-60' : '',
+].join(' '))
+const iconClass = derived(() => [
+  sizeClasses[liveSize()]?.icon || sizeClasses.md.icon,
+  liveIndeterminate() ? 'i-hugeicons-minus-sign' : 'i-hugeicons-tick-02',
+  'text-white',
+].join(' '))
+const labelClass = derived(() => [
+  sizeClasses[liveSize()]?.label || sizeClasses.md.label,
+  'font-medium',
+  liveDisabled() ? 'text-neutral-500 dark:text-neutral-500' : 'text-neutral-700 dark:text-neutral-200',
+].join(' '))
+const descriptionClass = derived(() => [
+  sizeClasses[liveSize()]?.description || sizeClasses.md.description,
+  'mt-0.5',
+  liveDisabled() ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-500 dark:text-neutral-400',
+].join(' '))
+
+function handleChange(event: Event): void {
+  const target = event.target as HTMLInputElement
+  liveIndeterminate.set(target.indeterminate)
+  emit('update:checked', target.checked)
+  emit('update:indeterminate', target.indeterminate)
+  emit('change', target.checked)
+}
+</script>
+
+<div>
+  <label :class="wrapperClass()">
+    <input
+      :id="checkboxId()"
+      type="checkbox"
+      :name="liveName() || null"
+      :aria-label="liveAriaLabel() || liveLabel() || 'Checkbox'"
+      :aria-invalid="liveError() ? 'true' : null"
+      class="sr-only"
+      x-model="liveChecked"
+      :indeterminate="liveIndeterminate()"
+      :disabled="liveDisabled()"
+      @change="handleChange"
+    >
+
+    <span aria-hidden="true" :class="controlClass()">
+      <span :if="liveChecked() || liveIndeterminate()" :class="iconClass()"></span>
+    </span>
+
+    <span :if="hasCopy()" class="flex-1 min-w-0">
+      <span :if="liveLabel()" class="block" :class="labelClass()" :text="liveLabel()"></span>
+      <span :if="liveDescription()" class="block" :class="descriptionClass()" :text="liveDescription()"></span>
+    </span>
+  </label>
+
+  <p :if="liveError()" class="mt-1.5 text-red-600 text-sm dark:text-red-400" :text="liveError()"></p>
+</div>

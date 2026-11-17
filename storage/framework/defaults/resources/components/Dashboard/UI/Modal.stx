@@ -1,0 +1,172 @@
+<script server>
+interface ModalProps {
+  isOpen?: boolean
+  title?: string
+  description?: string
+  ariaLabel?: string
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  position?: 'center' | 'top'
+  panelClassName?: string
+  contentClassName?: string
+  showCloseButton?: boolean
+  closable?: boolean
+  role?: 'dialog' | 'alertdialog'
+}
+
+const {
+  isOpen = false,
+  title = '',
+  description = '',
+  ariaLabel = '',
+  size = 'md',
+  position = 'center',
+  panelClassName = '',
+  contentClassName = 'p-6',
+  showCloseButton = true,
+  closable = true,
+  role = 'dialog',
+} = defineProps<ModalProps>()
+
+const sizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]'
+}
+
+const positionClasses = {
+  center: 'items-center justify-center p-4',
+  top: 'items-start justify-center px-4 pb-4 pt-[15vh]',
+}
+</script>
+<script client>
+import { useScrollLock } from '@stacksjs/composables'
+const open = useReactiveProp('isOpen', false)
+const liveClosable = useReactiveProp('closable', true)
+const liveTitle = useReactiveProp('title', '')
+const liveDescription = useReactiveProp('description', '')
+const liveAriaLabel = useReactiveProp('ariaLabel', '')
+const liveRole = useReactiveProp('role', 'dialog')
+const liveShowCloseButton = useReactiveProp('showCloseButton', true)
+const dialog = useRef<HTMLDialogElement>('dashboardModalDialog')
+const activeElement = useActiveElement()
+const scrollLocked = useScrollLock()
+const emit = defineEmits(['close'])
+let restoreFocus: HTMLElement | null = null
+
+type ModalCloseReason = 'backdrop' | 'button' | 'escape'
+
+function closeModal(reason: ModalCloseReason): void {
+  if (!liveClosable()) return
+  emit('close', reason)
+}
+
+function handleCancel(event: Event): void {
+  event.preventDefault()
+  closeModal('escape')
+}
+
+function handleBackdropClick(event: MouseEvent): void {
+  if (event.target === event.currentTarget)
+    closeModal('backdrop')
+}
+
+effect(() => {
+  const isOpen = open()
+  scrollLocked.value = isOpen
+
+  if (isOpen) {
+    const focused = peek(() => activeElement.value)
+    if (focused instanceof HTMLElement)
+      restoreFocus = focused
+    void nextTick(() => {
+      const element = dialog.current
+      if (!element) return
+      if (!element.open)
+        element.showModal()
+      const autofocusTarget = element.querySelector<HTMLElement>('[autofocus]:not([disabled])')
+      if (autofocusTarget)
+        autofocusTarget.focus()
+      else {
+        const currentFocus = peek(() => activeElement.value)
+        if (!(currentFocus instanceof HTMLElement && element.contains(currentFocus)))
+          element.focus()
+      }
+    })
+    return
+  }
+
+  if (dialog.current?.open)
+    dialog.current.close()
+  const target = restoreFocus
+  restoreFocus = null
+  if (target)
+    void nextTick(() => target.focus())
+})
+</script>
+  <dialog
+    :if="open()"
+    ref="dashboardModalDialog"
+    :role="liveRole()"
+    aria-modal="true"
+    :aria-label="liveAriaLabel() || liveTitle() || 'Dialog'"
+    class="fixed inset-0 overflow-y-auto z-[55] m-0 p-0 h-dvh max-h-none max-w-none bg-transparent dashboard-modal-dialog dashboard-modal-layer"
+    @cancel="handleCancel"
+  >
+    <!-- Modal container -->
+    <div class="flex min-h-full {{ positionClasses[position] }}" @click="handleBackdropClick">
+      <div
+        class="relative w-full rounded-xl bg-white dark:bg-neutral-900 shadow-2xl {{ sizeClasses[size] }} {{ panelClassName }}"
+      >
+        <!-- Header -->
+        <div :if="liveTitle() || (liveClosable() && liveShowCloseButton())" class="flex gap-4 items-start justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
+          <div class="flex gap-3 items-start min-w-0">
+            <slot name="header-leading" />
+            <div class="min-w-0">
+                <h3 :if="liveTitle()" class="font-semibold text-lg text-neutral-900 dark:text-white">
+                  {{ liveTitle() }}
+                </h3>
+                <p :if="liveDescription()" class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">
+                  {{ liveDescription() }}
+                </p>
+            </div>
+          </div>
+
+          <div class="flex flex-shrink-0 gap-2 items-center">
+            <slot name="header-trailing" />
+            <Button
+              :if="liveClosable() && liveShowCloseButton()"
+              variant="ghost"
+              size="sm"
+              iconOnly
+              ariaLabel="Close modal"
+              @click="closeModal('button')"
+            >
+              <div class="h-5 w-5 i-hugeicons-cancel-01"></div>
+            </Button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        @if($slots.default)
+          <div class="{{ contentClassName }}">
+            <slot />
+          </div>
+        @endif
+
+        @if($slots.footer)
+          <div class="flex items-center justify-end px-6 py-4 border-neutral-200 border-t dark:border-neutral-700">
+            <slot name="footer" />
+          </div>
+        @endif
+      </div>
+    </div>
+  </dialog>
+
+<style>
+.dashboard-modal-dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+  backdrop-filter: blur(4px);
+}
+</style>

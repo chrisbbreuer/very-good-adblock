@@ -1,0 +1,29 @@
+<script client>
+// The Users, Teams and Subscribers pages. Each is the model's own list, the
+// one every model has, hosted under the page's name. Nothing about the rows
+// is this page's: paging, search, columns, actions and selection are the
+// list's, so they are built once.
+//
+// What is the page's own: what it is called and what it is for. The row of
+// numbers above the list is the model's, placed there by the model
+// (`dashboard.regions.listTop`, `Data/DataStatCards.stx`), so it is on the
+// model's list wherever that list is shown.
+type RecordsPage = 'users' | 'teams' | 'subscribers'
+
+const pageMode = useReactiveProp<RecordsPage>('mode', 'users')
+
+const PAGES: Record<RecordsPage, { model: string, title: string, description: string }> = {
+  users: { model: 'user', title: 'Users', description: 'Review registered application users.' },
+  teams: { model: 'team', title: 'Teams', description: 'Review collaborative teams and membership totals.' },
+  subscribers: { model: 'subscriber', title: 'Subscribers', description: 'Review subscription status and acquisition sources.' },
+}
+
+const recordsPage = derived(() => PAGES[pageMode()] ?? PAGES.users)
+</script>
+
+<ModelRecordsDashboard
+  :model="recordsPage().model"
+  :heading="recordsPage().title"
+  :description="recordsPage().description"
+  :home="'/data/' + pageMode()"
+/>

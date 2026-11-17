@@ -1,0 +1,49 @@
+import type { RequestInstance } from '@stacksjs/types'
+import { Action } from '@stacksjs/actions/runtime'
+import { Team } from '@stacksjs/orm'
+import { safeGet } from '../../../../resources/functions/dashboard/data'
+import { dashboardOperationalError } from '../dashboard-response'
+import { dateValue, daysAgoIso, numberValue, statsOnly, textValue } from './data-records'
+
+export default new Action({
+  name: 'TeamIndexAction',
+  description: 'Returns teams and native team statistics for the dashboard.',
+  method: 'GET',
+  apiResponse: true,
+  async handle(request: RequestInstance) {
+    try {
+      // The page that shows these numbers lists its rows through the model
+      // browser, and asks here for the numbers alone.
+      const rows = statsOnly(request) ? [] : await Team.orderByDesc('created_at').limit(100).get()
+      const teams = rows.map(row => ({
+        id: numberValue(safeGet(row, 'id', 0)),
+        name: textValue(safeGet(row, 'name'), 'Unnamed team'),
+        description: textValue(safeGet(row, 'description')),
+        memberCount: numberValue(safeGet(row, 'member_count', safeGet(row, 'memberCount', 0))),
+        status: textValue(safeGet(row, 'status'), 'inactive'),
+        createdAt: dateValue(safeGet(row, 'created_at', safeGet(row, 'createdAt'))),
+        updatedAt: dateValue(safeGet(row, 'updated_at', safeGet(row, 'updatedAt'))),
+      }))
+
+      const [total, active, members, newThisMonth] = await Promise.all([
+        Team.count(),
+        Team.where('status', 'active').count(),
+        Team.sum('memberCount'),
+        Team.where('created_at', '>=', daysAgoIso(30)).count(),
+      ])
+
+      return {
+        teams,
+        stats: {
+          total,
+          active,
+          members,
+          newThisMonth,
+        },
+      }
+    }
+    catch (error) {
+      return dashboardOperationalError(error, 'Teams could not be loaded.', 'TeamIndexAction')
+    }
+  },
+})

@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Customer Reviews')
+
+<div class="p-4 lg:p-8 min-h-[100dvh] dark:bg-neutral-900">
+  <CommerceReviewsDashboard
+    title="Customer Reviews"
+    description="Moderate native Review records and feature trustworthy storefront feedback."
+  />
+</div>
+
+@endsection

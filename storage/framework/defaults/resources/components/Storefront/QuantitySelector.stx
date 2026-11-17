@@ -1,0 +1,39 @@
+<script server>
+export const name = $props.name || 'quantity'
+export const min = Number.isSafeInteger(Number($props.min)) ? Number($props.min) : 1
+export const max = Math.max(min, Number.isSafeInteger(Number($props.max)) ? Number($props.max) : 99)
+export const value = Math.max(min, Math.min(max, Number.isSafeInteger(Number($props.value)) ? Number($props.value) : min))
+export const className = $props.className || ''
+export const label = $props.label || 'Quantity'
+</script>
+
+<script client>
+const lower = useReactiveProp('min', {{ min }})
+const upper = useReactiveProp('max', {{ max }})
+const quantity = useModel('value', { default: {{ value }} })
+const input = useRef('quantityInput')
+const normalized = derived(() => Math.max(lower(), Math.min(Math.max(lower(), upper()), Number.isSafeInteger(Number(quantity())) ? Number(quantity()) : lower())))
+effect(() => {
+  const next = normalized()
+  if (quantity() !== next)
+    quantity.set(next)
+})
+
+function commit(next: number): void {
+  quantity.set(Math.max(lower(), Math.min(Math.max(lower(), upper()), next)))
+  // Preserve native form integrations without a document-level listener.
+  void nextTick(() => {
+    input.current?.dispatchEvent(new Event('input', { bubbles: true }))
+    input.current?.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+}
+function normalize(): void {
+  quantity.set(normalized())
+}
+</script>
+
+<div class="flex items-center rounded-full border border-stone-300 overflow-hidden {{ className }}" data-stx-qty>
+  <button type="button" class="px-4 py-3 text-stone-700 hover:bg-stone-100 focus-visible:outline focus-visible:outline-2 disabled:opacity-40" data-stx-qty-dec aria-label="Decrease quantity" :disabled="normalized() <= lower()" @click="commit(normalized() - 1)">−</button>
+  <input ref="quantityInput" name="{{ name }}" value="{{ value }}" type="number" min="{{ min }}" max="{{ max }}" :min="lower()" :max="upper()" step="1" aria-label="{{ label }}" x-model.number="quantity" @change="normalize()" class="py-3 w-12 text-center bg-transparent focus-visible:outline focus-visible:outline-2 [appearance:textfield]">
+  <button type="button" class="px-4 py-3 text-stone-700 hover:bg-stone-100 focus-visible:outline focus-visible:outline-2 disabled:opacity-40" data-stx-qty-inc aria-label="Increase quantity" :disabled="normalized() >= upper()" @click="commit(normalized() + 1)">+</button>
+</div>

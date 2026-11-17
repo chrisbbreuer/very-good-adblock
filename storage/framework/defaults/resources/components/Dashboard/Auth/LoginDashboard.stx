@@ -1,0 +1,96 @@
+<script client>
+import type { AuthUser } from '../../../../types/dashboard'
+import { describeAuthError, isLoginResponse, isTwoFactorChallenge, safeAuthRedirect, useAuth } from '../../../../functions/auth'
+// Branding passes through to the card: an Iconify class for the mark and a short line above the title (stacksjs/stacks#3086).
+const icon = useReactiveProp<string>('icon', 'i-hugeicons-cube')
+const eyebrow = useReactiveProp<string>('eyebrow', '')
+
+const { login, verifyTwoFactorLogin } = useAuth()
+const route = useRoute()
+
+const isLoading = state(false)
+const error = state('')
+const challengeToken = state('')
+
+function safeRedirect(): string {
+  // The stx page gate sends visitors here with `?next=`; links written by hand use `?redirect=`.
+  return safeAuthRedirect(route.query.redirect ?? route.query.next)
+}
+
+async function handleLogin(credentials: AuthUser): Promise<void> {
+  isLoading.set(true)
+  error.set('')
+
+  try {
+    const result = await login(credentials)
+
+    if (isTwoFactorChallenge(result)) {
+      challengeToken.set(result.challenge_token)
+      return
+    }
+
+    if (!isLoginResponse(result)) {
+      error.set(describeAuthError(result, 'Invalid credentials'))
+      return
+    }
+
+    navigate(safeRedirect())
+  }
+  catch (err) {
+    error.set(err instanceof Error ? err.message : 'An error occurred during login')
+  }
+  finally {
+    isLoading.set(false)
+  }
+}
+
+async function handleTwoFactor(code: string): Promise<void> {
+  isLoading.set(true)
+  error.set('')
+
+  try {
+    const result = await verifyTwoFactorLogin(challengeToken(), code)
+    if (!isLoginResponse(result)) {
+      challengeToken.set('')
+      error.set(describeAuthError(result, 'Invalid or expired login attempt. Please sign in again.'))
+      return
+    }
+
+    navigate(safeRedirect())
+  }
+  catch (err) {
+    error.set(err instanceof Error ? err.message : 'Unable to verify the authentication code')
+  }
+  finally {
+    isLoading.set(false)
+  }
+}
+
+function restartLogin(): void {
+  challengeToken.set('')
+  error.set('')
+}
+</script>
+
+<template>
+  <Login
+    :icon="icon()"
+    :eyebrow="eyebrow()"
+    :if="!challengeToken()"
+    @submit="handleLogin"
+    :isLoading="isLoading()"
+    :error="error()"
+    :data-auth-status="isLoading() ? 'loading' : 'ready'"
+  >
+    <!-- Forwarded so the page mounting this container can put social
+         sign-in inside the card. -->
+    <template #social><slot name="social" /></template>
+  </Login>
+  <TwoFactorLogin
+    :if="challengeToken()"
+    @submit="handleTwoFactor"
+    @restart="restartLogin"
+    :isLoading="isLoading()"
+    :error="error()"
+  />
+</template>

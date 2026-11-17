@@ -1,0 +1,10 @@
+@extends('layouts/default')
+
+@section('content')
+
+@title('Dashboard - Social Posts')
+<PageLayout>
+  <SocialPostsDashboard />
+</PageLayout>
+
+@endsection

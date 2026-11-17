@@ -1,0 +1,155 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Request',
+  table: 'requests',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  indexes: [
+    {
+      name: 'requests_created_at_index',
+      columns: ['created_at'],
+    },
+    {
+      name: 'requests_duration_ms_index',
+      columns: ['duration_ms'],
+    },
+    {
+      name: 'requests_status_code_index',
+      columns: ['status_code'],
+    },
+  ],
+
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    gdpr: { basis: 'legitimate_interests', purpose: 'Request log for debugging and abuse prevention' },
+    useTimestamps: true,
+    useSoftDeletes: true,
+    useSeeder: {
+      count: 50,
+    },
+    useApi: {
+      uri: 'requests',
+      routes: ['index', 'store', 'show', 'update', 'destroy'],
+      // Reads stay as they were; writes need an admin.
+      // request logs are an audit trail, and carry whatever the request carried,
+      // so `auth` alone let any signed-in caller do it (stacksjs/stacks#2412).
+      middleware: { read: ['auth'], write: ['auth', 'role:admin'] },
+    },
+  },
+
+  attributes: {
+    method: {
+      fillable: true,
+      validation: {
+        // Observations include rejected methods (for example PROPFIND -> 405).
+        // An enum of application verbs silently lost those requests at insert.
+        rule: schema.string().max(255),
+        message: {
+          string: 'method must be an HTTP method token',
+          required: 'method is required',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement(['GET', 'POST', 'PUT', 'DELETE']),
+    },
+
+    path: {
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+        message: {
+          string: 'path must be a string',
+          required: 'path is required',
+        },
+      },
+      factory: faker => faker.internet.url(),
+    },
+
+    status_code: {
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+        message: {
+          number: 'status_code must be a number',
+          required: 'status_code is required',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement([200, 201, 400, 401, 403, 404, 500]),
+    },
+
+    duration_ms: {
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+        message: {
+          number: 'duration_ms must be a number',
+          required: 'duration_ms is required',
+        },
+      },
+      factory: faker => faker.number.int({ min: 50, max: 1000 }),
+    },
+
+    ip_address: {
+      personal: true,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+        message: {
+          string: 'ip_address must be a string',
+          required: 'ip_address is required',
+        },
+      },
+      factory: faker => faker.internet.ip(),
+    },
+
+    memory_usage: {
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+        message: {
+          number: 'memory_usage must be a number in MB',
+          required: 'memory_usage is required',
+        },
+      },
+      factory: faker => faker.number.int({ min: 50, max: 512 }),
+    },
+
+    user_agent: {
+      personal: true,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+        message: {
+          string: 'user_agent must be a string',
+        },
+      },
+      factory: faker => faker.internet.userAgent(),
+    },
+
+    error_message: {
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string(),
+        message: {
+          string: 'error_message must be a string',
+        },
+      },
+      factory: faker => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.2 }),
+    },
+  },
+
+  dashboard: {
+    columns: ['method', 'path', 'statusCode', 'durationMs', 'ipAddress', 'createdAt'],
+    // Stored in milliseconds: "634 ms", "1.2 s".
+    fields: {
+      durationMs: { label: 'Duration', format: 'duration' },
+    },
+  },
+} as const)

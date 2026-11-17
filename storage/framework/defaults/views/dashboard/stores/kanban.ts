@@ -1,0 +1,774 @@
+import { defineStore, derived, registerStoresClient, state } from '@stacksjs/stx'
+import { dashboardApi } from '../../../functions/dashboard-api'
+
+interface BoardSummary {
+  id: number
+  uuid: string | null
+  name: string
+  description: string | null
+  icon: string
+  color: string
+  position: number
+  archived: boolean
+  cardCount: number
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+interface CardLabel { id: number, name: string, color: string }
+interface CardAssignee { userId: number, name: string | null, email: string | null }
+interface CardComment {
+  id: number
+  uuid: string | null
+  userId: number | null
+  body: string
+  authorName: string | null
+  authorEmail: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/**
+ * A file on a card. Today that is a screenshot from a feedback link
+ * (stacksjs/stacks#2872).
+ *
+ * `url` is signed and expires, because the bytes live on a private disk and
+ * there is no path a browser could fetch. It is null when one could not be
+ * minted, which is a listed attachment nobody can open and a different
+ * problem from a card with no attachment.
+ */
+interface CardAttachment {
+  id: number
+  uuid: string | null
+  mimeType: string
+  sizeBytes: number
+  createdAt: string | null
+  url: string | null
+}
+
+interface CardRecord {
+  id: number
+  uuid: string | null
+  columnId: number
+  boardId: number
+  title: string
+  description: string | null
+  position: number
+  createdByUserId: number | null
+  dueDate: string | null
+  archived: boolean
+  createdAt: string | null
+  updatedAt: string | null
+  // Optional pivot-derived fields. BoardShowAction populates them;
+  // CardStoreAction's optimistic insert leaves them empty.
+  labels?: CardLabel[]
+  assignees?: CardAssignee[]
+}
+
+interface UserSummary { id: number, name: string | null, email: string | null }
+
+interface CardDetail extends CardRecord {
+  labels: CardLabel[]
+  assignees: CardAssignee[]
+  comments: CardComment[]
+  attachments: CardAttachment[]
+}
+
+interface ColumnRecord {
+  id: number
+  uuid: string | null
+  boardId: number
+  name: string
+  position: number
+  cardLimit: number | null
+  color: string
+  cards: CardRecord[]
+}
+
+interface LabelRecord {
+  id: number
+  boardId: number
+  name: string
+  color: string
+}
+
+interface BoardDetail {
+  id: number
+  uuid: string | null
+  name: string
+  description: string | null
+  icon: string
+  color: string
+  position: number
+  archived: boolean
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/**
+ * Kanban dashboard store (stacksjs/stacks#1846).
+ *
+ * Lists boards for the index page and fetches a board for its detail page.
+ * Drag-and-drop reorder, write mutations, labels, assignees, and comments
+ * share this store so optimistic updates and rollback have one owner.
+ *
+ * Persistence: only the last-viewed board id is cached in
+ * sessionStorage so the user lands back where they left off when they
+ * SPA-nav between unrelated dashboard pages. The actual data is always
+ * re-fetched.
+ */
+export const kanbanStore = defineStore('kanban', () => {
+  const boards = state<BoardSummary[]>([])
+  const currentBoard = state<BoardDetail | null>(null)
+  const currentColumns = state<ColumnRecord[]>([])
+  const currentLabels = state<LabelRecord[]>([])
+  const lastViewedBoardId = state<number | null>(null)
+  const loading = state(true)
+  const loadingBoard = state(false)
+  const error = state<string | null>(null)
+  // Why the last board delete failed. Kept apart from `error`, which means the
+  // board list could not load: a failed delete used to replace the whole list
+  // with "Couldn't load boards" (stacksjs/stacks#3217).
+  const deleteError = state<string | null>(null)
+  const errorBoard = state<string | null>(null)
+
+  // Card detail modal state. Holding card + comments here
+  // (instead of one of column.cards) keeps the modal independent of
+  // its source: opening from a card click on the board uses the
+  // already-loaded preview; refresh-mid-modal hits /cards/:id and
+  // hydrates from the network. Either way the modal reads from
+  // `openCard` / `openCardComments`.
+  const openCard = state<CardDetail | null>(null)
+  const loadingCard = state(false)
+  const errorCard = state<string | null>(null)
+  // The assignee picker's users: one bounded page of a server-side search
+  // (stacksjs/stacks#3216), and how many users matched it.
+  const users = state<UserSummary[]>([])
+  const usersTotal = state(0)
+  const userSearch = state('')
+  const loadingUsers = state(false)
+  let usersRequest = 0
+
+  const hasBoards = derived(() => boards().length > 0)
+
+  async function loadBoards(): Promise<void> {
+    loading.set(true)
+    error.set(null)
+    try {
+      const data = await dashboardApi<{ boards: BoardSummary[], error?: string }>('/api/dashboard/kanban/boards')
+      if (data.error) {
+        error.set(data.error)
+        boards.set([])
+        return
+      }
+      boards.set(data.boards ?? [])
+    }
+    catch (e) {
+      error.set(e instanceof Error ? e.message : String(e))
+    }
+    finally {
+      loading.set(false)
+    }
+  }
+
+  async function loadBoard(id: number): Promise<void> {
+    loadingBoard.set(true)
+    errorBoard.set(null)
+    lastViewedBoardId.set(id)
+    try {
+      const data = await dashboardApi<{
+        board?: BoardDetail
+        columns?: ColumnRecord[]
+        labels?: LabelRecord[]
+        error?: string
+      }>(`/api/dashboard/kanban/boards/${id}`)
+      if (data.error || !data.board) {
+        errorBoard.set(data.error ?? 'Board not found')
+        currentBoard.set(null)
+        currentColumns.set([])
+        currentLabels.set([])
+        return
+      }
+      currentBoard.set(data.board)
+      currentColumns.set(data.columns ?? [])
+      currentLabels.set(data.labels ?? [])
+    }
+    catch (e) {
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+    }
+    finally {
+      loadingBoard.set(false)
+    }
+  }
+
+  // Mutations
+  //
+  // Every mutation follows the same shape:
+  //   1. Apply optimistically — update the local store immediately so
+  //      the UI feels snappy.
+  //   2. Fire the network request.
+  //   3. On failure, restore the pre-mutation snapshot + set an error
+  //      message. The dashboard toast helper handles the rollback path
+  //      so the user actually sees the failure.
+  //
+  // The mutations return the new entity (or null on failure) so
+  // callers can chain further work or surface "saved!" toasts.
+
+  async function createBoard(input: { name: string, description?: string, color?: string, icon?: string }): Promise<BoardSummary | null> {
+    const snapshot = boards()
+    try {
+      const data = await dashboardApi<{ board?: BoardSummary, error?: string }>('/api/dashboard/kanban/boards', {
+        method: 'POST',
+        body: input,
+      })
+      if (data.error || !data.board) throw new Error(data.error ?? 'Create failed')
+      boards.set([...snapshot, data.board])
+      return data.board
+    }
+    catch (e) {
+      error.set(e instanceof Error ? e.message : String(e))
+      return null
+    }
+  }
+
+  async function deleteBoard(id: number): Promise<boolean> {
+    const snapshot = boards()
+    deleteError.set(null)
+    // Optimistic remove.
+    boards.set(snapshot.filter(b => b.id !== id))
+    try {
+      await dashboardApi(`/api/dashboard/kanban/boards/${id}`, { method: 'DELETE' })
+      return true
+    }
+    catch (e) {
+      boards.set(snapshot)
+      deleteError.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function createColumn(input: { boardId: number, name: string, color?: string }): Promise<ColumnRecord | null> {
+    const snapshot = currentColumns()
+    try {
+      const data = await dashboardApi<{ column?: ColumnRecord, error?: string }>('/api/dashboard/kanban/columns', {
+        method: 'POST',
+        body: input,
+      })
+      if (data.error || !data.column) throw new Error(data.error ?? 'Create failed')
+      currentColumns.set([...snapshot, data.column])
+      return data.column
+    }
+    catch (e) {
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return null
+    }
+  }
+
+  async function deleteColumn(columnId: number): Promise<boolean> {
+    const snapshot = currentColumns()
+    currentColumns.set(snapshot.filter(c => c.id !== columnId))
+    try {
+      await dashboardApi(`/api/dashboard/kanban/columns/${columnId}`, { method: 'DELETE' })
+      return true
+    }
+    catch (e) {
+      currentColumns.set(snapshot)
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function createCard(input: { columnId: number, title: string, description?: string }): Promise<CardRecord | null> {
+    const snapshot = currentColumns()
+    try {
+      const data = await dashboardApi<{ card?: CardRecord, error?: string }>('/api/dashboard/kanban/cards', {
+        method: 'POST',
+        body: input,
+      })
+      if (data.error || !data.card) throw new Error(data.error ?? 'Create failed')
+      currentColumns.set(snapshot.map(col =>
+        col.id === input.columnId
+          ? { ...col, cards: [...col.cards, data.card!] }
+          : col,
+      ))
+      return data.card
+    }
+    catch (e) {
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return null
+    }
+  }
+
+  async function deleteCard(cardId: number): Promise<boolean> {
+    const snapshot = currentColumns()
+    currentColumns.set(snapshot.map(col => ({
+      ...col,
+      cards: col.cards.filter(c => c.id !== cardId),
+    })))
+    try {
+      await dashboardApi(`/api/dashboard/kanban/cards/${cardId}`, { method: 'DELETE' })
+      return true
+    }
+    catch (e) {
+      currentColumns.set(snapshot)
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  /**
+   * Reorder cards across one or more columns of the current board.
+   * Called by the drag-and-drop handler in `kanban/[id].stx` after a
+   * card move. Sends the full per-column state so neighbour
+   * positions never drift — see the CardsReorderAction docstring.
+   *
+   * @param payload one entry per affected column with that column's
+   *   new ordered list of card ids
+   */
+  async function reorderCards(payload: Array<{ columnId: number, order: number[] }>): Promise<boolean> {
+    const snapshot = currentColumns()
+
+    // Apply optimistically — derive the new column state from the
+    // payload + existing cards.
+    const cardById = new Map<number, CardRecord>()
+    for (const col of snapshot)
+      for (const c of col.cards) cardById.set(c.id, c)
+
+    const next = snapshot.map((col) => {
+      const entry = payload.find(p => p.columnId === col.id)
+      if (!entry) return col
+      const reordered = entry.order
+        .map((id, i) => {
+          const card = cardById.get(id)
+          if (!card) return null
+          return { ...card, columnId: col.id, position: i }
+        })
+        .filter((c): c is CardRecord => c !== null)
+      return { ...col, cards: reordered }
+    })
+    currentColumns.set(next)
+
+    try {
+      const data = await dashboardApi<{ moved?: number, error?: string }>('/api/dashboard/kanban/cards/reorder', {
+        method: 'POST',
+        body: { columns: payload },
+      })
+      if (data.error) throw new Error(data.error)
+      return true
+    }
+    catch (e) {
+      currentColumns.set(snapshot)
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function reorderColumns(boardId: number, order: number[]): Promise<boolean> {
+    const snapshot = currentColumns()
+    // Optimistic reorder by sorting against the supplied id list.
+    const byId = new Map(snapshot.map(c => [c.id, c] as const))
+    const next = order.map((id, i) => {
+      const col = byId.get(id)
+      return col ? { ...col, position: i } : null
+    }).filter((c): c is ColumnRecord => c !== null)
+    currentColumns.set(next)
+
+    try {
+      const data = await dashboardApi<{ reordered?: number, error?: string }>('/api/dashboard/kanban/columns/reorder', {
+        method: 'POST',
+        body: { boardId, order },
+      })
+      if (data.error) throw new Error(data.error)
+      return true
+    }
+    catch (e) {
+      currentColumns.set(snapshot)
+      errorBoard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  // Card detail mutations
+
+  /**
+   * Helper: project a CardRecord (board view) onto a partial
+   * CardDetail (modal view). Used when the modal opens against a
+   * card already loaded into `currentColumns` — we fill in the
+   * pivot-derived shape and fire `/cards/:id` in the background to
+   * pick up comments.
+   */
+  function cardToDetail(c: CardRecord): CardDetail {
+    return {
+      ...c,
+      labels: c.labels ?? [],
+      assignees: c.assignees ?? [],
+      // Both hydrated by openCardDetail. A signed URL cannot be seeded from
+      // the board view, which never carries one.
+      comments: [],
+      attachments: [],
+    }
+  }
+
+  function findCardInColumns(cardId: number): CardRecord | null {
+    for (const col of currentColumns())
+      for (const card of col.cards)
+        if (card.id === cardId) return card
+    return null
+  }
+
+  async function openCardDetail(cardId: number): Promise<void> {
+    loadingCard.set(true)
+    errorCard.set(null)
+    // Seed from the board view if we have it so the modal renders
+    // immediately; the fetch fills in comments and refreshes labels
+    // / assignees from the canonical store.
+    const seed = findCardInColumns(cardId)
+    if (seed)
+      openCard.set(cardToDetail(seed))
+
+    try {
+      const data = await dashboardApi<{
+        card?: CardRecord
+        labels?: CardLabel[]
+        assignees?: CardAssignee[]
+        comments?: CardComment[]
+        attachments?: CardAttachment[]
+        error?: string
+      }>(`/api/dashboard/kanban/cards/${cardId}`)
+      if (data.error || !data.card)
+        throw new Error(data.error ?? 'Card not found')
+      openCard.set({
+        ...data.card,
+        labels: data.labels ?? [],
+        assignees: data.assignees ?? [],
+        comments: data.comments ?? [],
+        attachments: data.attachments ?? [],
+      })
+    }
+    catch (e) {
+      errorCard.set(e instanceof Error ? e.message : String(e))
+    }
+    finally {
+      loadingCard.set(false)
+    }
+  }
+
+  function closeCardDetail(): void {
+    openCard.set(null)
+    errorCard.set(null)
+  }
+
+  /**
+   * Apply an in-place patch to the open card AND to the matching card
+   * inside `currentColumns` so the board view re-renders alongside
+   * the modal. Reduces double-bookkeeping at every callsite.
+   */
+  function patchOpenCard(partial: Partial<CardDetail>): void {
+    const oc = openCard()
+    if (!oc) return
+    openCard.set({ ...oc, ...partial })
+
+    currentColumns.set(currentColumns().map(col => ({
+      ...col,
+      cards: col.cards.map(c => c.id === oc.id ? { ...c, ...partial } : c),
+    })))
+  }
+
+  async function updateCard(input: { title?: string, description?: string | null, dueDate?: string | null, archived?: boolean }): Promise<boolean> {
+    const oc = openCard()
+    if (!oc) return false
+    const snapshot = { ...oc }
+    patchOpenCard(input as Partial<CardDetail>)
+    try {
+      const data = await dashboardApi<{ card?: CardRecord, error?: string }>(`/api/dashboard/kanban/cards/${oc.id}`, {
+        method: 'PATCH',
+        body: input,
+      })
+      if (data.error || !data.card) throw new Error(data.error ?? 'Update failed')
+      // Server-canonical state wins (handles trimming etc.).
+      patchOpenCard(data.card)
+      return true
+    }
+    catch (e) {
+      // Roll back to the pre-patch snapshot.
+      openCard.set(snapshot)
+      currentColumns.set(currentColumns().map(col => ({
+        ...col,
+        cards: col.cards.map(c => c.id === snapshot.id ? snapshot : c),
+      })))
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  /**
+   * The users matching `search` (name or email, ignoring case), newest request
+   * wins. It used to load the first 500 by name once and never search, so
+   * anyone past the 500th could not be assigned.
+   */
+  async function loadUsers(search = ''): Promise<void> {
+    const term = search.trim()
+    userSearch.set(term)
+    const request = ++usersRequest
+    loadingUsers.set(true)
+    try {
+      const params = new URLSearchParams()
+      if (term)
+        params.set('q', term)
+      const suffix = params.toString()
+      const data = await dashboardApi<{ users?: UserSummary[], total?: number }>(`/api/dashboard/kanban/users${suffix ? `?${suffix}` : ''}`)
+      if (request !== usersRequest)
+        return
+      users.set(data.users ?? [])
+      usersTotal.set(data.total ?? (data.users?.length ?? 0))
+    }
+    catch {
+      // Soft-fail: the picker shows no users rather than an error.
+      if (request === usersRequest) {
+        users.set([])
+        usersTotal.set(0)
+      }
+    }
+    finally {
+      if (request === usersRequest)
+        loadingUsers.set(false)
+    }
+  }
+
+  async function syncCardLabels(cardId: number, labelIds: number[]): Promise<boolean> {
+    const oc = openCard()
+    if (!oc || oc.id !== cardId) return false
+    const snapshot = oc.labels
+    // Optimistic: keep only the labels in the new set, pulled from
+    // the current open card's labels OR the board palette.
+    const boardLabels = currentLabels()
+    const optimistic = labelIds.map((id) => {
+      const fromCard = oc.labels.find(l => l.id === id)
+      if (fromCard) return fromCard
+      const fromBoard = boardLabels.find(l => l.id === id)
+      return fromBoard ? { id: fromBoard.id, name: fromBoard.name, color: fromBoard.color } : null
+    }).filter((l): l is CardLabel => l !== null)
+    patchOpenCard({ labels: optimistic })
+
+    try {
+      const data = await dashboardApi<{ labels?: CardLabel[], error?: string }>(`/api/dashboard/kanban/cards/${cardId}/labels`, {
+        method: 'POST',
+        body: { labelIds },
+      })
+      if (data.error) throw new Error(data.error)
+      // Canonical reconciliation.
+      patchOpenCard({ labels: data.labels ?? [] })
+      return true
+    }
+    catch (e) {
+      patchOpenCard({ labels: snapshot })
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function syncCardAssignees(cardId: number, userIds: number[]): Promise<boolean> {
+    const oc = openCard()
+    if (!oc || oc.id !== cardId) return false
+    const snapshot = oc.assignees
+    // Optimistic — pull names from the loaded users list when
+    // available; fall back to a minimal record so the avatar
+    // initial renders something.
+    const allUsers = users()
+    const optimistic = userIds.map((id) => {
+      const u = allUsers.find(x => x.id === id)
+      return u
+        ? { userId: u.id, name: u.name, email: u.email }
+        : { userId: id, name: null, email: null }
+    })
+    patchOpenCard({ assignees: optimistic })
+
+    try {
+      const data = await dashboardApi<{ assignees?: CardAssignee[], error?: string }>(`/api/dashboard/kanban/cards/${cardId}/assignees`, {
+        method: 'POST',
+        body: { userIds },
+      })
+      if (data.error) throw new Error(data.error)
+      patchOpenCard({ assignees: data.assignees ?? [] })
+      return true
+    }
+    catch (e) {
+      patchOpenCard({ assignees: snapshot })
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function addComment(body: string): Promise<boolean> {
+    const oc = openCard()
+    if (!oc) return false
+    const trimmed = body.trim()
+    if (!trimmed) return false
+
+    try {
+      const data = await dashboardApi<{ comment?: CardComment, error?: string }>(`/api/dashboard/kanban/cards/${oc.id}/comments`, {
+        method: 'POST',
+        body: { body: trimmed },
+      })
+      if (data.error || !data.comment) throw new Error(data.error ?? 'Comment failed')
+      patchOpenCard({ comments: [...oc.comments, data.comment] })
+      return true
+    }
+    catch (e) {
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function deleteComment(commentId: number): Promise<boolean> {
+    const oc = openCard()
+    if (!oc) return false
+    const snapshot = oc.comments
+    patchOpenCard({ comments: oc.comments.filter(c => c.id !== commentId) })
+    try {
+      await dashboardApi(`/api/dashboard/kanban/comments/${commentId}`, { method: 'DELETE' })
+      return true
+    }
+    catch (e) {
+      patchOpenCard({ comments: snapshot })
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  async function updateComment(commentId: number, body: string): Promise<boolean> {
+    const oc = openCard()
+    const trimmed = body.trim()
+    if (!oc || !trimmed) return false
+    const snapshot = oc.comments
+    const existing = snapshot.find(comment => comment.id === commentId)
+    if (!existing || existing.body === trimmed) return true
+
+    patchOpenCard({
+      comments: snapshot.map(comment => comment.id === commentId
+        ? { ...comment, body: trimmed }
+        : comment),
+    })
+    try {
+      const data = await dashboardApi<{ comment?: CardComment, error?: string }>(`/api/dashboard/kanban/comments/${commentId}`, {
+        method: 'PATCH',
+        body: { body: trimmed },
+      })
+      if (data.error || !data.comment)
+        throw new Error(data.error ?? 'Comment update failed')
+      const current = openCard()
+      if (current) {
+        patchOpenCard({
+          comments: current.comments.map(comment => comment.id === commentId
+            ? data.comment as CardComment
+            : comment),
+        })
+      }
+      return true
+    }
+    catch (error) {
+      patchOpenCard({ comments: snapshot })
+      errorCard.set(error instanceof Error ? error.message : String(error))
+      return false
+    }
+  }
+
+  // ─── Label CRUD (board scope) ──────────────────────────────────────
+
+  async function createLabel(input: { boardId: number, name: string, color?: string }): Promise<LabelRecord | null> {
+    try {
+      const data = await dashboardApi<{ label?: LabelRecord, error?: string }>('/api/dashboard/kanban/labels', {
+        method: 'POST',
+        body: input,
+      })
+      if (data.error || !data.label) throw new Error(data.error ?? 'Create failed')
+      currentLabels.set([...currentLabels(), data.label])
+      return data.label
+    }
+    catch (e) {
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return null
+    }
+  }
+
+  async function deleteLabel(labelId: number): Promise<boolean> {
+    const snapshot = currentLabels()
+    currentLabels.set(snapshot.filter(l => l.id !== labelId))
+    // Also strip the label from any cards on the board (mirrors what
+    // LabelDestroyAction does server-side).
+    const colSnapshot = currentColumns()
+    currentColumns.set(colSnapshot.map(col => ({
+      ...col,
+      cards: col.cards.map(c => ({
+        ...c,
+        labels: (c.labels ?? []).filter(l => l.id !== labelId),
+      })),
+    })))
+    const oc = openCard()
+    if (oc)
+      patchOpenCard({ labels: oc.labels.filter(l => l.id !== labelId) })
+
+    try {
+      await dashboardApi(`/api/dashboard/kanban/labels/${labelId}`, { method: 'DELETE' })
+      return true
+    }
+    catch (e) {
+      currentLabels.set(snapshot)
+      currentColumns.set(colSnapshot)
+      errorCard.set(e instanceof Error ? e.message : String(e))
+      return false
+    }
+  }
+
+  return {
+    boards,
+    currentBoard,
+    currentColumns,
+    currentLabels,
+    lastViewedBoardId,
+    loading,
+    loadingBoard,
+    error,
+    deleteError,
+    errorBoard,
+    hasBoards,
+    loadBoards,
+    loadBoard,
+    createBoard,
+    deleteBoard,
+    createColumn,
+    deleteColumn,
+    createCard,
+    deleteCard,
+    reorderCards,
+    reorderColumns,
+    // Card detail
+    openCard,
+    loadingCard,
+    errorCard,
+    users,
+    usersTotal,
+    userSearch,
+    loadingUsers,
+    openCardDetail,
+    closeCardDetail,
+    updateCard,
+    loadUsers,
+    syncCardLabels,
+    syncCardAssignees,
+    addComment,
+    updateComment,
+    deleteComment,
+    createLabel,
+    deleteLabel,
+  }
+}, {
+  persist: {
+    storage: 'sessionStorage',
+    key: 'stacks-dashboard-kanban',
+    pick: ['lastViewedBoardId'],
+  },
+})
+
+if (typeof window !== 'undefined')
+  registerStoresClient({ kanbanStore })

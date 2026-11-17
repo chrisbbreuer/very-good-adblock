@@ -1,0 +1,86 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Websocket',
+  table: 'websockets',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useTimestamps: true,
+    useSeeder: {
+      count: 20,
+    },
+    useApi: {
+      uri: 'websockets',
+      routes: ['index', 'store', 'show'],
+      middleware: ['auth'],
+    },
+    observe: true,
+  },
+
+  attributes: {
+    type: {
+      required: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['disconnection', 'error', 'success']),
+        message: {
+          enum: 'Type must be one of: disconnection, error, success',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement(['success', 'success', 'success', 'disconnection', 'error']),
+    },
+
+    socket: {
+      required: true,
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().min(1).max(255),
+        message: {
+          min: 'Socket identifier must be provided',
+          max: 'Socket identifier must not exceed 255 characters',
+        },
+      },
+      factory: faker => faker.string.alphanumeric(20),
+    },
+
+    details: {
+      required: true,
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().min(1).max(1000),
+        message: {
+          min: 'Details must be provided',
+          max: 'Details must not exceed 1000 characters',
+        },
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+
+    time: {
+      required: true,
+      order: 4,
+      fillable: true,
+      validation: {
+        // A Unix timestamp in milliseconds, so a bigint column: `number()`
+        // generated a 32-bit integer that Date.now() overflows on PostgreSQL
+        // and MySQL (stacksjs/stacks#2996).
+        rule: schema.unix(),
+        message: {
+          unix: 'Time must be a valid timestamp',
+        },
+      },
+      factory: faker => faker.date.recent().getTime(),
+    },
+  },
+} as const)

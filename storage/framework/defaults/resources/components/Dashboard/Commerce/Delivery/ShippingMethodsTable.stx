@@ -1,0 +1,76 @@
+@import('../../UI/Table')
+
+<script client>
+interface ShippingZoneSummary {
+  id: number
+  name: string
+}
+
+interface ShippingMethodRow {
+  id: number
+  name: string
+  description?: string
+  base_rate: number
+  free_shipping?: number | null
+  status: string
+  shipping_zones?: ShippingZoneSummary[]
+}
+
+const methods = useReactiveProp('methods', [] as ShippingMethodRow[])
+const loading = useReactiveProp('loading', false)
+/** The parent's search: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+/** Shipping amounts are stored as integer cents, in USD: currency columns fixed to it. */
+const COLUMNS = [
+  { key: 'name', label: 'Name', sortable: true, class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'description', label: 'Description', emptyText: 'No description', class: 'max-w-xs truncate' },
+  { key: 'base_rate', label: 'Base rate', type: 'currency' as const, currency: 'USD', sortable: true, emptyText: 'Not available', class: 'tabular-nums whitespace-nowrap' },
+  { key: 'free_shipping', label: 'Free shipping', type: 'currency' as const, currency: 'USD', sortable: true, emptyText: 'No minimum', class: 'tabular-nums whitespace-nowrap' },
+  { key: 'zoneCount', label: 'Zones', type: 'number' as const, sortable: true, class: 'tabular-nums' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300',
+      draft: 'bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300',
+    },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => methods().map(method => ({
+  ...method,
+  zoneCount: method.shipping_zones?.length || 0,
+})))
+
+function handleRowAction(payload: { action: string, row: ShippingMethodRow }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box.
+  Table pages the whole filtered list the parent passes, and stays mounted
+  while it loads.
+--}}
+<Table
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="name"
+  paginated
+  :page-size="10"
+  empty-title="No shipping methods found"
+  empty-description="Add a method, or adjust the search."
+  @row-action="handleRowAction"
+/>

@@ -1,0 +1,8 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Event Analytics')
+<PageLayout>
+  <EventAnalytics />
+</PageLayout>
+@endsection

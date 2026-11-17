@@ -1,0 +1,123 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Author', // defaults to the sanitized file name
+  table: 'authors', // defaults to the lowercase, plural name of the model name (or the name of the model file)
+  primaryKey: 'id', // defaults to `id`
+  autoIncrement: true, // defaults to true
+
+  // Define composite indexes
+  indexes: [
+    {
+      name: 'authors_email_name_index',
+      columns: ['email', 'name'],
+    },
+  ],
+
+  traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 5 },
+    gdpr: { erasure: 'anonymize', basis: 'legitimate_interests', purpose: 'Byline on published content' },
+    useAuth: {
+      usePasskey: true,
+    },
+    useUuid: true,
+    useTimestamps: true, // defaults to true, `timestampable` used as an alias
+    useSearch: {
+      displayable: ['id', 'name', 'email'], // the fields a hit returns
+      searchable: ['name', 'email'], // the fields a query matches against
+      sortable: ['created_at', 'updated_at'], // the fields results can be ordered by
+      filterable: [],
+    },
+
+    // No faker seeding. Blog authorship lives in markdown frontmatter
+    // (content/blog/*.md); this model backs the CMS dashboard only.
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'authors',
+
+      routes: ['index', 'store', 'show', 'update', 'destroy'],
+    },
+
+    observe: true,
+  },
+
+
+  hasMany: ['Post'],
+  belongsTo: ['User'],
+
+  attributes: {
+    name: {
+      personal: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().min(5).max(255),
+        message: {
+          min: 'Name must have a minimum of 3 characters',
+          max: 'Name must have a maximum of 255 characters',
+        },
+      },
+
+      factory: faker => faker.person.fullName(),
+    },
+
+    email: {
+      personal: true,
+      unique: true,
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().email(),
+        message: {
+          email: 'Email must be a valid email address',
+        },
+      },
+
+      factory: faker => faker.internet.email(),
+    },
+
+    bio: {
+      personal: true,
+      required: false,
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(500),
+        message: {
+          max: 'Bio must have a maximum of 500 characters',
+        },
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+
+    avatar: {
+      personal: true,
+      required: false,
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.string().url(),
+        message: {
+          url: 'Avatar must be a valid URL',
+        },
+      },
+      factory: faker => faker.image.avatar(),
+    },
+  },
+  dashboard: {
+    highlight: true,
+    // Chosen as a file. Its address is what is stored, as before.
+    // Prose, asked for in a box with room for it.
+    fields: {
+      avatar: { input: 'upload', accept: 'image/*' },
+      bio: { input: 'longtext' },
+    },
+  },
+} as const)

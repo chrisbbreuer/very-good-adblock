@@ -1,0 +1,85 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'ShippingRate',
+  table: 'shipping_rates',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'shipping_method_id', 'weight_from', 'weight_to', 'rate'],
+      searchable: ['shipping_method_id'],
+      sortable: ['shipping_method_id', 'weight_from', 'weight_to', 'rate', 'created_at', 'updated_at'],
+      filterable: ['shipping_method_id'],
+    },
+
+    useSeeder: {
+      count: 10,
+    },
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'shipping-rates',
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['ShippingMethod', 'ShippingZone'],
+
+  attributes: {
+    weightFrom: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.float().required().min(0),
+        message: {
+          min: 'Weight from cannot be negative',
+        },
+      },
+      factory: faker => faker.number.float({ min: 0, max: 10 }),
+    },
+
+    weightTo: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.float().required().min(0),
+        message: {
+          min: 'Weight to cannot be negative',
+        },
+      },
+      factory: faker => faker.number.float({ min: 10, max: 50 }),
+    },
+
+    rate: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0),
+        message: {
+          min: 'Rate cannot be negative',
+        },
+      },
+      factory: faker => faker.number.int({ min: 500, max: 5000 }), // 5.00 to 50.00
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+  },
+} as const)

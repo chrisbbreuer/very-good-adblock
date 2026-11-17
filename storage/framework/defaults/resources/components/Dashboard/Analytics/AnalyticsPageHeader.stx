@@ -1,0 +1,33 @@
+<script client>
+const title = useReactiveProp('title', '')
+const description = useReactiveProp('description', '')
+const dateRange = useReactiveProp('dateRange', '')
+const range = useReactiveProp('range', 'month')
+const loading = useReactiveProp('loading', false)
+const emit = defineEmits(['range-change', 'refresh'])
+const selectedRange = state('month')
+
+effect(() => {
+  selectedRange.set(range())
+})
+
+function emitRange(next: string): void {
+  emit('range-change', next)
+}
+</script>
+
+<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h1 class="font-bold text-2xl text-gray-900 dark:text-white">{{ title() }}</h1>
+    <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ description() }}</p>
+  </div>
+
+  <div class="flex flex-wrap gap-2 items-center">
+    <span class="text-gray-500 text-sm dark:text-neutral-400">{{ dateRange() }}</span>
+    <Select v-model:value="selectedRange" ariaLabel="Analytics date range" placeholder="" :options="[{ value: 'day', label: 'Last 24 hours' }, { value: 'week', label: 'Last 7 days' }, { value: 'month', label: 'Last 30 days' }, { value: 'year', label: 'Last year' }]" @change="emitRange" />
+    <Button variant="secondary" :loading="loading()" @click="emit('refresh')">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+  </div>
+</header>

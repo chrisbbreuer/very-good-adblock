@@ -1,0 +1,59 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'EmailWebhookEvent',
+  table: 'email_webhook_events',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  indexes: [
+    {
+      name: 'email_webhook_events_provider_event_unique',
+      columns: ['provider', 'event_id'],
+      unique: true,
+    },
+  ],
+
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useTimestamps: true,
+    useApi: {
+      uri: 'email-webhook-events',
+      routes: ['index', 'show', 'destroy'],
+      // Reads stay as they were; writes need an admin.
+      // provider webhook events are the audit trail for what the provider told us,
+      // so `auth` alone let any signed-in caller do it (stacksjs/stacks#2412).
+      middleware: { read: ['auth'], write: ['auth', 'role:admin'] },
+    },
+  },
+
+  attributes: {
+    provider: {
+      required: true,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['mailgun', 'postmark', 'ses', 'sendgrid']),
+      },
+    },
+    eventId: {
+      required: true,
+      hidden: true,
+      validation: {
+        rule: schema.string().required().max(512),
+      },
+    },
+    processedAt: {
+      required: true,
+      validation: {
+        rule: schema.timestamp().required(),
+      },
+    },
+  },
+
+  dashboard: { enabled: false },
+} as const)

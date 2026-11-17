@@ -1,0 +1,55 @@
+{
+  // Framework-provided defaults for application code when Stacks is installed
+  // from npm. Published @stacksjs packages resolve through their package
+  // exports, while application aliases continue to point into this project.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["esnext", "dom"],
+    "rootDir": "../..",
+    // Not incremental, for the reason spelled out in tsconfig.app.json: the
+    // cache reports a false green after the auto-import barrels are
+    // regenerated. stacksjs/stacks#2405.
+    "incremental": false,
+    "paths": {
+      "Actions/*": ["../../app/Actions/*"],
+      "Commands/*": ["../../app/Commands/*"],
+      "Jobs/*": ["../../app/Jobs/*"],
+      "Middleware/*": ["../../app/Middleware/*"],
+      "Models/*": ["../../app/Models/*"],
+      "Notifications/*": ["../../app/Notifications/*"],
+      // The framework defaults by package name. Lands on this project's
+      // `storage/framework/defaults` when there is one (a framework checkout, a
+      // vendored app, or the link to node_modules), and falls back to the
+      // installed `@stacksjs/defaults` when the mapped file does not exist -
+      // Bun and tsc both try the package after a `paths` miss. So one
+      // specifier resolves in every layout, which `~/storage/framework/
+      // defaults/...` does not.
+      "@stacksjs/defaults/*": ["./defaults/*"],
+      "~/*": ["../../*"],
+      "@/*": ["../../resources/*"]
+    }
+  },
+  "include": [
+    "./types/**/*.d.ts",
+    // The generated table shapes, from `buddy generate:db-types`. Without this
+    // the augmentation is written and never loaded, so `db.selectFrom('users')`
+    // answers the framework's default `users` - or an unknown-valued record -
+    // and an application's own columns are invisible to the compiler.
+    //
+    // Kept in step with tsconfig.app.json deliberately: this is the copy a
+    // package-based app receives, and the two drifting is how the fix landed
+    // in the vendored layout and reached no application.
+    "../../database/types.d.ts",
+    "../../app/**/*.ts",
+    "../../config/**/*.ts",
+    "../../resources/**/*.ts",
+    "../../routes/**/*.ts"
+  ],
+  "exclude": [
+    "../../cloud/**",
+    "../../dist/**",
+    "../../node_modules/**",
+    "../../pantry/**",
+    "../../resources/assets/**"
+  ]
+}

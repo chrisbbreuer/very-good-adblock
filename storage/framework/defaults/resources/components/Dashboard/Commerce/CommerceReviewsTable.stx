@@ -1,0 +1,146 @@
+@import('../UI/Table')
+
+<script client>
+import type { ReviewRecord } from '../../../../app/Actions/Dashboard/Commerce/review-records'
+import { parseDashboardDate } from '../../../../functions/dashboard-dates'
+
+const reviews = useReactiveProp('reviews', [] as ReviewRecord[])
+const loading = useReactiveProp('loading', false)
+const busyId = useReactiveProp('busyId', '')
+/** The parent's sort select: a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+/**
+ * The server pages and sorts what the parent's search and filters match
+ * (stacksjs/stacks#3218): how many reviews match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['approve', 'feature', 'edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+/** Epoch seconds or milliseconds as well as stored timestamps, as the API sends either. */
+function formatDate(value: string): string {
+  if (!value)
+    return 'Not recorded'
+  const date = /^\d{10,13}$/.test(value)
+    ? new Date(Number(value) * (value.length === 10 ? 1000 : 1))
+    : parseDashboardDate(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
+}
+
+/**
+ * Customer and review are slotted: the verified badge, the stars and the
+ * vote counts are layout a column option cannot express. Approve and feature
+ * each have two declared actions, one per state, so a row offers the one
+ * that applies.
+ */
+const COLUMNS = [
+  { key: 'customerLabel', label: 'Customer', sortable: true, slotted: true },
+  { key: 'productLabel', label: 'Product', sortable: true, class: 'text-gray-700 dark:text-neutral-200' },
+  { key: 'rating', label: 'Review', sortable: true, slotted: true },
+  {
+    key: 'moderation',
+    label: 'State',
+    type: 'badge' as const,
+    sortable: true,
+    subtitleKey: 'featuredLabel',
+    badgeClasses: {
+      approved: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/30',
+      pending: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30',
+    },
+    badgeLabels: { approved: 'Approved', pending: 'Pending' },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'approve', label: 'Approve review', icon: 'i-hugeicons-checkmark-circle-02', class: 'text-green-500', when: { key: 'approved', equals: false } },
+  { action: 'approve', label: 'Return review to pending', icon: 'i-hugeicons-cancel-circle', class: 'text-green-500', when: { key: 'approved', equals: true } },
+  { action: 'feature', label: 'Feature review', icon: 'i-hugeicons-star', class: 'text-amber-500', when: { key: 'featured', equals: false } },
+  { action: 'feature', label: 'Remove review from featured', icon: 'i-hugeicons-star-off', class: 'text-amber-500', when: { key: 'featured', equals: true } },
+  { action: 'edit', label: 'Edit review' },
+  { action: 'delete', label: 'Delete review' },
+]
+
+const rows = derived(() => reviews().map(review => ({
+  ...review,
+  customerLabel: review.customerName || 'Guest customer',
+  productLabel: review.productName || 'Unlinked product',
+  titleLabel: review.title || 'Untitled review',
+  contentLabel: review.content || 'No review content recorded.',
+  stars: review.rating === null ? 'No rating' : `${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}`,
+  starsLabel: review.rating === null ? 'No star rating' : `${review.rating} out of 5 stars`,
+  helpfulLabel: `${review.helpfulVotes} helpful`,
+  unhelpfulLabel: `${review.unhelpfulVotes} not helpful`,
+  dateLabel: formatDate(review.createdAt),
+  moderation: review.approved ? 'approved' : 'pending',
+  featuredLabel: review.featured ? 'Featured' : '',
+})))
+
+function handleRowAction(payload: { action: string, row: ReviewRecord }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box
+  and the filter selects, and the server pages and sorts what they match.
+--}}
+<Table
+  :sort-reset-key="sortResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="id"
+  busy-key="id"
+  :busy-value="busyId()"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No reviews found"
+  empty-description="Adjust the current filters or wait for a customer review."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+>
+  <template #cell="{ row, column }">
+    <template :if="column.key === 'customerLabel'">
+      <p class="font-medium text-gray-900 text-sm dark:text-white" x-text="row.customerLabel"></p>
+      <p :if="row.customerEmail" class="mt-1 text-gray-500 text-xs dark:text-neutral-400" x-text="row.customerEmail"></p>
+      <span :if="row.verifiedPurchase" class="inline-flex items-center mt-2 font-medium text-green-700 text-xs dark:text-green-300">
+        <span class="mr-1 h-3.5 w-3.5 i-hugeicons-checkmark-badge-01"></span>
+        Verified purchase
+      </span>
+    </template>
+    <template :if="column.key === 'rating'">
+      <div class="max-w-lg min-w-72">
+        <p class="font-medium text-gray-900 text-sm dark:text-white" x-text="row.titleLabel"></p>
+        <p class="mt-1 line-clamp-2 text-gray-500 text-sm dark:text-neutral-400" x-text="row.contentLabel"></p>
+        <div class="flex flex-wrap gap-x-3 gap-y-1 items-center mt-2 text-gray-500 text-xs dark:text-neutral-500">
+          <span :aria-label="row.starsLabel" class="text-amber-500 text-sm" x-text="row.stars"></span>
+          <span x-text="row.helpfulLabel"></span>
+          <span x-text="row.unhelpfulLabel"></span>
+          <span x-text="row.dateLabel"></span>
+        </div>
+      </div>
+    </template>
+  </template>
+</Table>

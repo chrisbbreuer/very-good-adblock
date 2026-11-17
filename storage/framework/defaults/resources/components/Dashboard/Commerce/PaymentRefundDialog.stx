@@ -1,0 +1,73 @@
+<script client>
+import type { PaymentRecord } from '../../../../app/Actions/Dashboard/Commerce/payment-records'
+import { formatCurrency, minorToInput, moneyInputError, moneyInputStep, parseMoneyInput } from '@stacksjs/commerce/money'
+
+const open = useReactiveProp('open', false)
+const record = useReactiveProp('record', null as PaymentRecord | null)
+const busy = useReactiveProp('busy', false)
+const emit = defineEmits(['submit', 'close'])
+const amount = state('')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const payment = record()
+  const key = payment?.id || ''
+  if (!payment || hydrationKey === key)
+    return
+  hydrationKey = key
+  amount.set(minorToInput(payment.amount - payment.refundAmount, payment.currency))
+})
+
+function remaining(): number {
+  const payment = record()
+  return payment ? Math.max(0, payment.amount - payment.refundAmount) : 0
+}
+
+function paymentCurrency(): string {
+  return record()?.currency || 'USD'
+}
+
+// What was typed, in integer minor units, or 0 while it is not a valid amount.
+function amountCents(): number {
+  if (moneyInputError(amount(), paymentCurrency(), { min: 1 }))
+    return 0
+  return parseMoneyInput(amount(), paymentCurrency(), { min: 1 })
+}
+
+function valid(): boolean {
+  const cents = amountCents()
+  return cents > 0 && cents <= remaining()
+}
+
+function money(value: number, currency: string): string {
+  return formatCurrency(value, currency)
+}
+
+function submit(): void {
+  if (valid())
+    emit('submit', amountCents())
+}
+</script>
+
+<Modal
+  :isOpen="open() && Boolean(record())"
+  title="Record confirmed refund"
+  :description="`Payment #${record()?.id || 'not recorded'} has ${money(remaining(), record()?.currency || 'USD')} remaining.`"
+  size="sm"
+  @close="emit('close')"
+>
+    <form id="payment-refund-form" @submit.prevent="submit">
+        <Input v-model:value="amount" label="Refund amount" type="number" :min="minorToInput(1, paymentCurrency())" :max="minorToInput(remaining(), paymentCurrency())" :step="moneyInputStep(paymentCurrency())" :required="true" />
+        <p class="mt-2 text-amber-700 text-xs dark:text-amber-300">This records an already confirmed processor refund. It does not initiate money movement.</p>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+        <Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button>
+        <Button type="submit" form="payment-refund-form" :loading="busy()" :disabled="!valid()">Record refund</Button>
+    </div>
+  </template>
+</Modal>

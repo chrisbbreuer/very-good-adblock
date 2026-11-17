@@ -1,0 +1,120 @@
+<script client>
+import { minorToInput, moneyInputError, parseMoneyInput } from '@stacksjs/commerce/money'
+interface ShippingResourceOption {
+  id: number
+  name: string
+}
+
+interface ShippingRateRecord {
+  id: number
+  shipping_method_id: number
+  shipping_zone_id: number
+  weight_from: number
+  weight_to: number
+  rate: number
+}
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'create')
+const record = useReactiveProp('record', null as ShippingRateRecord | null)
+const methods = useReactiveProp('methods', [] as ShippingResourceOption[])
+const zones = useReactiveProp('zones', [] as ShippingResourceOption[])
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['invalid', 'submit', 'close'])
+const methodId = state('')
+const zoneId = state('')
+const weightFrom = state('')
+const weightTo = state('')
+const amount = state('')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const nextKey = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === nextKey)
+    return
+  hydrationKey = nextKey
+  methodId.set(current ? String(current.shipping_method_id) : '')
+  zoneId.set(current ? String(current.shipping_zone_id) : '')
+  weightFrom.set(current ? String(current.weight_from) : '')
+  weightTo.set(current ? String(current.weight_to) : '')
+  amount.set(current ? minorToInput(current.rate, 'USD') : '')
+})
+
+function submit(): void {
+  const selectedMethodId = Number(methodId())
+  const selectedZoneId = Number(zoneId())
+  const from = Number(weightFrom())
+  const to = Number(weightTo())
+
+  if (!Number.isInteger(selectedMethodId) || selectedMethodId < 1) {
+    emit('invalid', 'Select a shipping method.')
+    return
+  }
+  if (!Number.isInteger(selectedZoneId) || selectedZoneId < 1) {
+    emit('invalid', 'Select a shipping zone.')
+    return
+  }
+  if (!Number.isFinite(from) || from < 0) {
+    emit('invalid', 'Starting weight must be a non-negative number.')
+    return
+  }
+  if (!Number.isFinite(to) || to < from) {
+    emit('invalid', 'Ending weight must be greater than or equal to the starting weight.')
+    return
+  }
+  // Typed in dollars, stored as integer cents.
+  const rateError = moneyInputError(amount(), 'USD')
+  if (rateError) {
+    emit('invalid', `Rate: ${rateError}`)
+    return
+  }
+
+  emit('submit', {
+    shippingMethodId: selectedMethodId,
+    shippingZoneId: selectedZoneId,
+    weightFrom: from,
+    weightTo: to,
+    rate: parseMoneyInput(amount(), 'USD'),
+  })
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit shipping rate' : 'Add shipping rate'"
+  description="Connect a persisted method and zone to an exact weight band."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="shipping-rate-form" @submit.prevent="submit()">
+        <div :if="error()" class="mb-5 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ error() }}</div>
+
+        <div class="space-y-4">
+          <div>
+            <Select v-model:value="methodId" label="Shipping method" :required="true" placeholder="Select a shipping method" :options="[...methods().map(method => ({ value: method.id, label: method.name }))]" />
+          </div>
+          <div>
+            <Select v-model:value="zoneId" label="Shipping zone" :required="true" placeholder="Select a shipping zone" :options="[...zones().map(zone => ({ value: zone.id, label: zone.name }))]" />
+          </div>
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <Input v-model:value="weightFrom" label="Weight from (kg)" type="number" :required="true" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+            <Input v-model:value="weightTo" label="Weight to (kg)" type="number" :required="true" min="0" step="0.01" inputmode="decimal" placeholder="10.00" />
+          </div>
+          <div>
+            <Input v-model:value="amount" label="Rate" type="number" :required="true" min="0" step="0.01" inputmode="decimal" placeholder="5.99" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="emit('close')">Cancel</Button>
+      <Button type="submit" form="shipping-rate-form" :loading="busy()">{{ mode() === 'edit' ? 'Save changes' : 'Add rate' }}</Button>
+    </div>
+  </template>
+</Modal>

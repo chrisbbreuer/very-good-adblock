@@ -1,0 +1,83 @@
+<script client>
+import { lifecycle, network, whenNativeMobile } from '@stacksjs/mobile'
+import { onDestroy, onMount } from 'stx'
+
+const className = useReactiveProp<string>('class', '')
+const offlineLabel = useReactiveProp<string>('offlineLabel', 'You are offline. Changes will sync automatically.')
+const connected = state(true)
+let removeListener: (() => void) | null = null
+let removeLifecycle: (() => void) | null = null
+
+function applyStatus(status: { isConnected: boolean }): void {
+  connected.set(status.isConnected)
+}
+
+// Asking can fail (the bridge not ready yet at launch, a request that timed
+// out): that is no answer, not "offline". Treating it as offline stuck the
+// banner on screen while everything was loading fine.
+function refresh(): void {
+  void network.getStatus().then(applyStatus).catch(() => {})
+}
+
+onMount(() => {
+  refresh()
+  removeListener = network.onChange(applyStatus)
+  // Once the native host is there, ask it; and again whenever the app comes
+  // back to the front, where a change may have gone by unseen.
+  void whenNativeMobile().then(native => native && refresh())
+  removeLifecycle = lifecycle.onStateChange((appState) => {
+    if (appState === 'active') refresh()
+  })
+})
+
+// The webview's own view, for the moments the host has not spoken yet.
+useEventListener('online', () => connected.set(true))
+useEventListener('offline', () => refresh())
+
+onDestroy(() => {
+  removeListener?.()
+  removeLifecycle?.()
+})
+</script>
+
+<!--
+  Visibility is a class, not `:if`. The banner starts connected, and a
+  component's `:if` that removed it on the first pass did not bring it back
+  inside Craft's WebView when the signal changed, so the app never said it had
+  gone offline. Both states go through the one `:class`: a second class
+  binding on the element would overwrite the first.
+-->
+<div
+  role="status"
+  aria-live="polite"
+  class="native-network-banner"
+  :class="(connected() ? 'native-network-banner--quiet ' : '') + className()"
+>
+  <i aria-hidden="true" class="h-4 w-4 i-hugeicons-wifi-disconnected-01"></i>
+  <span>{{ offlineLabel() }}</span>
+</div>
+
+<style>
+  .native-network-banner {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.625rem 1rem;
+    color: rgb(120 53 15);
+    background: rgb(254 243 199 / 0.96);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  /* After the base rule and doubled up, so it wins over `display: flex`. */
+  .native-network-banner.native-network-banner--quiet { display: none; }
+
+  /* Dark with the app's own theme, the `.dark` class, not the system's: an
+     app pinned to light in a dark phone kept a dark banner on a light page. */
+  .dark .native-network-banner { color: rgb(254 243 199); background: rgb(120 53 15 / 0.96); }
+</style>

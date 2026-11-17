@@ -1,0 +1,342 @@
+<script client>
+import type { CommercePosProduct } from '../../../../app/Actions/Dashboard/Commerce/commerce-pos'
+import type { ProductOption } from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+interface PosPaymentMethod {
+  id: string
+  label: string
+}
+
+interface PosSummary {
+  products: number
+  sellable: number
+  inventory: number
+}
+
+interface PosIndexResponse {
+  categories: ProductOption[]
+  taxRate: number
+  defaultCurrency: string
+  paymentMethods: PosPaymentMethod[]
+  summary: PosSummary
+}
+
+interface PosCartLine {
+  productId: string
+  name: string
+  unitPrice: number
+  quantity: number
+  inventoryCount: number
+  specialInstructions: string
+}
+
+interface PosCheckoutPayload {
+  customerId: number | null
+  orderType: string
+  paymentMethod: string
+  specialInstructions: string
+}
+
+interface PosReceiptLine {
+  productId: number
+  name: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+  specialInstructions: string
+}
+
+interface PosReceipt {
+  orderId: number
+  referenceNumber: string
+  lines: PosReceiptLine[]
+  subtotal: number
+  taxRate: number
+  taxAmount: number
+  totalAmount: number
+  currency: string
+  createdAt: string
+}
+
+interface PosCheckoutResponse {
+  ok: boolean
+  idempotent: boolean
+  receipt: PosReceipt
+}
+
+const categories = state<ProductOption[]>([])
+const paymentMethods = state<PosPaymentMethod[]>([])
+const summary = state<PosSummary>({ products: 0, sellable: 0, inventory: 0 })
+const taxRate = state(0)
+const defaultCurrency = state('USD')
+const categoryFilter = state('all')
+const availabilityFilter = state('sellable')
+const cartLines = state<PosCartLine[]>([])
+const settingsLoading = state(true)
+const loadError = state('')
+const checkoutOpen = state(false)
+const checkoutBusy = state(false)
+const checkoutError = state('')
+const checkoutKey = state('')
+const receipt = state<PosReceipt | null>(null)
+const receiptOpen = state(false)
+
+// Amounts are integer minor units (cents for USD). Only tax can produce a
+// fraction of one, and it rounds to the nearest unit as the server does.
+function money(value: number): number {
+  return Math.round(value)
+}
+
+function cartUnits(): number {
+  return cartLines().reduce((sum, line) => sum + line.quantity, 0)
+}
+
+function subtotal(): number {
+  return money(cartLines().reduce((sum, line) => sum + line.unitPrice * line.quantity, 0))
+}
+
+function taxAmount(): number {
+  return money(subtotal() * taxRate() / 100)
+}
+
+function totalAmount(): number {
+  return money(subtotal() + taxAmount())
+}
+
+function formatMoney(value: number): string {
+  return formatCurrency(value, defaultCurrency())
+}
+
+// The catalogue is the server's, searched and paged (stacksjs/stacks#3218):
+// this screen used to read the first 500 products by name and filter them
+// here, so a later product could not be rung up.
+const {
+  records: products,
+  total: matchingProducts,
+  page: catalogPage,
+  perPage: catalogPerPage,
+  search,
+  loading: catalogLoading,
+  load: loadCatalog,
+  changePage: changeCatalogPage,
+} = useServerList<CommercePosProduct>({
+  fetch: params => dashboardApi<{ records: CommercePosProduct[], total: number, page: number }>(`/api/dashboard/commerce/pos/products?${params}`),
+  defaultSort: { sort: 'name', direction: 'asc' },
+  filters: () => ({
+    category: categoryFilter(),
+    availability: availabilityFilter() === 'unavailable' ? 'unsellable' : availabilityFilter(),
+  }),
+  perPage: 50,
+  onError: error => pushToast('error', 'Could not load products', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function loading(): boolean {
+  return settingsLoading() || catalogLoading()
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  return [
+    { label: 'Sellable products', value: String(summary().sellable), detail: `${summary().products} persisted products` },
+    { label: 'Inventory', value: summary().inventory.toLocaleString(), detail: 'Units available across products' },
+    { label: 'Cart units', value: String(cartUnits()), detail: `${cartLines().length} distinct products` },
+    { label: 'Amount due', value: formatMoney(totalAmount()), detail: `${taxRate()}% configured tax` },
+  ]
+}
+
+/**
+ * Bring the cart's lines up to date with exactly the products they hold, as
+ * they are now: a new price or stock level, or gone when a product is no
+ * longer sellable. The catalogue page on screen may not include them.
+ */
+async function refreshCart(): Promise<void> {
+  const ids = cartLines().map(line => line.productId)
+  if (ids.length === 0)
+    return
+  const data = await dashboardApi<{ records?: CommercePosProduct[] }>(`/api/dashboard/commerce/pos/products?ids=${ids.join(',')}`)
+  const currentProducts = new Map((data.records ?? []).map(product => [product.id, product]))
+  cartLines.set(cartLines().flatMap((line) => {
+    const product = currentProducts.get(line.productId)
+    if (!product || !product.isAvailable || product.inventoryCount <= 0)
+      return []
+    return [{
+      ...line,
+      name: product.name,
+      unitPrice: product.price,
+      inventoryCount: product.inventoryCount,
+      quantity: Math.min(line.quantity, product.inventoryCount),
+    }]
+  }))
+}
+
+async function loadPos(): Promise<void> {
+  settingsLoading.set(true)
+  loadError.set('')
+  void loadCatalog()
+  try {
+    const data = await dashboardApi<PosIndexResponse>('/api/dashboard/commerce/pos')
+    categories.set(Array.isArray(data.categories) ? data.categories : [])
+    paymentMethods.set(Array.isArray(data.paymentMethods) ? data.paymentMethods : [])
+    taxRate.set(Number(data.taxRate) || 0)
+    defaultCurrency.set(data.defaultCurrency || 'USD')
+    summary.set(data.summary ?? { products: 0, sellable: 0, inventory: 0 })
+    await refreshCart()
+  }
+  catch (error) {
+    loadError.set('Point of sale data could not be loaded.')
+    pushToast('error', 'Could not load point of sale', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    settingsLoading.set(false)
+  }
+}
+
+function addProduct(product: CommercePosProduct): void {
+  if (!product.isAvailable || product.inventoryCount <= 0)
+    return
+  const lines = [...cartLines()]
+  const existing = lines.find(line => line.productId === product.id)
+  if (existing) {
+    if (existing.quantity >= product.inventoryCount) {
+      pushToast('warning', 'Inventory limit reached', { detail: product.name })
+      return
+    }
+    existing.quantity += 1
+  }
+  else {
+    lines.push({
+      productId: product.id,
+      name: product.name,
+      unitPrice: product.price,
+      quantity: 1,
+      inventoryCount: product.inventoryCount,
+      specialInstructions: '',
+    })
+  }
+  cartLines.set(lines)
+}
+
+function changeQuantity(productId: string, delta: number): void {
+  const lines = [...cartLines()]
+  const line = lines.find(item => item.productId === productId)
+  if (!line)
+    return
+  const next = line.quantity + delta
+  if (next <= 0) {
+    removeLine(productId)
+    return
+  }
+  line.quantity = Math.min(next, line.inventoryCount)
+  cartLines.set(lines)
+}
+
+function increaseLine(productId: string): void {
+  changeQuantity(productId, 1)
+}
+
+function decreaseLine(productId: string): void {
+  changeQuantity(productId, -1)
+}
+
+function removeLine(productId: string): void {
+  cartLines.set(cartLines().filter(line => line.productId !== productId))
+}
+
+function clearCart(): void {
+  cartLines.set([])
+}
+
+function updateInstructions(payload: { productId: string, event: Event }): void {
+  const lines = [...cartLines()]
+  const line = lines.find(item => item.productId === payload.productId)
+  if (!line)
+    return
+  line.specialInstructions = (payload.event.target as HTMLInputElement).value
+  cartLines.set(lines)
+}
+
+function openCheckout(): void {
+  if (cartLines().length === 0)
+    return
+  checkoutKey.set(crypto.randomUUID())
+  checkoutError.set('')
+  checkoutOpen.set(true)
+}
+
+function closeCheckout(): void {
+  if (checkoutBusy())
+    return
+  checkoutOpen.set(false)
+  checkoutError.set('')
+}
+
+async function completeCheckout(payload: PosCheckoutPayload): Promise<void> {
+  if (cartLines().length === 0)
+    return
+  checkoutBusy.set(true)
+  checkoutError.set('')
+  try {
+    const data = await dashboardApi<PosCheckoutResponse>('/api/dashboard/commerce/pos/checkout', {
+      method: 'POST',
+      body: {
+        ...payload,
+        idempotencyKey: checkoutKey(),
+        items: cartLines().map(line => ({
+          productId: Number(line.productId),
+          quantity: line.quantity,
+          specialInstructions: line.specialInstructions,
+        })),
+      },
+    })
+    receipt.set(data.receipt)
+    cartLines.set([])
+    checkoutOpen.set(false)
+    receiptOpen.set(true)
+    pushToast('success', data.idempotent ? 'Sale already recorded' : 'Sale recorded', {
+      detail: `Order ${data.receipt.orderId}`,
+    })
+    await loadPos()
+  }
+  catch (error) {
+    checkoutError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not complete sale', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    checkoutBusy.set(false)
+  }
+}
+
+function closeReceipt(): void {
+  receiptOpen.set(false)
+  receipt.set(null)
+}
+
+onMount(() => {
+  void loadPos()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Point of sale" description="Create server-priced cash sales from native Product, Order, OrderItem, Payment, Customer, and TaxRate records.">
+  <Button variant="secondary" :loading="loading()" @click="loadPos()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Point of sale metrics" columns="grid-cols-2 xl:grid-cols-4" :items="metricCards()" />
+
+  <div class="grid gap-6 grid-cols-1 items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <CommercePosCatalog :products="products()" :categories="categories()" :search="search()" :category="categoryFilter()" :availability="availabilityFilter()" :currency="defaultCurrency()" :loading="catalogLoading()" :total="matchingProducts()" :current-page="catalogPage()" :per-page="catalogPerPage()" @search="search.set($event)" @category="categoryFilter.set($event)" @availability="availabilityFilter.set($event)" @add="addProduct" @page="changeCatalogPage" />
+    <CommercePosCart :lines="cartLines()" :currency="defaultCurrency()" :subtotal="subtotal()" :tax-rate="taxRate()" :tax-amount="taxAmount()" :total-amount="totalAmount()" @increase="increaseLine" @decrease="decreaseLine" @remove="removeLine" @instructions="updateInstructions" @clear="clearCart()" @checkout="openCheckout()" />
+  </div>
+</div>
+
+<CommercePosCheckoutDialog :open="checkoutOpen()" :payment-methods="paymentMethods()" :currency="defaultCurrency()" :subtotal="subtotal()" :tax-amount="taxAmount()" :total-amount="totalAmount()" :unit-count="cartUnits()" :busy="checkoutBusy()" :error="checkoutError()" @submit="completeCheckout" @close="closeCheckout()" />
+<CommercePosReceiptDialog :open="receiptOpen()" :receipt="receipt()" @close="closeReceipt()" />

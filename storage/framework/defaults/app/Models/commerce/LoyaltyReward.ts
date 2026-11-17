@@ -1,0 +1,143 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'LoyaltyReward',
+  table: 'loyalty_rewards',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'name', 'pointsRequired', 'rewardType', 'isActive'],
+      searchable: ['name', 'description', 'rewardType'],
+      sortable: ['pointsRequired', 'createdAt', 'updatedAt'],
+      filterable: ['rewardType', 'isActive'],
+    },
+
+    useSeeder: {
+      count: 15,
+    },
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'loyalty-rewards',
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Product'],
+
+  attributes: {
+    name: {
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required(),
+      },
+      factory: faker => faker.helpers.arrayElement([
+        `10% discount on your order`,
+        `20% discount on your order`,
+        `Free product with purchase`,
+        `Priority delivery service`,
+      ]),
+    },
+
+    description: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(500),
+      },
+      factory: faker => faker.lorem.paragraph(),
+    },
+
+    pointsRequired: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(1),
+      },
+      factory: faker => faker.number.int({ min: 100, max: 5000 }),
+    },
+
+    rewardType: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.string().required(),
+      },
+      factory: faker => faker.helpers.arrayElement(['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE']),
+    },
+
+    discountPercentage: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.number.int({ min: 5, max: 50 }), { probability: 0.6 }),
+    },
+
+    freeProductId: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      // Stored and shown, never resolved: nothing redeems or joins on it yet,
+      // so what it holds is left to the feature that does. No factory, so a
+      // seed does not invent one (stacksjs/stacks#3002).
+    },
+
+    isActive: {
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.boolean(),
+      },
+      factory: faker => faker.datatype.boolean({ probability: 0.9 }), // 90% active
+    },
+
+    expiryDays: {
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      factory: faker => faker.helpers.arrayElement([7, 14, 30, 60, 90]),
+    },
+
+    imageUrl: {
+      order: 9,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(255),
+      },
+      factory: faker => faker.image.url().substring(0, 255),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+    // Prose, asked for in a box with room for it.
+    // An address that leads to a picture: shown as one.
+    fields: {
+      imageUrl: { format: 'image' },
+      description: { input: 'longtext' },
+    },
+  },
+} as const)

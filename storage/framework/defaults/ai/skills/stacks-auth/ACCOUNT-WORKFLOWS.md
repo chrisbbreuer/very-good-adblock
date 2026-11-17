@@ -1,0 +1,178 @@
+# Native account workflows
+
+Read this when an account feature needs the native workflow rather than a token
+or TOTP primitive. All source paths below start at
+`storage/framework/core/auth/`. Public exports are in `src/index.ts`.
+
+## Passwordless magic links
+
+`sendMagicLink(email, options?)` accepts redirectTo, siteId, ttlMinutes and
+createUser. Enable `config.auth.magicLink` and its route bundle before building
+a form around the default actions. The native link flow keeps the bearer hashed
+at rest and uses a POST to consume it; GET is an interstitial because mail
+scanners prefetch links.
+
+`consumeMagicLink(raw)` returns a discriminated result with userId/email/redirect
+on success, or invalid/expired/used/no-user. The transactional `withMagicLink`
+helper binds consumption to issuance; read its callback signature before writing
+an alternative action. `pruneMagicLinkTokens(olderThanDays?)` removes old state.
+Redirects must be local paths, and successful consume does not by itself set an
+HTTP cookie. Keep issuance inside the native completed-login flow.
+
+Source: `src/magic-link.ts`. Evidence: `tests/magic-link.test.ts`,
+`magic-link-owner.test.ts`, `magic-link-send-atomicity.test.ts` and
+`magic-link-drivers.test.ts`. A database failure or mail failure is not a reason
+to return an unusable credential as successful login.
+
+## Two-factor setup and completed login
+
+`TwoFactor` and its named functions manage setup, pending secrets, challenges,
+verification and recovery, beyond generating a TOTP code. Native functions
+include generateTwoFactorSetup, stashPendingTwoFactorSecret,
+consumePendingTwoFactorSecret, enableTwoFactor, disableTwoFactor,
+verifyTwoFactorLoginCode, createTwoFactorChallenge, consumeTwoFactorChallenge,
+withTwoFactorChallenge and revokeTwoFactorChallenges.
+
+Use the default action flow as the application reference: the password step
+creates a challenge, and completed verification issues the actual browser
+credential. The challenge carries the remembered-lifetime choice. Setup and
+disable actions impose their own proof and reauthentication requirements;
+low-level helper calls do not establish that the caller owns the account.
+
+Source: `src/two-factor.ts` and default auth actions. Evidence:
+`tests/two-factor-login-wiring.test.ts`, `two-factor-recovery.test.ts`,
+`two-factor-disable-reauth.test.ts`, `two-factor-challenge-atomicity.test.ts` and
+`two-factor-state-atomicity.test.ts`.
+
+### Recovery codes and retryable setup
+
+`confirmTwoFactorSetup(userId, code)` verifies the pending server-owned setup
+without discarding it on a mistyped code. It commits factor activation and ten
+recovery codes together. The response returns plaintext codes once; only hashes
+bound to that factor version persist in the auth-owned
+`two_factor_recovery_codes` table. Run `buddy migrate --auth` when upgrading.
+
+`verifyTwoFactorCredential(userId, code)` accepts a six-digit authenticator code
+or a one-use recovery code and shares the account's second-factor lockout.
+Call it inside `withTwoFactorChallenge` before issuing the completed session.
+`generateTwoFactorRecoveryCodes(userId)` replaces all backup codes; applications
+must require fresh factor proof before calling it from a management endpoint.
+`remainingTwoFactorRecoveryCodes(userId)` returns only the available count.
+Never log codes, include them in URLs, cache their response or persist plaintext
+in browser or native storage.
+
+## Cookie tokens and database sessions
+
+Bearer/token-cookie auth and `SessionAuth` database sessions use different
+credentials. The default Auth middleware tries a parsed bearer, then the
+configured auth token cookie, then `session_id`, and stamps the request user.
+`authCookieName`, authCookie/clearAuthCookie, userFromCookie/cookieCheck and
+logoutCookie are native cookie helpers. Cookie writes need the normal browser
+CSRF flow; a cookie is not a bearer header.
+
+`SessionAuth.login` persists a session with an expiry; logout/destroyAll are
+awaitable mutations. user/check/refresh validate owner, deadline and optional
+idle timeout. `config.auth.idleTimeout` is milliseconds; fingerprint enforcement
+is opt-in via `config.auth.session.enforceFingerprint`, true or individual
+ip/userAgent flags. A changing mobile IP can make enforcement inappropriate.
+Reads outside a request lack a client fingerprint. Session refresh accepts a
+positive finite TTL and uses an observed-version update so it cannot resurrect
+an expired/deleted credential.
+
+Browser-session policy is separately resolved by resolveBrowserSessionPolicy.
+Read `config/auth.ts`: baseline and remembered defaults currently share
+tokenExpiry, and an app may configure them differently. Dedicated personal
+access token and delegated OAuth issuance do not inherit the browser policy.
+
+Source: `src/cookie-auth.ts`, `browser-session.ts`, `request-token.ts`,
+`session-auth.ts`, `page-gate.ts`. Evidence: `tests/session-http-lifecycle.test.ts`,
+`session-idle-timeout.test.ts`, `session-refresh-atomicity.test.ts`,
+`browser-session-policy.test.ts` and `auth-cookie-name.test.ts`.
+
+## Roles, permissions and active teams
+
+RBAC lazily creates the native bun-query-builder store; a custom RbacStore is
+optional. Apply role/permission/pivot migrations before assigning roles.
+`seedDefaultRoles()` idempotently creates admin/dev/client role packs with their
+declared guards. It does not seed the application's permission taxonomy.
+Guard-scoped sync preserves other guards. Direct SQL changes require explicit
+RBAC cache invalidation. A role name that drives UI visibility is not a substitute
+for action authorization.
+
+`resolveTeamContext(request, { allowAnyTeam? })` returns user, current team,
+role, switchable teams and the active preference. Related helpers include
+resolveAuthenticatedMembership, resolveAuthenticatedTeamId,
+resolveAuthenticatedUser, buildActiveTeamCookie and clearActiveTeamCookie.
+An active-team cookie is a preference, not proof of membership; the resolver
+checks the authenticated user's active membership. An operator override is
+application policy and must remain server-owned.
+
+### Profiles and role-specific workspaces
+
+An optional product profile (coach, athlete, creator) is separate from a role
+in an organization. Creating or importing that profile must not create a tenant
+or grant ownership, employment, billing or point-of-sale permissions. Require
+an explicit tenant and role when provisioning organization access; never use
+an administrative role as an implicit onboarding default.
+
+Resolve profiles and active organization memberships on the server, then expose
+the capabilities and permission names the application needs for navigation.
+Keep the dashboard destination and link rules in one display policy. An account
+may have several profiles, so preserve explicit access to its other workspaces.
+The permission for each visible action must match its API endpoint, rather than
+being inferred from another widget's presence or a broad persona label.
+
+Client-cached identity is only a display hint. Refresh it before choosing a
+role-dependent landing page, including phone redirection. Otherwise a revoked
+staff role can continue sending a personal account to a staff shell, or an old
+athlete hint can send a coach to a phone-only training view. Use STX signals and
+composables for that gate, and provide a retry state when verification fails.
+Every API action still authorizes its own request; hiding a dashboard is not
+authorization. Preserve independent profile and roster data when correcting a
+mistaken membership, and protect tenant ownership in the same transaction.
+
+The same freshness rule applies to settings profiles and tenant configuration
+that include roles, capabilities or edit permissions. Use `cache: 'no-store'`
+for these reads and `Cache-Control: private, no-store` for their responses.
+Otherwise a corrected account can show the right navigation while a saved
+profile still labels it Admin or enables tenant settings. Gate tenant editors
+on the freshly resolved profile as well as the configuration's edit flag.
+
+Source: `src/rbac.ts`, `rbac-store-bqb.ts`, `rbac-seed.ts` and `team.ts`.
+Evidence: `tests/rbac-default-store.test.ts`, `rbac-guard-sync.test.ts`,
+`rbac-seed.test.ts` and `active-team.test.ts`.
+
+## Social identity linking and referrals
+
+`resolveSocialSignIn(provider, identity, store?, { tx? })` resolves durable
+provider-id links first, then applies `config.auth.socials.matching`:
+link/create/refuse. An email match links only when the provider vouches for the
+address (`emailVerified === true`, else `'unverified-provider-email'`) AND the
+local account verified it (`users.email_verified_at`, else
+`'unverified-local-email'`). Neither guard is configurable. A user created from
+a provider-verified address starts with `email_verified_at` set (`createUser`
+receives `emailVerified`). Every store method receives the `tx`, so lookup, user
+and link commit together; a store may implement `isUserEmailVerified(userId, tx)`
+and otherwise gets the default that reads `users.email_verified_at`
+(`defaultSocialSignInStore()` is exported). Use SocialSignInRefusedError's
+`reason` to distinguish refusal from infrastructure failure. `stacks-socials`
+owns provider authorization, the flow state and callback exchange.
+
+After resolving the user, a redirect flow hands the browser a one-use code, not
+tokens: `createSessionHandoff(userId, { bindTo: 'cookie' | { challenge } })`
+returns `{ code, cookie, expiresAt }` (60 seconds, single use, bound to the
+HttpOnly cookie or to the SHA-256 hex of a native client's verifier), and
+`redeemSessionHandoff(code, secret)` returns `{ userId, data } | null` once.
+`readSessionHandoffCookie(header, code)` / `clearSessionHandoffCookie(code)` read
+and clear the binding cookie. The default `POST /auth/handoff`
+(SessionHandoffAction) redeems and mints the session; mint nothing before it.
+
+Referrals expose createReferralCode(ownerId), attributeReferral(newUserId, input),
+qualifyReferral(referredUserId) and referralSummary(ownerId), with optional
+database injection. Normalize/attribute at registration and qualify at the
+application's real conversion milestone. Attribution alone is not a paid reward.
+
+Source: `src/socials.ts`, `session-handoff.ts`, `referrals.ts`. Evidence:
+`tests/social-linking.test.ts`, `social-callback-flow.test.ts`,
+`referrals.test.ts`. All account features remain subject to model loading,
+selected route bundles, config gates and applied migrations.

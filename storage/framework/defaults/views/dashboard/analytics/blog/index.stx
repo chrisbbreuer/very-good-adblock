@@ -1,0 +1,14 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Blog Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="pages"
+    scope="blog"
+    title="Blog Analytics"
+    description="Traffic to blog routes grouped from recorded application requests."
+    emptyMessage="No successful blog page requests were recorded for this period."
+  />
+</PageLayout>
+@endsection

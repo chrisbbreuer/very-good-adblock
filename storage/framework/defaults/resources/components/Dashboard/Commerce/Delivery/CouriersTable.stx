@@ -1,0 +1,76 @@
+@import('../../UI/Table')
+
+<script client>
+type CourierStatus = 'active' | 'on_delivery' | 'on_break'
+
+interface CourierRow {
+  id: number
+  name: string
+  phone: string
+  vehicle_number: string
+  license: string
+  status: CourierStatus
+  user_id?: number | null
+  user?: { id: number, name: string, email?: string }
+}
+
+const couriers = useReactiveProp('couriers', [] as CourierRow[])
+const loading = useReactiveProp('loading', false)
+/** The parent's search: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+const COLUMNS = [
+  { key: 'name', label: 'Courier', sortable: true, class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'phone', label: 'Phone', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'vehicle_number', label: 'Vehicle', sortable: true, class: 'font-mono whitespace-nowrap' },
+  { key: 'license', label: 'License', sortable: true, class: 'font-mono whitespace-nowrap' },
+  { key: 'userLabel', label: 'User', sortable: true, class: 'whitespace-nowrap' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      on_delivery: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+      on_break: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    },
+    badgeLabels: { active: 'Available', on_delivery: 'On delivery', on_break: 'On break' },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => couriers().map(courier => ({
+  ...courier,
+  userLabel: courier.user?.name || (courier.user_id ? `User #${courier.user_id}` : 'Not linked'),
+  actionName: `courier ${courier.name}, record ${courier.id}`,
+})))
+
+function handleRowAction(payload: { action: string, row: CourierRow }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box.
+  Table pages the whole filtered list the parent passes, and stays mounted
+  while it loads.
+--}}
+<Table
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  :page-size="10"
+  empty-title="No couriers found"
+  empty-description="Add a courier, or adjust the search."
+  @row-action="handleRowAction"
+/>

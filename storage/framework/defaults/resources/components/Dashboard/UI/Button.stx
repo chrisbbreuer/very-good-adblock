@@ -1,0 +1,168 @@
+<script server>
+import { buttonVariantClasses } from '../../../../functions/dashboard-button'
+
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'warning' | 'bare'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  disabled?: boolean
+  loading?: boolean
+  pressed?: boolean
+  interaction?: 'action' | 'toggle'
+  fullWidth?: boolean
+  iconOnly?: boolean
+  tag?: 'button' | 'a'
+  href?: string
+  download?: string
+  target?: string
+  rel?: string
+  ariaLabel?: string
+  /** Hover text. An icon-only button shows its `ariaLabel` when this is unset. */
+  title?: string
+  type?: string
+  form?: string
+  class?: string
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  loading = false,
+  interaction = 'action',
+  fullWidth = false,
+  iconOnly = false,
+  class: customClass = '',
+  tag = 'button',
+  href = '',
+} = defineProps<ButtonProps>()
+
+// Size classes
+const sizeClasses = {
+  xs: 'text-[11px] px-2 py-1 rounded-md gap-1 h-6',
+  sm: 'text-[12px] px-2.5 py-1 rounded-md gap-1.5 h-7',
+  md: 'text-[13px] px-3 py-1.5 rounded-lg gap-1.5 h-8',
+  lg: 'text-[14px] px-4 py-2 rounded-lg gap-2 h-9'
+}
+
+const iconOnlySizes = {
+  xs: 'h-6 w-6 rounded-md',
+  sm: 'h-7 w-7 rounded-md',
+  md: 'h-8 w-8 rounded-lg',
+  lg: 'h-9 w-9 rounded-lg'
+}
+
+const buttonClass = [
+  'inline-flex items-center justify-center',
+  'font-medium tracking-tight',
+  'transition-all duration-150',
+  'select-none',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-0',
+  'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none aria-disabled:opacity-40 aria-disabled:cursor-not-allowed aria-disabled:pointer-events-none',
+  'active:scale-[0.98]',
+  interaction === 'toggle'
+    ? 'aria-pressed:text-blue-700 dark:aria-pressed:text-blue-300 aria-pressed:bg-blue-50 dark:aria-pressed:bg-blue-950/40 aria-pressed:border-blue-200 dark:aria-pressed:border-blue-900'
+    : '',
+  customClass,
+  fullWidth ? 'w-full' : '',
+  // `bare` takes neither: its whole point is to impose no box.
+  variant === 'bare' ? '' : (iconOnly ? iconOnlySizes[size] : sizeClasses[size]),
+  buttonVariantClasses[variant]
+].filter(Boolean).join(' ')
+</script>
+<script client>
+import { buttonVariantToggles } from '../../../../functions/dashboard-button'
+
+// A bound `:variant` changes after the server render; the toggles move the
+// colour with it (stacksjs/stacks#3180).
+const liveVariant = useReactiveProp('variant', 'primary')
+const liveCallerClass = useReactiveProp('class', '')
+const variantToggles = derived(() => buttonVariantToggles(liveVariant(), liveCallerClass()))
+const liveDisabled = useReactiveProp('disabled', false)
+const liveLoading = useReactiveProp('loading', false)
+const livePressed = useReactiveProp('pressed', false)
+const liveHref = useReactiveProp('href', '')
+const liveDownload = useReactiveProp('download', '')
+const liveTarget = useReactiveProp('target', '')
+const liveRel = useReactiveProp('rel', '')
+const liveType = useReactiveProp('type', 'button')
+const liveForm = useReactiveProp('form', '')
+const liveAriaLabel = useReactiveProp('ariaLabel', '')
+const liveTitle = useReactiveProp('title', '')
+const liveIconOnly = useReactiveProp('iconOnly', false)
+/**
+ * What a pointer sees on hover. An icon-only button has no visible words, so
+ * its accessible label doubles as the tooltip: a row of eye, pencil and trash
+ * icons names each action when hovered instead of leaving it to guesswork.
+ */
+function hoverTitle(): string | undefined {
+  return liveTitle() || (liveIconOnly() ? liveAriaLabel() : '') || undefined
+}
+/**
+ * For a button that opens a menu or a disclosure.
+ *
+ * An arbitrary `aria-*` attribute written on `<Button>` is not forwarded, so a
+ * caller that needs these has to be given them. The column-visibility toggle
+ * in `UI/Table` lost both when it moved off a raw `<button>` - the menu still
+ * worked and a screen reader no longer knew it was a popup, or whether it was
+ * open. See stacksjs/stacks#2926.
+ */
+const liveAriaHasPopup = useReactiveProp('ariaHasPopup', '')
+const liveAriaExpanded = useReactiveProp('ariaExpanded', '')
+</script>
+@if(tag === 'a' || (href && href.length > 0))
+    <a
+      :href="liveDisabled() || liveLoading() ? undefined : liveHref()"
+      :download="liveDownload() || undefined"
+      :aria-label="liveAriaLabel() || undefined"
+      :title="hoverTitle()"
+      class="{{ buttonClass }}"
+        :class="variantToggles()"
+      :target="liveTarget() || undefined"
+      :rel="liveRel() || undefined"
+      :aria-busy="liveLoading() ? 'true' : 'false'"
+      :aria-disabled="liveDisabled() || liveLoading() ? 'true' : 'false'"
+      :tabindex="liveDisabled() || liveLoading() ? -1 : undefined"
+    >
+      <template :if="liveLoading()">
+        <span aria-hidden="true" class="animate-spin h-3.5 w-3.5 i-hugeicons-loading-03 {{ iconOnly ? '' : '-ml-0.5 mr-1.5' }}"></span>
+      </template>
+      <slot />
+    </a>
+  @else
+    @if(interaction === 'toggle')
+      <button
+        :type="liveType()"
+        :form="liveForm() || undefined"
+        class="{{ buttonClass }}"
+        :class="variantToggles()"
+        :aria-label="liveAriaLabel() || undefined"
+        :title="hoverTitle()"
+        :aria-busy="liveLoading() ? 'true' : 'false'"
+        :aria-pressed="String(livePressed())"
+        :disabled="liveDisabled() || liveLoading()"
+      >
+        <template :if="liveLoading()">
+          <span aria-hidden="true" class="animate-spin h-3.5 w-3.5 i-hugeicons-loading-03 {{ iconOnly ? '' : '-ml-0.5 mr-1.5' }}"></span>
+        </template>
+        <slot />
+      </button>
+    @else
+      <button
+        :type="liveType()"
+        :form="liveForm() || undefined"
+        class="{{ buttonClass }}"
+        :class="variantToggles()"
+        :aria-label="liveAriaLabel() || undefined"
+        :title="hoverTitle()"
+        :aria-haspopup="liveAriaHasPopup() || undefined"
+        :aria-expanded="liveAriaExpanded() || undefined"
+        :aria-busy="liveLoading() ? 'true' : 'false'"
+        :disabled="liveDisabled() || liveLoading()"
+      >
+        <template :if="liveLoading()">
+          <span aria-hidden="true" class="animate-spin h-3.5 w-3.5 i-hugeicons-loading-03 {{ iconOnly ? '' : '-ml-0.5 mr-1.5' }}"></span>
+        </template>
+        <slot />
+      </button>
+    @endif
+  @endif

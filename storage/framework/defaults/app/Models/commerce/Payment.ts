@@ -1,0 +1,203 @@
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Payment',
+  table: 'payments',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // Rows belong to the caller's customer record, one hop from the user
+  // (stacksjs/stacks#2375). Without this the generated writes are reachable by
+  // any authenticated caller for any row.
+  ownership: customerOwnership(),
+
+  traits: {
+    gdpr: { subject: { via: 'Customer' }, erasure: 'anonymize', basis: 'legal_obligation', purpose: 'Payment records, kept for tax and accounting' },
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'orderId', 'customerId', 'amount', 'method', 'status', 'createdAt'],
+      searchable: ['orderId', 'customerId', 'referenceNumber'],
+      sortable: ['amount', 'createdAt'],
+      filterable: ['method', 'status', 'createdAt'],
+    },
+
+    useSeeder: {
+      count: 50,
+    },
+
+    useApi: {
+      uri: 'payments',
+      middleware: ['auth'],
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Order', 'Customer'],
+
+  attributes: {
+    amount: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(1),
+      },
+      factory: faker => faker.number.int({ min: 1000, max: 50000 }),
+    },
+
+    method: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.enum([
+          'cash',
+          'creditCard',
+          'debitCard',
+          'paypal',
+          'applePay',
+          'googlePay',
+          'bankTransfer',
+          'giftCard',
+        ]).required(),
+      },
+      factory: faker => faker.helpers.arrayElement([
+        'cash',
+        'creditCard',
+        'debitCard',
+        'paypal',
+        'applePay',
+        'googlePay',
+        'bankTransfer',
+        'giftCard',
+      ]),
+    },
+
+    status: {
+      order: 5,
+      fillable: true,
+      default: 'pending',
+      validation: {
+        rule: schema.enum([
+          'pending',
+          'processing',
+          'completed',
+          'failed',
+          'refunded',
+          'partiallyRefunded',
+          'succeeded',
+        ]).required(),
+      },
+      factory: faker => faker.helpers.arrayElement([
+        'pending',
+        'processing',
+        'completed',
+        'failed',
+      ]),
+    },
+
+    currency: {
+      order: 7,
+      fillable: true,
+      default: 'USD',
+      validation: {
+        rule: schema.string().required().max(3),
+      },
+      factory: faker => faker.helpers.arrayElement(['USD', 'EUR', 'GBP', 'CAD', 'AUD']),
+    },
+
+    referenceNumber: {
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.string.alphanumeric(16).toUpperCase(),
+    },
+
+    cardLastFour: {
+      personal: true,
+      order: 9,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(4),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.string.numeric(4), { probability: 0.7 }),
+    },
+
+    cardBrand: {
+      personal: true,
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.helpers.arrayElement(['Visa', 'Mastercard', 'Amex', 'Discover']), { probability: 0.7 }),
+    },
+
+    billingEmail: {
+      personal: true,
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.string().email(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.internet.email(), { probability: 0.8 }),
+    },
+
+    transactionId: {
+      order: 12,
+      unique: true,
+      fillable: true,
+      foreignKey: false, // This is a payment processor transaction ID string, not a FK to transactions table
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.9 }),
+    },
+
+    paymentProvider: {
+      order: 13,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.helpers.arrayElement(['stripe', 'paypal', 'square', 'braintree', 'authorizeNet']), { probability: 0.9 }),
+    },
+
+    refundAmount: {
+      order: 14,
+      fillable: true,
+      default: 0,
+      validation: {
+        rule: schema.number().min(0),
+      },
+    },
+
+    notes: {
+      personal: true,
+      order: 15,
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }),
+    },
+
+    // Why the provider declined it, in the provider's words. Written by the
+    // payment webhook (`handleCommercePaymentEvent`) for ops triage.
+    failureReason: {
+      order: 16,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(1000),
+      },
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+  },
+} as const)

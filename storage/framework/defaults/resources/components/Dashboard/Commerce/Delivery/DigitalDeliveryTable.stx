@@ -1,0 +1,83 @@
+@import('../../UI/Table')
+
+<script client>
+type DigitalDeliveryStatus = 'active' | 'inactive'
+
+interface DigitalDeliveryRow {
+  id: number
+  name: string
+  description: string
+  download_limit?: number | null
+  expiry_days: number
+  requires_login: boolean | number
+  automatic_delivery: boolean | number
+  status: DigitalDeliveryStatus
+}
+
+const methods = useReactiveProp('methods', [] as DigitalDeliveryRow[])
+const loading = useReactiveProp('loading', false)
+/** The parent's search: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+/** Expiry keeps its unit and sorts by the number of days. */
+const COLUMNS = [
+  { key: 'name', label: 'Method', sortable: true, class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'description', label: 'Description', class: 'max-w-xs truncate' },
+  { key: 'download_limit', label: 'Downloads', type: 'number' as const, sortable: true, emptyText: 'Unlimited' },
+  { key: 'expiry_days', label: 'Expiry', sortable: true, slotted: true },
+  { key: 'requiresLogin', label: 'Login', type: 'boolean' as const, sortable: true },
+  { key: 'automatic', label: 'Automatic', type: 'boolean' as const, sortable: true },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      inactive: 'bg-stone-100 text-stone-600 dark:bg-neutral-700 dark:text-neutral-300',
+    },
+    badgeLabels: { active: 'Active', inactive: 'Inactive' },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => methods().map(method => ({
+  ...method,
+  expiryLabel: `${method.expiry_days} days`,
+  requiresLogin: Boolean(method.requires_login),
+  automatic: Boolean(method.automatic_delivery),
+  actionName: `digital delivery method ${method.name}, record ${method.id}`,
+})))
+
+function handleRowAction(payload: { action: string, row: DigitalDeliveryRow }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box.
+  Table pages the whole filtered list the parent passes, and stays mounted
+  while it loads.
+--}}
+<Table
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  :page-size="10"
+  empty-title="No digital delivery methods found"
+  empty-description="Add a method, or adjust the search."
+  @row-action="handleRowAction"
+>
+  <template #cell="{ row }">
+    <span class="whitespace-nowrap" x-text="row.expiryLabel"></span>
+  </template>
+</Table>

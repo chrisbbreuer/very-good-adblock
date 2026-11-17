@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Page Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="pages"
+    title="Page Analytics"
+    description="Page traffic grouped from recorded application requests."
+    emptyMessage="Open application pages through the instrumented server to begin collecting page traffic."
+  />
+</PageLayout>
+@endsection

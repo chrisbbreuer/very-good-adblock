@@ -1,0 +1,10 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Product Waitlist')
+
+<div class="p-4 lg:p-8 min-h-screen dark:bg-neutral-900">
+  <ProductWaitlistDashboard />
+</div>
+
+@endsection

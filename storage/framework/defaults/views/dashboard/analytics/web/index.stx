@@ -1,0 +1,7 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Web Analytics')
+
+<WebAnalyticsDashboard />
+@endsection

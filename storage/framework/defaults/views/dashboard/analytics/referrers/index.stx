@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Referrer Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="referrers"
+    title="Referrer Analytics"
+    description="Traffic sources recorded by the configured analytics provider."
+    emptyMessage="Request telemetry does not retain referrer headers. Configure an analytics provider that records sources to populate this view."
+  />
+</PageLayout>
+@endsection

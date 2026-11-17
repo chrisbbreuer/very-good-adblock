@@ -1,0 +1,123 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'ProductUnit',
+  table: 'product_units',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'name', 'abbreviation', 'type', 'description', 'isDefault'],
+      searchable: ['name', 'abbreviation', 'type', 'description'],
+      sortable: ['name', 'type', 'createdAt', 'updatedAt'],
+      filterable: ['type', 'isDefault'],
+    },
+
+    useSeeder: {
+      count: 10,
+    },
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'product-units',
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Product'],
+
+  attributes: {
+    name: {
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Name must have a maximum of 100 characters',
+        },
+      },
+      factory: (faker) => {
+        const units = ['Piece', 'Kilogram', 'Gram', 'Liter', 'Milliliter', 'Meter', 'Centimeter', 'Box', 'Pack', 'Pair']
+        return faker.helpers.arrayElement(units)
+      },
+    },
+
+    abbreviation: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(10),
+        message: {
+          max: 'Abbreviation must have a maximum of 10 characters',
+        },
+      },
+      factory: (faker) => {
+        const abbrs = ['pc', 'kg', 'g', 'L', 'mL', 'm', 'cm', 'box', 'pk', 'pr']
+        return faker.helpers.arrayElement(abbrs)
+      },
+    },
+
+    type: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().required(),
+        message: {
+          string: 'Type must be a string',
+        },
+      },
+      factory: (faker) => {
+        const types = ['Weight', 'Volume', 'Length', 'Quantity', 'Size']
+        return faker.helpers.arrayElement(types)
+      },
+    },
+
+    description: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(255),
+        message: {
+          max: 'Description must have a maximum of 255 characters',
+        },
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+
+    isDefault: {
+      default: false,
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.boolean(),
+        message: {
+          boolean: 'Default status must be a boolean',
+        },
+      },
+      factory: () => false,
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
+    },
+  },
+} as const)

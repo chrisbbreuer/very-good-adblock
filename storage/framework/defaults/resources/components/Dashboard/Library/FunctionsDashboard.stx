@@ -1,0 +1,135 @@
+@import('../UI/Button')
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface FunctionRow {
+  name: string
+  path: string
+  extension: string
+  bytes: number
+  createdAt: string
+  updatedAt: string
+}
+
+const functions = state<FunctionRow[]>([])
+const totalBytes = state(0)
+const sourceRoot = state('resources/functions')
+const loading = state(true)
+const loadError = state('')
+const dialogOpen = state(false)
+const saving = state(false)
+const saveError = state('')
+
+const COLUMNS = [
+  { key: 'name', label: 'Function', sortable: true, class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'path', label: 'Path', sortable: true, class: 'font-mono text-xs text-gray-500 dark:text-neutral-400' },
+  // `bytes` so it sorts numerically; `sizeLabel` is what the cell shows.
+  { key: 'sizeLabel', label: 'Size', sortable: true, class: 'text-gray-500 dark:text-neutral-400' },
+  { key: 'updatedAt', label: 'Updated', type: 'datetime' as const, sortable: true, class: 'text-gray-500 dark:text-neutral-400' },
+]
+
+/** `UI/Table` owns the search, so this only shapes the rows it reads. */
+function visibleFunctions(): Array<FunctionRow & { sizeLabel: string }> {
+  return functions().map(fn => ({ ...fn, sizeLabel: formatBytes(fn.bytes) }))
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024)
+    return `${bytes} B`
+  return `${(bytes / 1024).toFixed(1)} kB`
+}
+
+async function loadFunctions(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<{ functions?: FunctionRow[], totalBytes?: number, sourceRoot?: string }>('/api/dashboard/library/functions')
+    if (!Array.isArray(data.functions))
+      throw new TypeError('Function sources were not returned in the expected shape.')
+    functions.set(data.functions)
+    totalBytes.set(Number(data.totalBytes || 0))
+    sourceRoot.set(String(data.sourceRoot || 'resources/functions'))
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not load functions', { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openCreate(): void {
+  saveError.set('')
+  dialogOpen.set(true)
+}
+
+function closeCreate(): void {
+  if (!saving())
+    dialogOpen.set(false)
+}
+
+async function createFunction(name: string): Promise<void> {
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi('/api/dashboard/library/functions', {
+      method: 'POST',
+      body: { name },
+    })
+    dialogOpen.set(false)
+    pushToast('success', 'Function created', { detail: `${name}.ts` })
+    await loadFunctions()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+onMount(() => { void loadFunctions() })
+</script>
+
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Library</p><h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">Functions</h1><p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Source files discovered from {{ sourceRoot() }}.</p></div>
+    <div class="flex gap-2"><Button type="button" variant="secondary" :loading="loading()" :disabled="loading()" @click="loadFunctions()">Refresh</Button><Button type="button" variant="primary" @click="openCreate()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Create function</Button></div>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button type="button" variant="ghost" size="sm" @click="loadFunctions()">Retry</Button></div>
+
+  <section aria-label="Function metrics" class="grid gap-3 sm:grid-cols-3">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Source files</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ functions().length }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Combined size</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ formatBytes(totalBytes()) }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Visible</p><p class="mt-2 font-semibold text-2xl text-blue-700 dark:text-blue-300">{{ visibleFunctions().length }}</p></article>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <Table
+      :columns="COLUMNS"
+      :data="visibleFunctions()"
+      :loading="loading()"
+      row-key="path"
+      searchable
+      search-placeholder="Search name or path"
+      paginated
+      :page-size="25"
+      empty-title="No functions found"
+      empty-description="Create a function or adjust the search."
+    />
+  </section>
+</div>
+
+<SourceScaffoldDialog
+  :open="dialogOpen()"
+  kind="function"
+  :busy="saving()"
+  :error="saveError()"
+  @close="closeCreate"
+  @submit="createFunction"
+/>

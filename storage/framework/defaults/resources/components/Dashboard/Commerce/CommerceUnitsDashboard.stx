@@ -1,0 +1,252 @@
+<script client>
+import type {
+  ProductUnitRecord,
+  ProductUnitSummary,
+} from '../../../../app/Actions/Dashboard/Commerce/product-unit-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface ProductUnitIndexResponse {
+  records: ProductUnitRecord[]
+  total: number
+  page: number
+  summary: ProductUnitSummary
+  types: string[]
+}
+
+interface ProductUnitWritePayload {
+  name: string
+  abbreviation: string
+  type: string
+  description: string
+  isDefault: boolean
+  productId: number | null
+}
+
+const emptySummary: ProductUnitSummary = { total: 0, defaults: 0, types: 0, linkedProducts: 0, defaultConflicts: 0 }
+const summary = state<ProductUnitSummary>({ ...emptySummary })
+const types = state<string[]>([])
+const typeFilter = state('all')
+const defaultFilter = state('all')
+const sort = state('name')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<ProductUnitRecord | null>(null)
+const deletingRecord = state<ProductUnitRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  name: { sort: 'name', direction: 'asc' },
+  type: { sort: 'type', direction: 'asc' },
+  product: { sort: 'product', direction: 'asc' },
+  newest: { sort: 'newest', direction: 'desc' },
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218), where
+// this page used to do all of that with the newest 500 units.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<ProductUnitRecord>({
+  fetch: params => dashboardApi<ProductUnitIndexResponse>(`/api/dashboard/commerce/units?${params}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.name!,
+  columnSorts: { name: 'name', defaultFlag: 'default', type: 'type', productName: 'product', createdAt: 'created' },
+  filters: () => ({ type: typeFilter(), default: defaultFilter() }),
+  onLoad: (result) => {
+    const data = result as ProductUnitIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    types.set(Array.isArray(data.types) ? data.types : [])
+  },
+  onError: error => pushToast('error', 'Could not load product units', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function unitTypes(): string[] {
+  return types()
+}
+
+function loadUnits(): Promise<void> {
+  return load()
+}
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching product ${count === 1 ? 'unit' : 'units'}`
+}
+
+function metricCards(): Array<{ label: string, value: string }> {
+  return [
+    { label: 'Product units', value: String(summary().total) },
+    { label: 'Defaults', value: String(summary().defaults) },
+    { label: 'Unit types', value: String(summary().types) },
+    { label: 'Linked products', value: String(summary().linkedProducts) },
+  ]
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: ProductUnitRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function saveUnit(payload: ProductUnitWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  const path = editing
+    ? `/api/dashboard/commerce/units/${current.id}`
+    : '/api/dashboard/commerce/units'
+  const body = {
+    name: payload.name,
+    abbreviation: payload.abbreviation,
+    type: payload.type,
+    description: payload.description,
+    productId: payload.productId,
+    isDefault: payload.isDefault,
+  }
+
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(path, {
+      method: editing ? 'PATCH' : 'POST',
+      body,
+    })
+
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Product unit updated' : 'Product unit added')
+    await loadUnits()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save product unit', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: ProductUnitRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteUnit(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/units/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Product unit deleted')
+    await loadUnits()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete product unit', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadUnits()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Units" description="Manage native ProductUnit records and their product relationships.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadUnits">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button @click="openAdd()">
+      <span class="h-4 w-4 i-hugeicons-add-01"></span>
+      Add unit
+    </Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+  <div :if="summary().defaultConflicts > 0" class="flex gap-3 items-start p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+    <span class="shrink-0 mt-0.5 h-5 w-5 i-hugeicons-alert-02"></span>
+    <p>{{ summary().defaultConflicts }} unit {{ summary().defaultConflicts === 1 ? 'type has' : 'types have' }} competing defaults. Save the intended default to normalize that type.</p>
+  </div>
+
+  <MetricCards label="Product unit metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search product units" ariaLabel="Search product units" /></div>
+      <Select v-model:value="typeFilter" ariaLabel="Unit type" placeholder="" :options="[{ value: 'all', label: 'All unit types' }, ...unitTypes().map(type => ({ value: type, label: type }))]" />
+      <Select v-model:value="defaultFilter" ariaLabel="Default state" placeholder="" :options="[{ value: 'all', label: 'All units' }, { value: 'default', label: 'Defaults only' }, { value: 'not-default', label: 'Not default' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+      <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">
+        Sort
+        <Select v-model:value="sort" ariaLabel="Sort" size="sm" placeholder="" :options="[{ value: 'name', label: 'Name' }, { value: 'type', label: 'Type' }, { value: 'product', label: 'Product' }, { value: 'newest', label: 'Newest' }]" />
+      </label>
+    </div>
+
+    <CommerceUnitsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<CommerceUnitDialog
+  :open="dialogOpen()"
+  :mode="dialogMode()"
+  :record="editingRecord()"
+  :types="unitTypes()"
+  :busy="saving()"
+  :errors="validationErrors()"
+  @submit="saveUnit"
+  @close="closeDialog()"
+/>
+
+<CommerceUnitDeleteDialog
+  :open="Boolean(deletingRecord())"
+  :record="deletingRecord()"
+  :busy="deleting()"
+  @confirm="deleteUnit()"
+  @close="closeDelete()"
+/>

@@ -1,0 +1,6 @@
+@extends('layouts/guest')
+
+@section('content')
+@title('Login - Stacks Dashboard')
+<LoginDashboard />
+@endsection

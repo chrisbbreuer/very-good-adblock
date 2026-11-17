@@ -1,0 +1,10 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Content')
+
+<PageLayout>
+  <ContentDashboard />
+</PageLayout>
+
+@endsection

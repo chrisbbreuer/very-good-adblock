@@ -1,0 +1,109 @@
+<script client>
+interface DashboardTab {
+  id: string
+  label: string
+  icon?: string
+  badge?: string | number
+  disabled?: boolean
+  panelId?: string
+}
+
+type TabsVariant = 'underline' | 'pills' | 'boxed'
+type TabsSize = 'sm' | 'md' | 'lg'
+
+const tabs = useReactiveProp<DashboardTab[]>('tabs', [])
+const requestedTab = useReactiveProp('activeTab', '')
+const variant = useReactiveProp<TabsVariant>('variant', 'underline')
+const size = useReactiveProp<TabsSize>('size', 'md')
+const fullWidth = useReactiveProp('fullWidth', false)
+const activeTab = state(requestedTab())
+const emit = defineEmits(['update:activeTab', 'change'])
+
+const sizeClasses: Record<TabsSize, string> = {
+  sm: 'text-sm py-2 px-3',
+  md: 'text-sm py-2.5 px-4',
+  lg: 'text-base py-3 px-5',
+}
+
+const containerClasses: Record<TabsVariant, string> = {
+  // An inset shadow, not a border: the list scrolls sideways on a narrow
+  // screen, and a scroller clips anything (like a tab pulled over a border)
+  // that hangs outside it. The selected tab's underline still covers it.
+  underline: 'shadow-[inset_0_-1px_0_#e5e5e5] dark:shadow-[inset_0_-1px_0_#404040]',
+  pills: 'gap-2 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg',
+  boxed: 'border border-neutral-200 dark:border-neutral-700 rounded-lg p-1',
+}
+
+effect(() => {
+  const requested = requestedTab()
+  const firstEnabled = tabs().find(tab => !tab.disabled)?.id || ''
+  activeTab.set(requested || firstEnabled)
+})
+
+function selectTab(tab: DashboardTab): void {
+  if (tab.disabled || activeTab() === tab.id)
+    return
+  activeTab.set(tab.id)
+  emit('update:activeTab', tab.id)
+  emit('change', tab.id, tab)
+}
+
+function tabClass(tab: DashboardTab): string {
+  const selected = activeTab() === tab.id
+  const common = [
+    'inline-flex shrink-0 items-center justify-center gap-2 font-medium whitespace-nowrap transition-all duration-150 focus-visible:outline-offset-[-2px]',
+    sizeClasses[size()],
+    fullWidth() ? 'flex-1' : '',
+    tab.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+  ]
+
+  if (variant() === 'pills') {
+    common.push('rounded-md')
+    common.push(selected
+      ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+      : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200')
+  }
+  else if (variant() === 'boxed') {
+    common.push('rounded-md')
+    common.push(selected
+      ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+      : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:bg-neutral-800/50')
+  }
+  else {
+    common.push('border-b-2')
+    common.push(selected
+      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200')
+  }
+
+  return common.filter(Boolean).join(' ')
+}
+
+function badgeClass(tab: DashboardTab): string {
+  return activeTab() === tab.id
+    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400'
+    : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'
+}
+</script>
+
+<div role="tablist" :class="'flex overflow-x-auto ' + (fullWidth() ? 'w-full ' : '') + containerClasses[variant()]">
+  <button :for="tab in tabs()"
+    type="button"
+    role="tab"
+    :aria-selected="String(activeTab() === tab.id)"
+    :aria-controls="tab.panelId || undefined"
+    :tabindex="activeTab() === tab.id ? 0 : -1"
+    :disabled="Boolean(tab.disabled)"
+    :class="tabClass(tab)"
+    @click="selectTab(tab)"
+  >
+    <span :if="tab.icon" :class="tab.icon + ' h-4 w-4'"></span>
+    <span>{{ tab.label }}</span>
+    <span
+      :if="tab.badge !== undefined"
+      :class="'inline-flex items-center justify-center px-1.5 h-5 min-w-[1.25rem] font-medium text-xs rounded-full ' + badgeClass(tab)"
+    >
+      {{ tab.badge }}
+    </span>
+  </button>
+</div>

@@ -1,0 +1,268 @@
+<script>
+interface NativeAppShellProps {
+  class?: string
+  tabBar?: boolean
+  /** Open the app's deep links (`myapp://path`, or a universal link) at their path. */
+  deepLinks?: boolean
+}
+
+const { tabBar = false } = defineProps<NativeAppShellProps>()
+</script>
+
+<script client>
+import { deepLinks as deepLinkService, device, followDeepLinks, installNativeChrome, installPressables, isNativeMobile, splash, tabBar as nativeTabBar, whenNativeMobile } from '@stacksjs/mobile'
+
+const className = useReactiveProp<string>('class', '')
+// A bare attribute arrives as an empty string.
+const deepLinkProp = useReactiveProp<unknown>('deepLinks', false)
+let stopDeepLinks: (() => void) | null = null
+onMount(() => {
+  const on = deepLinkProp()
+  if (on === true || on === '' || on === 'true')
+    stopDeepLinks = followDeepLinks(path => navigate(path), deepLinkService)
+})
+onDestroy(() => stopDeepLinks?.())
+
+// Craft holds its launch splash over the page until the page is ready. The
+// first screen is: once it has painted (the second frame after mounting), the
+// splash fades and the app goes from launch to content with nothing blank in
+// between. Later screens call this too, which the shell ignores.
+onMount(() => {
+  requestAnimationFrame(() => requestAnimationFrame(() => splash.hide()))
+})
+
+// Asked twice on purpose. Craft installs its bridge after the document starts,
+// so on a phone the answer at setup is often `false`, and every rule hanging
+// off `.native-mobile` would never apply. whenNativeMobile() answers once the
+// host is recognisable or the bridge is ready.
+const nativeMobile = state(isNativeMobile())
+const platform = state('')
+void whenNativeMobile().then((native) => {
+  nativeMobile.set(native)
+  if (native) platform.set(device.isIOS() ? 'ios' : device.isAndroid() ? 'android' : '')
+})
+
+// One class binding: a second binding on the same element overwrites the
+// first's classes whenever it runs.
+const shellClass = derived(() => `${nativeMobile() ? 'native-mobile ' : ''}${className()}`.trim())
+
+// In the phone app the chrome around the page follows it: the colour iOS
+// shows past its edges, the status bar's text for its colour scheme, no
+// previous/next/Done bar over the keyboard, and the phone's Dynamic Type and
+// Reduce Motion settings as attributes the components read. A finger landing
+// on anything `data-native-pressable` wakes the haptics for the tap to come
+// (and, by listening at all, gives iOS its :active pressed state).
+const shell = useRef('nativeAppShell')
+let stopChrome: (() => void) | null = null
+let stopPressables: (() => void) | null = null
+let destroyed = false
+onMount(() => {
+  const root = shell.current as HTMLElement | null
+  if (!root) return
+  stopPressables = installPressables(root.ownerDocument)
+  void whenNativeMobile().then((native) => {
+    if (!native || destroyed) return
+    stopChrome = installNativeChrome(root.ownerDocument)
+    // A shell without a tab bar (sign-in, a flow of its own) says so: an app
+    // whose native bar was configured to show from its first frame, before
+    // any page had described one, would otherwise keep it over this screen.
+    if (!root.querySelector('.native-app-tab-slot') && nativeTabBar.isAvailable()) nativeTabBar.hide()
+  })
+})
+onDestroy(() => {
+  destroyed = true
+  stopChrome?.()
+  stopPressables?.()
+})
+</script>
+
+<div
+  ref="nativeAppShell"
+  data-native-app-shell
+  class="native-app-shell"
+  :class="shellClass()"
+  :data-native-platform="platform()"
+>
+  <!-- The application layout owns the single <main> landmark. This shell is
+       structural chrome; making it another <main> creates invalid nested
+       landmarks and gives both elements the router's stx-content view-
+       transition name. -->
+  <div class="native-app-content">
+    <slot />
+  </div>
+  @if(tabBar)
+    <footer class="native-app-tab-slot">
+      <slot name="tab-bar" />
+    </footer>
+  @endif
+</div>
+
+<style>
+  .native-app-shell {
+    --native-safe-area-top: env(safe-area-inset-top, 0px);
+    --native-safe-area-right: env(safe-area-inset-right, 0px);
+    --native-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --native-safe-area-left: env(safe-area-inset-left, 0px);
+    /* The height a fixed tab bar takes, which content and sticky footers clear. */
+    --native-tab-bar-height: 0px;
+
+    /* Dynamic Type. The Native components size their text in em off this,
+       17px (iOS's body size) at the phone's default text size, scaled by the
+       setting the shell reports. */
+    --native-font-size: calc(17px * var(--native-font-scale, var(--craft-font-scale, 1)));
+
+    min-height: 100dvh;
+    color: inherit;
+    background: inherit;
+    padding-top: var(--native-safe-area-top);
+    padding-right: var(--native-safe-area-right);
+    padding-left: var(--native-safe-area-left);
+  }
+
+  /* The system font at the body size the phone's text setting chooses, as a
+     native screen's text is. An app keeps a brand face with
+     --native-font-family. The line height stays the app's. */
+  .native-app-shell.native-mobile {
+    font: -apple-system-body;
+    font-family: var(--native-font-family, -apple-system, system-ui, sans-serif);
+    line-height: inherit;
+  }
+
+  /* A tap does not flash a grey box over what was tapped, and does not wait
+     300ms to tell a tap from a double-tap zoom. */
+  .native-mobile :is(a, button, [role=button], label, summary),
+  [data-native-pressable] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* The press every control shares: dimmed and pressed in at once while the
+     finger is down, eased back on release, as UIKit's buttons are.
+     `data-native-pressable="opacity"` only dims, for a large row a scale
+     would shift. */
+  [data-native-pressable] {
+    transition: opacity 240ms ease-out, transform 240ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+
+  [data-native-pressable]:active {
+    opacity: 0.55;
+    transform: scale(0.97);
+    transition: none;
+  }
+
+  [data-native-pressable="opacity"]:active { transform: none; }
+
+  :root[data-native-reduce-motion] [data-native-pressable]:active { transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-native-pressable]:active { transform: none; }
+  }
+
+  /* iOS zooms the page into a text field smaller than 16px when it takes
+     focus, and inside an app nothing zooms it back out: the whole screen
+     stayed magnified and shifted sideways after typing a comment. A field in
+     the shell is never smaller than that. */
+  .native-app-shell :is(input, textarea, select) { font-size: max(16px, 1em); }
+
+  .native-app-shell::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 35;
+    height: var(--native-safe-area-top);
+    pointer-events: none;
+    background: var(--native-safe-area-background, Canvas);
+  }
+
+  .native-app-content {
+    min-height: calc(100dvh - var(--native-safe-area-top));
+    padding-bottom: var(--native-safe-area-bottom);
+  }
+
+  /*
+   * Clearance for the fixed tab bar, and ONLY where a tab bar can appear.
+   *
+   * The slot element exists in the DOM whenever `tabBar` is set, but a bottom
+   * tab bar is a mobile control — apps hide its contents at desktop widths
+   * (`md:hidden`). `:has()` matches the slot either way, so this reserved 5rem
+   * on desktop too: eighty pixels of empty, scrollable nothing below the
+   * footer that a visitor could scroll into, which reads as a broken page.
+   *
+   * Scoped to below `md` (768px, the framework's own breakpoint and where
+   * NativeTabBar stops being shown) — or to the phone app at any width — so
+   * the clearance exists exactly when the thing it is clearing does.
+   */
+  @media (max-width: 767.98px) {
+    .native-app-shell:has(.native-app-tab-slot) { --native-tab-bar-height: 4.5rem; }
+    .native-app-shell:has(.native-app-tab-slot) .native-app-content {
+      padding-bottom: calc(5rem + var(--native-safe-area-bottom));
+    }
+  }
+
+  .native-app-shell.native-mobile:has(.native-app-tab-slot) { --native-tab-bar-height: 4.5rem; }
+  .native-app-shell.native-mobile:has(.native-app-tab-slot) .native-app-content {
+    padding-bottom: calc(5rem + var(--native-safe-area-bottom));
+  }
+
+  /* In Craft's iOS shell the phone draws the tab bar natively, floating over
+     the page, and says how much of the screen it covers in
+     --craft-tab-bar-height. Content scrolls under it and clears it at the end. */
+  html[data-craft-chrome] .native-app-shell:has(.native-app-tab-slot) {
+    --native-tab-bar-height: var(--craft-tab-bar-height, 6rem);
+  }
+  html[data-craft-chrome] .native-app-shell:has(.native-app-tab-slot) .native-app-content {
+    padding-bottom: calc(var(--craft-tab-bar-height, 6rem) + 0.75rem);
+  }
+  html[data-craft-chrome] .native-app-shell:has([data-native-hide-tab-bar]) .native-app-content {
+    padding-bottom: var(--native-safe-area-bottom);
+  }
+
+  .native-app-sticky-top {
+    top: var(--native-safe-area-top);
+  }
+
+  /* No inset padding here: the bar inside pads itself, so its background runs
+     under the home indicator instead of leaving a see-through strip there. */
+  .native-app-tab-slot {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+  }
+
+  /* A screen that is a task of its own — a workout player, a composer —
+     marks itself with data-native-hide-tab-bar, and the tab bar steps away
+     while it is shown, as iOS does for a pushed screen that hides the bottom
+     bar. Its clearance goes with it. */
+  .native-app-shell:has([data-native-hide-tab-bar]) { --native-tab-bar-height: 0px; }
+  .native-app-shell:has([data-native-hide-tab-bar]) .native-app-tab-slot { display: none; }
+  .native-app-shell:has([data-native-hide-tab-bar]) .native-app-content {
+    padding-bottom: var(--native-safe-area-bottom);
+  }
+
+  /* While the keyboard is up, the tab bar steps aside, as iOS does: left in
+     place it rode up on top of the keyboard and took a fifth of the screen
+     from whatever was being typed. Hidden rather than removed, so the
+     content's clearance below stays and nothing jumps when it comes back. */
+  .native-app-shell.native-mobile:has(:is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit], [type=file]), textarea, select, [contenteditable=true]):focus) .native-app-tab-slot {
+    visibility: hidden;
+  }
+
+  @media (max-width: 767.98px) and (pointer: coarse) {
+    .native-app-shell:has(:is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit], [type=file]), textarea, select, [contenteditable=true]):focus) .native-app-tab-slot {
+      visibility: hidden;
+    }
+  }
+
+  /* A phone app does not select its chrome on a long press, or flash it grey
+     on a tap. Text inside the content is left selectable. */
+  .native-app-shell.native-mobile .native-app-tab-slot,
+  .native-app-shell.native-mobile [data-native-nav-bar] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+</style>

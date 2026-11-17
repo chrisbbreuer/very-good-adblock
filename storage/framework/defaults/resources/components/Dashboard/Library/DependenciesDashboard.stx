@@ -1,0 +1,133 @@
+@import('../UI/Button')
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface DependencyRow {
+  name: string
+  version: string
+  isWorkspace?: boolean
+  isScoped?: boolean
+}
+
+type DependencyKind = 'workspace' | 'transitive' | 'third-party'
+
+const COLUMNS = [
+  { key: 'name', label: 'Package', sortable: true, class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'version', label: 'Version', sortable: true, class: 'font-mono text-gray-500 dark:text-neutral-400' },
+  {
+    key: 'kind',
+    label: 'Source',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      'workspace': 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
+      'transitive': 'text-gray-600 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-700',
+      'third-party': 'text-gray-600 dark:text-neutral-300 bg-gray-100 dark:bg-neutral-700',
+    },
+    badgeLabels: { 'workspace': 'Workspace', 'transitive': 'Transitive', 'third-party': 'Third-party' },
+  },
+]
+
+const declared = state<DependencyRow[]>([])
+const transitive = state<DependencyRow[]>([])
+const available = state(true)
+const source = state('bun.lock')
+const loading = state(true)
+const loadError = state('')
+const dataset = state('declared')
+const scope = state('all')
+
+function activeRows(): DependencyRow[] {
+  return dataset() === 'transitive' ? transitive() : declared()
+}
+
+/**
+ * `UI/Table` owns search, sort and paging, so this only applies the two
+ * filters that are specific to dependencies: which dataset is being read and,
+ * for the declared set, whether workspace packages are in scope.
+ *
+ * `kind` is computed here rather than in the cell because a badge column maps
+ * a row value to a label, and the right label for a non-workspace package
+ * depends on the dataset rather than the row.
+ */
+function visibleRows(): Array<DependencyRow & { kind: DependencyKind }> {
+  return activeRows()
+    .filter(dependency => dataset() === 'transitive' || scope() === 'all' || (scope() === 'workspace' ? dependency.isWorkspace : !dependency.isWorkspace))
+    .map(dependency => ({
+      ...dependency,
+      kind: dependency.isWorkspace ? 'workspace' : dataset() === 'transitive' ? 'transitive' : 'third-party',
+    }))
+}
+
+function workspaceCount(): number {
+  return declared().filter(dependency => dependency.isWorkspace).length
+}
+
+function thirdPartyCount(): number {
+  return declared().length - workspaceCount()
+}
+
+async function loadDependencies(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<{ available?: boolean, source?: string, declared?: DependencyRow[], transitive?: DependencyRow[] }>('/api/dashboard/library/dependencies')
+    if (!Array.isArray(data.declared) || !Array.isArray(data.transitive))
+      throw new TypeError('Dependencies were not returned in the expected shape.')
+    available.set(data.available !== false)
+    source.set(String(data.source || 'bun.lock'))
+    declared.set(data.declared)
+    transitive.set(data.transitive)
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not load dependencies', { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+onMount(() => { void loadDependencies() })
+</script>
+
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Library</p><h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">Dependencies</h1><p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Resolved dependency declarations from {{ source() }}. Updates are managed by buddy-bot.</p></div>
+    <Button type="button" variant="secondary" class="self-start" :loading="loading()" :disabled="loading()" @click="loadDependencies()">Refresh</Button>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button type="button" variant="ghost" size="sm" @click="loadDependencies()">Retry</Button></div>
+  <div :if="!loading() && !available()" role="status" class="p-4 text-amber-700 text-sm dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">No bun.lock exists yet. Run the normal dependency install workflow to create it.</div>
+
+  <section aria-label="Dependency metrics" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Declared</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ declared().length }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Workspace</p><p class="mt-2 font-semibold text-2xl text-blue-700 dark:text-blue-300">{{ workspaceCount() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Third-party</p><p class="mt-2 font-semibold text-2xl text-green-700 dark:text-green-300">{{ thirdPartyCount() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Transitive</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ transitive().length }}</p></article>
+  </section>
+
+  <section aria-label="Dependencies">
+    <Table
+      :columns="COLUMNS"
+      :data="visibleRows()"
+      :loading="loading()"
+      row-key="name"
+      searchable
+      search-placeholder="Search package or version"
+      paginated
+      :page-size="50"
+      striped
+      empty-title="No dependencies found"
+      empty-description="Adjust the dataset, scope, or search."
+    >
+      <template #toolbar>
+        <Select v-model:value="dataset" ariaLabel="Choose dependency dataset" placeholder="" :options="[{ value: 'declared', label: 'Declared' }, { value: 'transitive', label: 'Transitive' }]" />
+        <Select v-model:value="scope" ariaLabel="Filter dependency scope" placeholder="" :options="[{ value: 'all', label: 'All scopes' }, { value: 'workspace', label: 'Workspace' }, { value: 'third-party', label: 'Third-party' }]" :disabled="dataset() === 'transitive'" />
+      </template>
+    </Table>
+  </section>
+</div>

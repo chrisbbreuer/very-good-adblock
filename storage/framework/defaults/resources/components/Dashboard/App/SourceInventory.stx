@@ -1,0 +1,260 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+
+type InventoryMode = 'actions' | 'commands'
+
+interface SourceItem {
+  name: string
+  description: string
+  path: string
+  origin: 'Application' | 'Framework'
+  modifiedAt: string
+  method?: string
+  aliases?: string[]
+  options?: string[]
+}
+
+interface InventoryResponse {
+  items: SourceItem[]
+  stats: Record<string, number>
+}
+
+const mode = useReactiveProp<InventoryMode>('mode', 'actions')
+const items = state<SourceItem[]>([])
+const stats = state<Record<string, number>>({})
+const search = state('')
+const loading = state(true)
+const loadError = state('')
+const copyMessage = state('')
+
+/**
+ * Actions and Commands read the same way but do not have the same shape.
+ *
+ * An Action resolves through two roots: `app/Actions/<path>.ts` shadows the
+ * framework default at the same path, so a row has an origin worth showing.
+ * Commands have one root. `buddy` loads `app/Commands` and nothing else, so
+ * every row is application code and an origin column would be one repeated
+ * word. `defaults/app/Commands` is what `buddy new` copies into a new app,
+ * not a default the loader falls back to.
+ */
+const page = derived(() => mode() === 'actions'
+  ? {
+      title: 'Actions',
+      description: 'Inspect application overrides and framework Actions from their native TypeScript sources.',
+      empty: 'No Action modules were found.',
+      scaffold: 'buddy make:action MyAction',
+      icon: 'i-hugeicons-energy',
+      note: 'Application files override matching framework defaults.',
+      stats: [
+        { key: 'total', label: 'Total Actions' },
+        { key: 'application', label: 'Application Overrides' },
+        { key: 'framework', label: 'Framework Defaults' },
+        { key: 'writes', label: 'Write Handlers' },
+      ],
+    }
+  : {
+      title: 'Commands',
+      description: 'Inspect the commands this application defines in app/Commands.',
+      empty: 'No command files in app/Commands.',
+      scaffold: 'buddy make:command my-command',
+      icon: 'i-hugeicons-command-line',
+      note: 'Every file in app/Commands is a command. The optional app/Commands.ts only orders, aliases or disables them.',
+      stats: [
+        { key: 'total', label: 'Commands' },
+        { key: 'registered', label: 'Registry Entries' },
+        { key: 'aliases', label: 'Aliases' },
+        { key: 'options', label: 'Declared Options' },
+      ],
+    })
+
+const filteredItems = derived(() => {
+  const query = search().trim().toLowerCase()
+  if (!query)
+    return items()
+  return items().filter(item => [
+    item.name,
+    item.description,
+    item.path,
+    item.origin,
+    item.method,
+    ...(item.aliases || []),
+    ...(item.options || []),
+  ].join(' ').toLowerCase().includes(query))
+})
+
+function statValue(key: string): number {
+  return Number(stats()[key] || 0)
+}
+
+function formatAliases(item: SourceItem): string {
+  return item.aliases?.length ? item.aliases.join(', ') : 'None'
+}
+
+function formatOptions(item: SourceItem): string {
+  return item.options?.length ? item.options.join(', ') : 'None'
+}
+
+/** Read-only methods, writes, and the catch-all, as the hand-rolled pill coloured them. */
+function methodTone(method = 'ANY'): string {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(method))
+    return 'read'
+  if (method === 'ANY')
+    return 'any'
+  return 'write'
+}
+
+const NAME_COLUMN = { key: 'name', label: 'Name', sortable: true, subtitleKey: 'description', class: 'font-medium text-neutral-900 dark:text-white' }
+const PATH_COLUMN = { key: 'path', label: 'Path', sortable: true, class: 'font-mono text-neutral-600 text-xs dark:text-neutral-300' }
+const MODIFIED_COLUMN = { key: 'modifiedAt', label: 'Modified', type: 'datetime' as const, sortable: true, align: 'right' as const, emptyText: 'Unknown', class: 'whitespace-nowrap' }
+
+/**
+ * Actions show a method and where the file comes from. Commands have one
+ * root, so their second column is what can be typed instead.
+ */
+const COLUMNS_BY_MODE = {
+  actions: [
+    NAME_COLUMN,
+    {
+      key: 'methodTone',
+      label: 'Method',
+      type: 'badge' as const,
+      sortable: true,
+      badgeLabelKey: 'methodLabel',
+      badgeClasses: {
+        read: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
+        any: 'text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800',
+        write: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+      },
+    },
+    {
+      key: 'origin',
+      label: 'Origin',
+      type: 'badge' as const,
+      sortable: true,
+      badgeClasses: {
+        Application: 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40',
+        Framework: 'text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800',
+      },
+    },
+    PATH_COLUMN,
+    MODIFIED_COLUMN,
+  ],
+  commands: [
+    NAME_COLUMN,
+    { key: 'aliasesLabel', label: 'Aliases', sortable: true, subtitleKey: 'optionsLabel', class: 'text-neutral-700 text-xs dark:text-neutral-300' },
+    PATH_COLUMN,
+    MODIFIED_COLUMN,
+  ],
+}
+
+const itemRows = derived(() => filteredItems().map(item => ({
+  ...item,
+  methodTone: methodTone(item.method),
+  methodLabel: item.method || 'ANY',
+  aliasesLabel: `Aliases: ${formatAliases(item)}`,
+  optionsLabel: `Options: ${formatOptions(item)}`,
+})))
+
+async function loadInventory(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const endpoint = mode() === 'actions'
+      ? '/api/dashboard/source/actions'
+      : '/api/dashboard/source/commands'
+    const response = await dashboardApi<InventoryResponse>(endpoint)
+    items.set(response.items || [])
+    stats.set(response.stats || {})
+  }
+  catch (error) {
+    items.set([])
+    stats.set({})
+    loadError.set(error instanceof Error ? error.message : 'Source inventory could not be loaded.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+async function copyScaffoldCommand(): Promise<void> {
+  copyMessage.set('')
+  try {
+    await globalThis.navigator.clipboard.writeText(page().scaffold)
+    copyMessage.set(`Copied: ${page().scaffold}`)
+  }
+  catch {
+    copyMessage.set(`Run: ${page().scaffold}`)
+  }
+}
+
+onMount(() => {
+  void loadInventory()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="font-bold text-2xl text-neutral-900 tracking-tight dark:text-white">{{ page().title }}</h1>
+      <p class="mt-1 max-w-3xl text-neutral-500 text-sm dark:text-neutral-400">{{ page().description }}</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <Button variant="secondary" :loading="loading()" @click="loadInventory">
+        <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+        Refresh
+      </Button>
+      <Button @click="copyScaffoldCommand">
+        <span class="h-4 w-4 i-hugeicons-copy-01"></span>
+        Copy scaffold command
+      </Button>
+    </div>
+  </header>
+
+  <div :if="copyMessage()" role="status" class="px-4 py-3 text-blue-700 text-sm dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 rounded-lg dark:border-blue-900">
+    {{ copyMessage() }}
+  </div>
+
+  <div :if="loadError()" role="alert" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-lg dark:border-red-900">
+    <span>{{ loadError() }}</span>
+    <Button variant="secondary" size="sm" @click="loadInventory">Try again</Button>
+  </div>
+
+  <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+    <StatsCard :title="page().stats[0].label" :icon="page().icon" iconBg="primary">
+      <template #value>{{ statValue(page().stats[0].key) }}</template>
+    </StatsCard>
+    <StatsCard :title="page().stats[1].label" icon="i-hugeicons-source-code" iconBg="success">
+      <template #value>{{ statValue(page().stats[1].key) }}</template>
+    </StatsCard>
+    <StatsCard :title="page().stats[2].label" icon="i-hugeicons-git-branch" iconBg="info">
+      <template #value>{{ statValue(page().stats[2].key) }}</template>
+    </StatsCard>
+    <StatsCard :title="page().stats[3].label" icon="i-hugeicons-settings-02" iconBg="warning">
+      <template #value>{{ statValue(page().stats[3].key) }}</template>
+    </StatsCard>
+  </div>
+
+  <Card padding="none">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 border-b border-neutral-200 dark:border-neutral-700">
+      <div>
+        <h2 class="font-semibold text-neutral-900 dark:text-white">Native source inventory</h2>
+        <p class="mt-1 text-neutral-500 text-xs dark:text-neutral-400">{{ page().note }}</p>
+      </div>
+      <SearchFilter v-model:searchValue="search" :placeholder="'Search ' + page().title.toLowerCase()" :ariaLabel="'Search ' + page().title.toLowerCase()" class="w-full sm:max-w-xs" />
+    </div>
+
+    <Table
+      :framed="false"
+      :columns="COLUMNS_BY_MODE[mode()]"
+      :data="itemRows()"
+      :loading="loading()"
+      row-key="path"
+      paginated
+      :page-size="25"
+      :empty-title="search() ? 'No matching source files' : page().empty"
+      :empty-description="search() ? 'Try a different name, path, method, or alias.' : 'Use the scaffold command to add one through the native framework workflow.'"
+    />
+  </Card>
+</div>

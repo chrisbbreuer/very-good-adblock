@@ -19,6 +19,9 @@ const config: PickierConfig = {
     '**/bun.lock',
     '**/.claude/**',
     '**/.zed/**',
+    // The vendored framework (defaults, skills, server). `buddy upgrade`
+    // rewrites it wholesale; it is reference code, not this project's to lint.
+    '**/storage/framework/**',
   ],
 
   lint: {

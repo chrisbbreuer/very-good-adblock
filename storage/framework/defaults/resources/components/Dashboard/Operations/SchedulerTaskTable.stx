@@ -1,0 +1,85 @@
+@import('../UI/Table')
+
+<script client>
+import type { SchedulerTask } from '../../../../functions/operations'
+
+const tasks = useReactiveProp('tasks', [])
+const loading = useReactiveProp('loading', false)
+const busyTask = useReactiveProp('busyTask', '')
+const emit = defineEmits(['run', 'toggle'])
+
+const COLUMNS = [
+  { key: 'name', label: 'Task', sortable: true, subtitleKey: 'timezone', class: 'font-medium text-gray-900 dark:text-white' },
+  { key: 'pattern', label: 'Schedule', emptyText: 'Not configured', class: 'font-mono whitespace-nowrap' },
+  { key: 'nextRun', label: 'Next run', type: 'datetime' as const, sortable: true, emptyText: 'Not scheduled', class: 'whitespace-nowrap' },
+  {
+    key: 'state',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40',
+      paused: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40',
+    },
+    badgeLabels: { active: 'Active', paused: 'Paused' },
+  },
+]
+
+const rows = derived(() => (tasks() as SchedulerTask[]).map(task => ({
+  ...task,
+  state: task.enabled ? 'active' : 'paused',
+})))
+</script>
+
+{{--
+  The actions are a slot rather than declared row actions: they are text
+  buttons whose disabled and loading state depends on which request is in
+  flight, not icons.
+--}}
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  row-key="name"
+  paginated
+  :page-size="25"
+  empty-title="No scheduled tasks registered"
+  empty-description="Add a rate to an app job or register a task in app/Scheduler.ts."
+>
+  <template #actions="{ row }">
+    <div class="inline-flex gap-2 items-center justify-end w-full whitespace-nowrap">
+      <Button
+        size="sm"
+        :disabled="busyTask() !== '' || !row.enabled"
+        :loading="busyTask() === row.name + ':run'"
+        @click="emit('run', row.name)"
+      >
+        Run now
+      </Button>
+      {{-- Two buttons rather than one with a computed label: the label is
+           the Button's slot content, which a binding on Button cannot set. --}}
+      <template :if="row.enabled">
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="busyTask() !== ''"
+          :loading="busyTask() === row.name + ':toggle'"
+          @click="emit('toggle', { name: row.name, enabled: false })"
+        >
+          Pause
+        </Button>
+      </template>
+      <template :else>
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="busyTask() !== ''"
+          :loading="busyTask() === row.name + ':toggle'"
+          @click="emit('toggle', { name: row.name, enabled: true })"
+        >
+          Resume
+        </Button>
+      </template>
+    </div>
+  </template>
+</Table>

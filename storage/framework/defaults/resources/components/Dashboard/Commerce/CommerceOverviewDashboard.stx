@@ -1,0 +1,86 @@
+<script client>
+import type {
+  CommerceDashboardChartSeries,
+  CommerceDashboardOrder,
+  CommerceDashboardProduct,
+  CommerceDashboardRange,
+  CommerceDashboardResult,
+  CommerceDashboardStat,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-dashboard'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+const stats = state<CommerceDashboardStat[]>([])
+const charts = state<CommerceDashboardChartSeries>({ labels: [], revenue: [], orders: [] })
+const recentOrders = state<CommerceDashboardOrder[]>([])
+const topProducts = state<CommerceDashboardProduct[]>([])
+const range = state<CommerceDashboardRange>('30d')
+const rangeLabel = state('Last 30 days')
+const loading = state(true)
+const loadError = state('')
+let requestSequence = 0
+
+async function loadRange(selectedRange: CommerceDashboardRange): Promise<void> {
+  const sequence = ++requestSequence
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<CommerceDashboardResult>(`/api/dashboard/commerce/stats?range=${encodeURIComponent(selectedRange)}`)
+    if (sequence !== requestSequence)
+      return
+    stats.set(Array.isArray(data.stats) ? data.stats : [])
+    charts.set(data.charts ?? { labels: [], revenue: [], orders: [] })
+    recentOrders.set(Array.isArray(data.recentOrders) ? data.recentOrders : [])
+    topProducts.set(Array.isArray(data.topProducts) ? data.topProducts : [])
+    rangeLabel.set(data.rangeLabel || 'Selected range')
+  }
+  catch (error) {
+    if (sequence !== requestSequence)
+      return
+    loadError.set('Commerce data could not be loaded.')
+    pushToast('error', 'Could not load commerce dashboard', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    if (sequence === requestSequence)
+      loading.set(false)
+  }
+}
+
+function loadDashboard(): void {
+  void loadRange(range())
+}
+
+function reloadSelectedRange(next: string): void {
+  void loadRange(next as CommerceDashboardRange)
+}
+
+onMount(() => {
+  void loadDashboard()
+})
+</script>
+
+<div class="flex flex-col gap-8">
+  <PageHeader title="Commerce Dashboard" :description="`Persisted order performance for ${rangeLabel().toLowerCase()}.`">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadDashboard">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Select v-model:value="range" id="commerce-dashboard-range" ariaLabel="Reporting range" placeholder="" :options="[{ value: 'today', label: 'Today' }, { value: '7d', label: 'Last 7 days' }, { value: '30d', label: 'Last 30 days' }, { value: '90d', label: 'Last 90 days' }, { value: 'year', label: 'Last year' }, { value: 'all', label: 'All time' }]" @change="reloadSelectedRange" />
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="px-4 py-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-300 rounded-md dark:border-red-800">
+    {{ loadError() }}
+  </div>
+
+  <CommerceOverviewStats :stats="stats()" :loading="loading()" />
+  <CommerceOverviewCharts :series="charts()" :loading="loading()" />
+
+  <div class="grid gap-6 grid-cols-1 xl:grid-cols-2">
+    <CommerceOverviewProductsTable :products="topProducts()" :loading="loading()" />
+    <CommerceOverviewOrdersTable :orders="recentOrders()" :loading="loading()" />
+  </div>
+</div>

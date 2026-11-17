@@ -1,0 +1,68 @@
+<script client>
+import type { GiftCardCurrencySummary, GiftCardStatus, GiftCardSummary } from '../../../../app/Actions/Dashboard/Commerce/gift-card-records'
+import { formatCurrency } from '@stacksjs/commerce/money'
+
+// A reactive prop, as every other commerce breakdown reads its data: a
+// destructured `defineProps` value is read once, before the page has loaded
+// anything, so these panels used to render with no numbers at all.
+const summary = useReactiveProp('summary', {
+  total: 0,
+  available: 0,
+  enabled: 0,
+  digital: 0,
+  reloadable: 0,
+  statuses: { ACTIVE: 0, USED: 0, EXPIRED: 0, DEACTIVATED: 0 },
+  currencies: [],
+} as GiftCardSummary)
+
+const STATUS_LABELS: Array<{ key: GiftCardStatus, label: string }> = [
+  { key: 'ACTIVE', label: 'Active' },
+  { key: 'USED', label: 'Used' },
+  { key: 'EXPIRED', label: 'Expired' },
+  { key: 'DEACTIVATED', label: 'Deactivated' },
+]
+
+function statusRows(): Array<{ key: GiftCardStatus, label: string, count: number }> {
+  const counts = summary().statuses
+  return STATUS_LABELS.map(status => ({ ...status, count: counts?.[status.key] ?? 0 }))
+}
+
+function currencyRows(): GiftCardCurrencySummary[] {
+  return Array.isArray(summary().currencies) ? summary().currencies : []
+}
+
+function money(value: number, currency: string): string {
+  return formatCurrency(value, currency)
+}
+</script>
+
+<section aria-label="Gift card breakdowns" class="grid gap-3 grid-cols-1 xl:grid-cols-3">
+  <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <h2 class="font-semibold text-gray-900 text-sm dark:text-white">Status distribution</h2>
+    <dl class="mt-4 space-y-3 text-sm">
+      <div :for="item in statusRows()" :key="item.key" class="flex justify-between"><dt class="text-gray-500 dark:text-neutral-400">{{ item.label }}</dt><dd class="font-medium text-gray-900 dark:text-white">{{ item.count }}</dd></div>
+    </dl>
+  </article>
+
+  <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <h2 class="font-semibold text-gray-900 text-sm dark:text-white">Outstanding by currency</h2>
+    <div :if="currencyRows().length === 0" class="mt-4 text-gray-500 text-sm dark:text-neutral-400">No balances recorded.</div>
+    <ul :if="currencyRows().length > 0" class="mt-4 space-y-3">
+      <li :for="item in currencyRows()" :key="item.currency" class="flex gap-4 justify-between text-sm">
+        <span class="text-gray-500 dark:text-neutral-400">{{ item.currency }} <span class="text-gray-500 text-xs dark:text-neutral-500">({{ item.cards }})</span></span>
+        <span class="font-medium text-gray-900 dark:text-white">{{ money(item.currentBalance, item.currency) }}</span>
+      </li>
+    </ul>
+  </article>
+
+  <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    <h2 class="font-semibold text-gray-900 text-sm dark:text-white">Redeemed by currency</h2>
+    <div :if="currencyRows().length === 0" class="mt-4 text-gray-500 text-sm dark:text-neutral-400">No redemption value recorded.</div>
+    <ul :if="currencyRows().length > 0" class="mt-4 space-y-3">
+      <li :for="item in currencyRows()" :key="item.currency" class="flex gap-4 justify-between text-sm">
+        <span class="text-gray-500 dark:text-neutral-400">{{ item.currency }}</span>
+        <span class="font-medium text-gray-900 dark:text-white">{{ money(item.redeemedBalance, item.currency) }}</span>
+      </li>
+    </ul>
+  </article>
+</section>

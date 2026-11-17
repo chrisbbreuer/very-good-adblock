@@ -1,0 +1,147 @@
+@extends('layouts/storefront')
+
+@section('title', 'Checkout — Payment')
+
+<script server>
+// The columns the line query selects.
+interface CartSummaryRow {
+  product_name: string
+  quantity: number | string
+  total_price: number | string
+}
+
+// The columns of `carts` this page reads. The query selects `*`, and no
+// migration creates any but `id` (see app/Storefront/StorefrontDatabase.ts).
+interface CartRow {
+  id: number
+  currency: string | null
+  email: string | null
+  shipping_name: string | null
+  shipping_address: string | null
+  shipping_city: string | null
+  shipping_state: string | null
+  shipping_zip: string | null
+}
+
+interface StorefrontLineItem { lineTotal: number }
+
+const { verifyCartCookie } = require('../../../app/Storefront/CartCookie')
+const { readStorefront } = require('../../../app/Storefront/StorefrontDatabase')
+const { storefrontCurrency, storefrontMoney, storefrontSummary } = require('../../../app/Storefront/StorefrontMoney')
+
+// Signed by the storefront actions as the token, a dot and its HMAC. An
+// unsigned or tampered cookie is no cart, and is never looked up.
+const token = verifyCartCookie(requestContext.cookie('stacks_cart'))
+
+const found = token
+  ? readStorefront('views/checkout/payment.stx', { cart: null, items: [] }, (db: import('bun:sqlite').Database) => {
+      const row = db.query<CartRow, [string]>(`SELECT * FROM carts WHERE session_token = ?1 AND status = 'active' LIMIT 1`).get(token)
+      if (!row)
+        return { cart: null, items: [] }
+
+      // Every amount below is integer minor units of the cart's currency.
+      const currency = storefrontCurrency(row.currency)
+      const lines = db.query<CartSummaryRow, [number]>(`
+        SELECT product_name, quantity, total_price
+        FROM cart_items WHERE cart_id = ?1 ORDER BY id ASC
+      `).all(row.id).map((line: CartSummaryRow) => {
+        const qty = Number(line.quantity)
+        const lineTotal = Number(line.total_price)
+        return {
+          name: line.product_name,
+          qty,
+          lineTotal,
+          lineTotalLabel: storefrontMoney(lineTotal, currency),
+        }
+      })
+
+      return { cart: row, items: lines }
+    })
+  : { cart: null, items: [] }
+
+const cart = found.cart
+const items = found.items
+
+// The same shipping rule PlaceOrderAction charges with
+// (app/Actions/Storefront/_shipping.ts), in minor units, so the running
+// totals on every checkout step match what gets charged.
+const subtotal = items.reduce((s: number, i: StorefrontLineItem) => s + i.lineTotal, 0)
+const summary = storefrontSummary(subtotal, storefrontCurrency(cart?.currency))
+const subtotalLabel = summary.subtotalLabel
+const shippingLabel = summary.shippingLabel
+const totalLabel = summary.totalLabel
+const freeShippingNote = summary.freeShippingNote
+
+const ready = !!cart?.email && !!cart?.shipping_name && !!cart?.shipping_address
+// Why the form this page posted was refused, when it was not about one field
+// ("Your cart is empty."). Shown once (stacksjs/stacks#3311).
+const formError = requestContext.formError()
+</script>
+
+@section('content')
+  <div class="mx-auto px-6 py-12 max-w-5xl">
+    <CheckoutSteps current="payment" />
+
+    @if (formError)
+      <p role="alert" class="mb-6 px-4 py-3 font-medium text-red-800 text-sm bg-red-50 border border-red-200 rounded-xl">{{ formError }}</p>
+    @endif
+
+    @if (items.length === 0 || !ready)
+      <div class="p-12 text-center border border-dashed border-stone-300 rounded-3xl">
+        <p class="text-stone-500">Finish the earlier steps first.</p>
+        <a href="/checkout/contact" class="inline-flex mt-6 px-6 py-3 font-semibold text-sm text-stone-50 bg-stone-900 hover:bg-stone-800 rounded-full">Go to contact</a>
+      </div>
+    @else
+      <div class="grid gap-10 items-start md:grid-cols-[1fr_360px]">
+        <div>
+          <h1 class="font-bold text-3xl text-stone-900 tracking-tight">Payment</h1>
+          <p class="mt-2 text-stone-600">No card is charged — this is a demo store. Swap in Stripe at <code class="px-1.5 py-0.5 text-xs bg-stone-100 rounded">Actions/Storefront/PlaceOrderAction.ts</code>.</p>
+
+          <!-- Mock card form. The fields aren't actually submitted —
+              the real submit goes to /api/checkout/place which uses
+              the cart row state set in earlier steps. We render the
+              fields anyway so the experience matches a real store. -->
+          <form action="/api/checkout/place" method="POST" class="mt-8 space-y-5">
+            <div>
+              <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">Card number</label>
+              <input type="text" inputmode="numeric" placeholder="4242 4242 4242 4242" autocomplete="cc-number" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+            </div>
+            <div class="grid gap-4 grid-cols-2">
+              <div>
+                <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">Expiry</label>
+                <input type="text" inputmode="numeric" placeholder="MM / YY" autocomplete="cc-exp" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              </div>
+              <div>
+                <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">CVC</label>
+                <input type="text" inputmode="numeric" placeholder="123" autocomplete="cc-csc" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="p-4 text-sm bg-stone-50 border border-stone-200 rounded-xl">
+              <p class="font-semibold text-stone-500 text-xs tracking-wider uppercase">Ship to</p>
+              <p class="mt-1 text-stone-900">{{ cart.shipping_name }}</p>
+              <p class="text-stone-700 whitespace-pre-line">{{ cart.shipping_address }}, {{ cart.shipping_city }}, {{ cart.shipping_state }} {{ cart.shipping_zip }}</p>
+              <p class="mt-2 text-stone-500 text-xs">{{ cart.email }}</p>
+            </div>
+
+            <div class="flex gap-4 items-center justify-between pt-2">
+              <a href="/checkout/shipping" class="text-sm text-stone-500 hover:text-stone-900">← Back</a>
+              <button type="submit" class="px-6 py-3 font-semibold text-sm text-stone-50 bg-stone-900 hover:bg-stone-800 rounded-full transition-colors">
+                Place order — {{ totalLabel }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <OrderSummary
+          :items="items"
+          subtotalLabel="{{ subtotalLabel }}"
+          shippingLabel="{{ shippingLabel }}"
+          totalLabel="{{ totalLabel }}"
+          freeShippingNote="{{ freeShippingNote }}"
+          :showItems="true"
+        />
+      </div>
+    @endif
+  </div>
+@endsection

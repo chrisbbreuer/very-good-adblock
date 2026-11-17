@@ -1,0 +1,14 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Content Tags')
+
+<div class="p-4 lg:p-8 min-h-[100dvh] dark:bg-neutral-900">
+  <ContentTaxonomyDashboard
+    resource="tags"
+    title="Tags"
+    description="Label posts and files with tags, so related ones are easy to find."
+  />
+</div>
+
+@endsection

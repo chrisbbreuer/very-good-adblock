@@ -1,0 +1,122 @@
+<script client>
+type CourierStatus = 'active' | 'on_delivery' | 'on_break'
+
+interface UserOption {
+  id: number
+  name: string
+  email?: string
+}
+
+interface CourierRecord {
+  id: number
+  name: string
+  phone: string
+  vehicle_number: string
+  license: string
+  status: CourierStatus
+  user_id?: number | null
+}
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'create')
+const record = useReactiveProp('record', null as CourierRecord | null)
+const users = useReactiveProp('users', [] as UserOption[])
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['invalid', 'submit', 'close'])
+const name = state('')
+const phone = state('')
+const vehicleNumber = state('')
+const license = state('')
+const status = state<CourierStatus>('active')
+const userId = state('')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const nextKey = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === nextKey)
+    return
+  hydrationKey = nextKey
+  name.set(current?.name || '')
+  phone.set(current?.phone || '')
+  vehicleNumber.set(current?.vehicle_number || '')
+  license.set(current?.license || '')
+  status.set(current?.status || 'active')
+  userId.set(current?.user_id ? String(current.user_id) : '')
+})
+
+function submit(): void {
+  const selectedUserId = userId() ? Number(userId()) : null
+  if (!name().trim()) {
+    emit('invalid', 'Courier name is required.')
+    return
+  }
+  if (!phone().trim()) {
+    emit('invalid', 'Phone number is required.')
+    return
+  }
+  if (!vehicleNumber().trim()) {
+    emit('invalid', 'Vehicle number is required.')
+    return
+  }
+  if (!license().trim()) {
+    emit('invalid', 'License number is required.')
+    return
+  }
+  if (selectedUserId !== null && (!Number.isInteger(selectedUserId) || selectedUserId < 1)) {
+    emit('invalid', 'Select a valid linked user.')
+    return
+  }
+
+  emit('submit', {
+    name: name().trim(),
+    phone: phone().trim(),
+    vehicleNumber: vehicleNumber().trim().toUpperCase(),
+    license: license().trim().toUpperCase(),
+    status: status(),
+    userId: selectedUserId,
+  })
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit courier' : 'Add courier'"
+  description="Manage operational identity, vehicle assignment, availability, and the optional User relationship."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="courier-form" @submit.prevent="submit()">
+        <div :if="error()" class="mb-5 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ error() }}</div>
+
+        <div class="space-y-4">
+          <div>
+            <Input v-model:value="name" label="Courier name" :required="true" :maxLength="255" autocomplete="name" placeholder="Alex Morgan" />
+          </div>
+          <div>
+            <Input v-model:value="phone" label="Phone" type="tel" :required="true" :maxLength="255" autocomplete="tel" placeholder="+1 555 0100" />
+          </div>
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <Input v-model:value="vehicleNumber" label="Vehicle number" :required="true" :maxLength="255" autocomplete="off" placeholder="VAN-204" :monospace="true" class="uppercase" />
+            <Input v-model:value="license" label="License number" :required="true" :maxLength="255" autocomplete="off" placeholder="D1234567" :monospace="true" class="uppercase" />
+          </div>
+          <div>
+            <Select v-model:value="status" label="Status" placeholder="" :options="[{ value: 'active', label: 'Available' }, { value: 'on_delivery', label: 'On delivery' }, { value: 'on_break', label: 'On break' }]" />
+          </div>
+          <div>
+            <Select v-model:value="userId" label="Linked user" placeholder="" :options="[{ value: '', label: 'No linked user' }, ...users().map(user => ({ value: user.id, label: `${user.name}${user.email ? ' - ' + user.email : ''}` }))]" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="emit('close')">Cancel</Button>
+      <Button type="submit" form="courier-form" :loading="busy()">{{ mode() === 'edit' ? 'Save changes' : 'Add courier' }}</Button>
+    </div>
+  </template>
+</Modal>

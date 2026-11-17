@@ -1,0 +1,112 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'ShippingMethod',
+  table: 'shipping_methods',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'name', 'description', 'baseRate', 'freeShipping', 'status'],
+      searchable: ['name', 'description'],
+      sortable: ['name', 'baseRate', 'createdAt', 'updatedAt'],
+      filterable: ['status'],
+    },
+
+    useSeeder: {
+      count: 10,
+    },
+
+    useApi: {
+      // Public catalog: anyone may browse, only authenticated callers may
+      // write. Declared explicitly because the trait now defaults BOTH sides to
+      // `auth` — an undeclared read route is how a customer list leaks
+      // (stacksjs/stacks#2224). Behaviour here is unchanged.
+      middleware: { read: [], write: ['auth'] },
+      uri: 'shipping-methods',
+    },
+
+    observe: true,
+  },
+
+  hasMany: ['ShippingZone', 'ShippingRate'],
+
+  attributes: {
+    name: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(100),
+        message: {
+          max: 'Name must have a maximum of 100 characters',
+        },
+      },
+      factory: faker => faker.commerce.productName(),
+    },
+
+    description: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(500),
+        message: {
+          max: 'Description must have a maximum of 500 characters',
+        },
+      },
+      factory: faker => faker.lorem.paragraph(),
+    },
+
+    baseRate: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0),
+        message: {
+          min: 'Base rate cannot be negative',
+        },
+      },
+      factory: faker => faker.number.int({ min: 500, max: 5000 }), // 5.00 to 50.00
+    },
+
+    freeShipping: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      factory: (faker) => {
+        // 30% chance of being null (N/A), otherwise a minimum order amount
+        return faker.datatype.boolean({ probability: 0.3 })
+          ? null
+          : faker.number.int({ min: 5000, max: 20000 }) // 50.00 to 200.00
+      },
+    },
+
+    status: {
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['active', 'inactive', 'draft']).required(),
+      },
+      factory: faker => faker.helpers.arrayElement(['active', 'inactive', 'draft']),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
+    },
+  },
+} as const)

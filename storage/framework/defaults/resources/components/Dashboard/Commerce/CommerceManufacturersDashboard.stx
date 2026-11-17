@@ -1,0 +1,230 @@
+<script client>
+import type { ManufacturerRecord, ManufacturerSummary } from '../../../../app/Actions/Dashboard/Commerce/manufacturer-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface ManufacturerIndexResponse {
+  records: ManufacturerRecord[]
+  summary: ManufacturerSummary
+}
+
+interface ManufacturerWritePayload {
+  manufacturer: string
+  description: string
+  country: string
+  featured: boolean
+}
+
+const emptySummary: ManufacturerSummary = { total: 0, featured: 0, countries: 0, linkedProducts: 0 }
+const records = state<ManufacturerRecord[]>([])
+const summary = state<ManufacturerSummary>({ ...emptySummary })
+const search = state('')
+const featuredFilter = state('all')
+const countryFilter = state('all')
+const sort = state('name')
+const loading = state(true)
+const loadError = state('')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<ManufacturerRecord | null>(null)
+const deletingRecord = state<ManufacturerRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+function countries(): string[] {
+  return [...new Set(records().map(record => record.country).filter(Boolean))].sort()
+}
+
+function visibleRecords(): ManufacturerRecord[] {
+  const query = search().trim().toLowerCase()
+  const featured = featuredFilter()
+  const country = countryFilter()
+  return [...records()]
+    .filter((record) => {
+      if (featured === 'featured' && !record.featured)
+        return false
+      if (featured === 'not-featured' && record.featured)
+        return false
+      if (country !== 'all' && record.country !== country)
+        return false
+      return !query || [record.name, record.description, record.country]
+        .some(value => value.toLowerCase().includes(query))
+    })
+    .sort((left, right) => {
+      if (sort() === 'products')
+        return right.productCount - left.productCount || left.name.localeCompare(right.name)
+      if (sort() === 'country')
+        return left.country.localeCompare(right.country) || left.name.localeCompare(right.name)
+      if (sort() === 'newest')
+        return Number(right.id) - Number(left.id)
+      return left.name.localeCompare(right.name)
+    })
+}
+
+function metricCards(): Array<{ label: string, value: string }> {
+  return [
+    { label: 'Manufacturers', value: String(summary().total) },
+    { label: 'Featured', value: String(summary().featured) },
+    { label: 'Countries', value: String(summary().countries) },
+    { label: 'Linked products', value: String(summary().linkedProducts) },
+  ]
+}
+
+async function loadManufacturers(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<ManufacturerIndexResponse>('/api/dashboard/commerce/manufacturers')
+    records.set(Array.isArray(data.records) ? data.records : [])
+    summary.set(data.summary ?? { ...emptySummary })
+  }
+  catch (error) {
+    loadError.set('Manufacturer records could not be loaded.')
+    pushToast('error', 'Could not load manufacturers', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: ManufacturerRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function saveManufacturer(payload: ManufacturerWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  const path = editing
+    ? `/api/dashboard/commerce/manufacturers/${current.id}`
+    : '/api/dashboard/commerce/manufacturers'
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(path, { method: editing ? 'PATCH' : 'POST', body: payload })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Manufacturer updated' : 'Manufacturer added')
+    await loadManufacturers()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save manufacturer', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(record: ManufacturerRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteManufacturer(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/manufacturers/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Manufacturer deleted')
+    await loadManufacturers()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete manufacturer', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadManufacturers()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Manufacturers" description="Manage native Manufacturer records and their product relationships.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadManufacturers">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button @click="openAdd()">
+      <span class="h-4 w-4 i-hugeicons-add-01"></span>
+      Add manufacturer
+    </Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Manufacturer metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search manufacturers" ariaLabel="Search manufacturers" /></div>
+      <Select v-model:value="featuredFilter" ariaLabel="Featured state" placeholder="" :options="[{ value: 'all', label: 'All manufacturers' }, { value: 'featured', label: 'Featured only' }, { value: 'not-featured', label: 'Not featured' }]" />
+      <Select v-model:value="countryFilter" ariaLabel="Country" placeholder="" :options="[{ value: 'all', label: 'All countries' }, ...countries().map(country => ({ value: country, label: country }))]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ visibleRecords().length }} matching manufacturers</p>
+      <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">
+        Sort
+        <Select v-model:value="sort" ariaLabel="Sort" size="sm" placeholder="" :options="[{ value: 'name', label: 'Name' }, { value: 'products', label: 'Most products' }, { value: 'country', label: 'Country' }, { value: 'newest', label: 'Newest' }]" />
+      </label>
+    </div>
+
+    <CommerceManufacturersTable :sort-reset-key="sort()" :records="visibleRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
+  </section>
+</div>
+
+<CommerceManufacturerDialog
+  :open="dialogOpen()"
+  :mode="dialogMode()"
+  :record="editingRecord()"
+  :busy="saving()"
+  :errors="validationErrors()"
+  @submit="saveManufacturer"
+  @close="closeDialog()"
+/>
+
+<CommerceManufacturerDeleteDialog
+  :open="Boolean(deletingRecord())"
+  :record="deletingRecord()"
+  :busy="deleting()"
+  @confirm="deleteManufacturer()"
+  @close="closeDelete()"
+/>

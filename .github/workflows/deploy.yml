@@ -19,8 +19,9 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup Pantry
-        uses: home-lang/pantry/packages/action@main
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
         with:
+          version: '0.11.75'
           install: 'false'
 
       - name: Install dependencies

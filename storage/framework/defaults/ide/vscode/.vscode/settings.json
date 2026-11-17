@@ -1,0 +1,35 @@
+{
+  // Pickier lints and formats Stacks projects, built into the Stacks extension
+  // (Stacks.vscode-stacks) - the same pickier and config `./buddy lint` uses.
+  "editor.defaultFormatter": "Stacks.vscode-stacks",
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.pickier": "explicit",
+    "source.organizeImports": "never"
+  },
+  // TypeScript
+  "typescript.tsdk": "${workspaceFolder}/node_modules/typescript/lib",
+  "typescript.preferGoToSourceDefinition": true,
+  // `.stx` files get the `stx` language from the Stacks extension. Mapping
+  // them to `html` here would override it.
+  "files.associations": {
+    "buddy": "shellscript"
+  },
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "git.enableSmartCommit": true,
+  "npm.enableRunFromFolder": true,
+  "npm.packageManager": "bun",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "search.exclude": {
+    "**/bun.lock": true,
+    "**/node_modules": true,
+    "**/cdk.out": true,
+    "**/dist": true,
+    "**/storage/public": true,
+    "CHANGELOG.md": true
+  },
+  "explorer.confirmDragAndDrop": false,
+  "terminal.integrated.scrollback": 10000
+}

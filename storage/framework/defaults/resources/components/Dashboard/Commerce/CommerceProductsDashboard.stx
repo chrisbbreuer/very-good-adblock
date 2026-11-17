@@ -1,0 +1,238 @@
+<script client>
+import type {
+  CommerceProductRecord,
+  CommerceProductSummary,
+  ProductOption,
+  ProductWritePayload,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface ProductIndexResponse {
+  records: CommerceProductRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: CommerceProductSummary
+  categories: ProductOption[]
+  manufacturers: ProductOption[]
+  defaultCurrency: string
+}
+
+const emptySummary: CommerceProductSummary = {
+  total: 0,
+  available: 0,
+  unavailable: 0,
+  outOfStock: 0,
+  totalInventory: 0,
+}
+const summary = state<CommerceProductSummary>({ ...emptySummary })
+const categories = state<ProductOption[]>([])
+const manufacturers = state<ProductOption[]>([])
+const defaultCurrency = state('USD')
+const categoryFilter = state('all')
+const availabilityFilter = state('all')
+const sort = state('newest')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<CommerceProductRecord | null>(null)
+const deletingRecord = state<CommerceProductRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+/** The select's orders, as the server's sort and direction. */
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  'newest': { sort: 'created', direction: 'desc' },
+  'oldest': { sort: 'created', direction: 'asc' },
+  'name': { sort: 'name', direction: 'asc' },
+  'price-high': { sort: 'price', direction: 'desc' },
+  'price-low': { sort: 'price', direction: 'asc' },
+  'inventory-high': { sort: 'inventory', direction: 'desc' },
+}
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  nameLabel: 'name',
+  categoryName: 'category',
+  price: 'price',
+  inventoryCount: 'inventory',
+  availability: 'available',
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<CommerceProductRecord>({
+  fetch: query => dashboardApi<ProductIndexResponse>(`/api/dashboard/commerce/products?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS["newest"]!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ category: categoryFilter(), availability: availabilityFilter() }),
+  onLoad: (result) => {
+    const data = result as ProductIndexResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    categories.set(Array.isArray(data.categories) ? data.categories : [])
+    manufacturers.set(Array.isArray(data.manufacturers) ? data.manufacturers : [])
+    defaultCurrency.set(data.defaultCurrency || 'USD')
+  },
+  onError: error => pushToast('error', "Could not load products", { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'product' : 'products'}`
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  return [
+    { label: 'Products', value: String(current.total), detail: 'Persisted Product records' },
+    { label: 'Available', value: String(current.available), detail: 'Enabled for commerce' },
+    { label: 'Unavailable', value: String(current.unavailable), detail: 'Not currently offered' },
+    { label: 'Out of stock', value: String(current.outOfStock), detail: 'Zero recorded inventory' },
+    { label: 'Inventory', value: current.totalInventory.toLocaleString(), detail: 'Units across products' },
+  ]
+}
+
+/** Every matching product as CSV, built by the server, not just the page shown. */
+function exportHref(): string {
+  return `/api/dashboard/commerce/products/export?${params()}`
+}
+
+function loadProducts(): Promise<void> {
+  return load()
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: CommerceProductRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function saveProduct(payload: ProductWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(editing ? `/api/dashboard/commerce/products/${current.id}` : '/api/dashboard/commerce/products', {
+      method: editing ? 'PATCH' : 'POST',
+      body: payload,
+    })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Product updated' : 'Product added')
+    await loadProducts()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save product', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function viewProduct(record: CommerceProductRecord): void {
+  navigate(`/commerce/products/${record.id}`)
+}
+
+function openDelete(record: CommerceProductRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deleteProduct(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/products/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    pushToast('success', 'Product deleted', { detail: current.name })
+    await loadProducts()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete product', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadProducts()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Products" description="Manage native Product records, commerce availability, inventory, and relationships.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadProducts()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" variant="secondary" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add product</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Product metrics" columns="grid-cols-2 lg:grid-cols-5" :items="metricCards()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search name, category, manufacturer, or allergen" ariaLabel="Search products" /></div>
+      <Select v-model:value="categoryFilter" ariaLabel="Product category" placeholder="" :options="[{ value: 'all', label: 'Any category' }, ...categories().map(option => ({ value: option.id, label: option.label }))]" />
+      <Select v-model:value="availabilityFilter" ariaLabel="Product availability" placeholder="" :options="[{ value: 'all', label: 'Any availability' }, { value: 'available', label: 'Available' }, { value: 'unavailable', label: 'Unavailable' }, { value: 'out-of-stock', label: 'Out of stock' }]" />
+      <Select v-model:value="sort" ariaLabel="Sort products" placeholder="" :options="[{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name', label: 'Name' }, { value: 'price-high', label: 'Highest price' }, { value: 'price-low', label: 'Lowest price' }, { value: 'inventory-high', label: 'Highest inventory' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+    </div>
+
+    <CommerceProductsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" :currency="defaultCurrency()" @view="viewProduct" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<CommerceProductDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :categories="categories()" :manufacturers="manufacturers()" :currency="defaultCurrency()" :busy="saving()" :errors="validationErrors()" @submit="saveProduct" @close="closeDialog()" />
+<CommerceProductDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" @confirm="deleteProduct()" @close="closeDelete()" />

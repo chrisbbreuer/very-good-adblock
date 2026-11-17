@@ -1,0 +1,90 @@
+<script client>
+type ConfirmVariant = 'danger' | 'warning'
+
+const open = useReactiveProp('isOpen', false)
+const title = useReactiveProp('title', 'Are you sure?')
+const description = useReactiveProp('description', 'This action cannot be undone.')
+const confirmLabel = useReactiveProp('confirmLabel', 'Delete')
+const cancelLabel = useReactiveProp('cancelLabel', 'Cancel')
+const variant = useReactiveProp('variant', 'danger' as ConfirmVariant)
+const busy = useReactiveProp('busy', false)
+const disabled = useReactiveProp('disabled', false)
+const warning = useReactiveProp('warning', '')
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['close', 'confirm'])
+
+function close(): void {
+  if (!busy())
+    emit('close')
+}
+
+function confirm(): void {
+  if (!busy() && !disabled())
+    emit('confirm')
+}
+
+function iconClass(): string {
+  return variant() === 'warning'
+    ? 'bg-orange-500/15 text-orange-600 dark:bg-orange-400/20 dark:text-orange-400'
+    : 'bg-red-500/15 text-red-600 dark:bg-red-400/20 dark:text-red-400'
+}
+
+function iconName(): string {
+  return variant() === 'warning' ? 'i-hugeicons-alert-circle' : 'i-hugeicons-alert-02'
+}
+
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="title()"
+  :description="description()"
+  :closable="!busy()"
+  role="alertdialog"
+  size="sm"
+  @close="close"
+>
+  <template #header-leading>
+    <div class="shrink-0 p-2.5 rounded-lg" :class="iconClass()">
+      <span class="block h-5 w-5" :class="iconName()"></span>
+    </div>
+  </template>
+
+  <template #footer>
+    <div class="w-full">
+      <div :if="warning()" role="note" class="mb-4 p-3 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+        {{ warning() }}
+      </div>
+      <div :if="error()" role="alert" class="mb-4 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+        {{ error() }}
+      </div>
+      <div class="flex gap-2 items-center justify-end">
+        <Button
+          variant="secondary"
+          :disabled="busy()"
+          @click="close"
+        >
+          {{ cancelLabel() }}
+        </Button>
+        <Button
+          :if="variant() === 'warning'"
+          variant="warning"
+          :loading="busy()"
+          :disabled="disabled()"
+          @click="confirm"
+        >
+          {{ confirmLabel() }}
+        </Button>
+        <Button
+          :if="variant() !== 'warning'"
+          variant="danger"
+          :loading="busy()"
+          :disabled="disabled()"
+          @click="confirm"
+        >
+          {{ confirmLabel() }}
+        </Button>
+      </div>
+    </div>
+  </template>
+</Modal>

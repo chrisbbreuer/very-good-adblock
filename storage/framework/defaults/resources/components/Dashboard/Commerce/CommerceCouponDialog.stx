@@ -1,0 +1,143 @@
+<script client>
+import type {
+  CouponDiscountType,
+  CouponRecord,
+  CouponStatus,
+} from '../../../../app/Actions/Dashboard/Commerce/coupon-records'
+import { minorToInput, moneyInputError, moneyInputStep, parseMoneyInput } from '@stacksjs/commerce/money'
+import { formErrorMessages } from '../../../../functions/dashboard-form'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as CouponRecord | null)
+const currency = useReactiveProp('currency', 'USD')
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const code = state('')
+const descriptionText = state('')
+const status = state<CouponStatus>('Active')
+const isActive = state(true)
+const discountType = state<CouponDiscountType>('percentage')
+const discountValue = state('10')
+const minOrderAmount = state('')
+const maxDiscountAmount = state('')
+const freeProductId = state('')
+const usageLimit = state('')
+const startDate = state('')
+const endDate = state('')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  code.set(current?.code || '')
+  descriptionText.set(current?.description || '')
+  status.set(current?.status || 'Active')
+  isActive.set(current?.isActive ?? true)
+  discountType.set(current?.discountType || 'percentage')
+  // A percentage is shown as stored; money fields are stored as integer
+  // minor units and shown as the decimal.
+  discountValue.set(current
+    ? current.discountType === 'fixed_amount' ? minorToInput(current.discountValue, currency()) : String(current.discountValue)
+    : '10')
+  minOrderAmount.set(current?.minOrderAmount ? minorToInput(current.minOrderAmount, currency()) : '')
+  maxDiscountAmount.set(current?.maxDiscountAmount ? minorToInput(current.maxDiscountAmount, currency()) : '')
+  freeProductId.set(current?.freeProductId || '')
+  usageLimit.set(current?.usageLimit ? String(current.usageLimit) : '')
+  startDate.set(current?.startDate || '')
+  endDate.set(current?.endDate || '')
+})
+
+function optionalNumber(value: string): number | undefined {
+  if (!value.trim())
+    return undefined
+  const result = Number(value)
+  return Number.isFinite(result) ? result : undefined
+}
+
+function optionalMoney(value: string): number | undefined {
+  return parseMoneyInput(value, currency(), { required: false }) ?? undefined
+}
+
+function discountValueValid(): boolean {
+  if (discountType() === 'fixed_amount')
+    return !moneyInputError(discountValue(), currency(), { min: 1 })
+  const rate = Number(discountValue())
+  return Number.isFinite(rate) && rate >= 0.01 && rate <= 100
+}
+
+function valid(): boolean {
+  return Boolean(
+    code().trim()
+    && discountValueValid()
+    && !moneyInputError(minOrderAmount(), currency(), { required: false })
+    && !moneyInputError(maxDiscountAmount(), currency(), { required: false }),
+  )
+}
+
+function submit(): void {
+  if (!valid())
+    return
+  emit('submit', {
+    code: code().trim().toUpperCase(),
+    description: descriptionText().trim(),
+    status: status(),
+    isActive: isActive(),
+    discountType: discountType(),
+    discountValue: discountType() === 'fixed_amount'
+      ? parseMoneyInput(discountValue(), currency(), { min: 1 })
+      : Number(discountValue()),
+    minOrderAmount: optionalMoney(minOrderAmount()),
+    maxDiscountAmount: optionalMoney(maxDiscountAmount()),
+    freeProductId: freeProductId().trim() || undefined,
+    usageLimit: optionalNumber(usageLimit()),
+    startDate: startDate() || undefined,
+    endDate: endDate() || undefined,
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit coupon' : 'Add coupon'"
+  description="Store fields declared by the Coupon model."
+  size="lg"
+  @close="emit('close')"
+>
+    <form id="coupon-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <Input v-model:value="code" label="Code" :maxLength="50" :required="true" :spellcheck="false" :monospace="true" class="uppercase" />
+          <Select v-model:value="status" label="Status" placeholder="" :options="[{ value: 'Active', label: 'Active' }, { value: 'Scheduled', label: 'Scheduled' }, { value: 'Expired', label: 'Expired' }]" />
+          <div class="sm:col-span-2"><Textarea v-model:value="descriptionText" label="Description" :rows="3" /></div>
+          <Select v-model:value="discountType" label="Discount type" placeholder="" :options="[{ value: 'percentage', label: 'Percentage' }, { value: 'fixed_amount', label: 'Fixed amount' }]" />
+          <Input v-model:value="discountValue" label="Discount value" type="number" :min="discountType() === 'fixed_amount' ? '0' : '0.01'" :step="discountType() === 'fixed_amount' ? moneyInputStep(currency()) : '0.01'" :required="true" />
+          <Input v-model:value="minOrderAmount" label="Minimum order amount" type="number" min="0" :step="moneyInputStep(currency())" placeholder="No minimum" />
+          <Input v-model:value="maxDiscountAmount" label="Maximum discount amount" type="number" min="0" :step="moneyInputStep(currency())" placeholder="No maximum" />
+          <Input v-model:value="usageLimit" label="Usage limit" type="number" min="1" step="1" placeholder="No limit" />
+          <Input v-model:value="freeProductId" label="Free product ID" placeholder="Optional" :monospace="true" />
+          <Input v-model:value="startDate" label="Start date" type="date" />
+          <Input v-model:value="endDate" label="End date" type="date" />
+          <div class="sm:col-span-2 p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="isActive" label="Enabled for redemption" description="Availability is stored separately from lifecycle status." labelPosition="left" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full"><Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button><Button type="submit" form="coupon-form" :loading="busy()" :disabled="!valid()">{{ mode() === 'edit' ? 'Save coupon' : 'Add coupon' }}</Button></div>
+  </template>
+</Modal>

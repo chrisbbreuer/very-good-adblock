@@ -1,0 +1,354 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Campaign',
+  table: 'campaigns',
+  primaryKey: 'id',
+  autoIncrement: true,
+  belongsTo: ['Team', 'EmailList'],
+  hasMany: ['CampaignSend', 'CampaignVariant'],
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSeeder: {
+      count: 10,
+    },
+    useApi: {
+      uri: 'campaigns',
+      routes: ['index', 'store', 'show', 'update', 'destroy'],
+      middleware: ['auth', 'team'],
+    },
+    useSearch: {
+      displayable: ['id', 'name', 'type', 'status', 'subject', 'scheduledAt', 'sentAt'],
+      searchable: ['name', 'description', 'subject'],
+      sortable: ['name', 'type', 'status', 'scheduledAt', 'sentAt', 'createdAt', 'updatedAt'],
+      filterable: ['teamId', 'type', 'status', 'emailListId', 'currency'],
+    },
+    observe: true,
+  },
+
+  attributes: {
+    name: {
+      required: true,
+      fillable: true,
+      validation: {
+        rule: schema.string().min(3).max(255),
+      },
+      factory: faker => faker.helpers.arrayElement([
+        'Summer Sale 2024', 'Black Friday Deals', 'Holiday Special',
+        'New Product Launch', 'Customer Appreciation', 'Flash Sale',
+        'Welcome Series', 'Re-engagement', 'Newsletter Weekly',
+        'Product Updates',
+      ]),
+    },
+
+    description: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(1000),
+      },
+      factory: faker => faker.lorem.paragraph(),
+    },
+
+    type: {
+      required: true,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['email', 'sms', 'push', 'social', 'multi-channel']),
+      },
+      factory: faker => faker.helpers.arrayElement(['email', 'sms', 'push', 'social', 'multi-channel']),
+    },
+
+    status: {
+      required: true,
+      fillable: true,
+      default: 'draft',
+      // Newsletter sends use 'sending' / 'sent' / 'cancelled' / 'failed'.
+      // The legacy multi-channel statuses (active / completed / archived)
+      // are kept for compatibility with non-email campaign types.
+      validation: {
+        rule: schema.enum([
+          'draft', 'scheduled', 'sending', 'sent', 'paused', 'cancelled', 'failed',
+          'active', 'completed', 'archived',
+        ]),
+      },
+      factory: faker => faker.helpers.arrayElement(['draft', 'scheduled', 'sent', 'sending', 'completed']),
+    },
+
+    // ── Email-specific fields (used when type === 'email') ────────────
+    // The newsletter pipeline writes these. Other campaign types
+    // (sms/push/social) leave them null.
+
+    subject: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(255),
+      },
+      factory: faker => faker.lorem.sentence(6),
+    },
+
+    template: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.helpers.arrayElement(['newsletter-default', 'product-update', 'promo']),
+    },
+
+    text: {
+      required: false,
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.lorem.paragraphs(2),
+    },
+
+    content: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.json(),
+      },
+      factory: () => JSON.stringify([]),
+    },
+
+    channelSettings: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.json(),
+      },
+      factory: () => JSON.stringify({}),
+    },
+
+    segmentDefinition: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.json(),
+      },
+      factory: () => JSON.stringify({ operator: 'and', rules: [] }),
+    },
+
+    fromName: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(100),
+      },
+      factory: faker => faker.company.name(),
+    },
+
+    fromAddress: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().email().max(255),
+      },
+      factory: faker => faker.internet.email(),
+    },
+
+    replyTo: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().email().max(255),
+      },
+      factory: faker => faker.internet.email(),
+    },
+
+    timezone: {
+      required: true,
+      fillable: true,
+      default: 'UTC',
+      validation: {
+        rule: schema.string().max(100),
+      },
+      factory: () => 'UTC',
+    },
+
+    recurrence: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(255),
+      },
+      factory: () => null,
+    },
+
+    experimentMetric: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['open_rate', 'click_rate', 'conversion_rate']),
+      },
+      factory: () => null,
+    },
+
+    emailListId: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+      },
+    },
+
+    scheduledAt: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: (faker) => {
+        return faker.date.soon({ days: 14 }).toISOString().slice(0, 19).replace('T', ' ')
+      },
+    },
+
+    sentAt: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: () => null,
+    },
+
+    audienceSize: {
+      required: false,
+      fillable: true,
+      default: 0,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      factory: faker => faker.number.int({ min: 100, max: 50000 }),
+    },
+
+    sentCount: {
+      required: false,
+      fillable: true,
+      default: 0,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      factory: faker => faker.number.int({ min: 0, max: 10000 }),
+    },
+
+    openRate: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.number.float({ min: 15, max: 45, fractionDigits: 1 }),
+    },
+
+    clickRate: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.number.float({ min: 2, max: 15, fractionDigits: 1 }),
+    },
+
+    conversionRate: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.number.float({ min: 0.5, max: 8, fractionDigits: 1 }),
+    },
+
+    // Integer minor units of `currency`, like every money column (1999 is
+    // $19.99). The columns are INTEGER; a decimal here was stored as a REAL by
+    // SQLite and truncated by MySQL and Postgres.
+    budget: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.number().integer().min(0),
+      },
+      // $100 to $10,000.
+      factory: faker => faker.number.int({ min: 10000, max: 1000000 }),
+    },
+
+    spent: {
+      required: false,
+      fillable: true,
+      default: 0,
+      validation: {
+        rule: schema.number().integer().min(0),
+      },
+      // Within the budget drawn above, so a seeded campaign is never over it.
+      factory: (faker, { budget }) => faker.number.int({ min: 0, max: Number(budget) || 0 }),
+    },
+
+    currency: {
+      required: true,
+      fillable: true,
+      default: 'USD',
+      validation: {
+        rule: schema.string().required().max(3),
+      },
+      factory: faker => faker.helpers.arrayElement(['USD', 'EUR', 'GBP', 'CAD', 'AUD']),
+    },
+
+    startDate: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: (faker) => {
+        return faker.date.recent({ days: 30 }).toISOString().slice(0, 19).replace('T', ' ')
+      },
+    },
+
+    endDate: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: (faker) => {
+        return faker.date.soon({ days: 30 }).toISOString().slice(0, 19).replace('T', ' ')
+      },
+    },
+  },
+
+  dashboard: {
+    columns: ['name', 'type', 'status', 'emailList', 'scheduledAt', 'sentCount'],
+    // Delivery is for email campaigns, in the states the newsletter engine
+    // takes each from. Sending is on the campaign's own page only: it reaches
+    // every subscriber on the list, so it is not an icon in a table row.
+    actions: [
+      {
+        name: 'send',
+        label: 'Send now',
+        action: 'Actions/Dashboard/Marketing/CampaignSendAction',
+        icon: 'i-hugeicons-sent',
+        confirm: 'It is queued for delivery to every active subscriber on its list.',
+        on: ['record'],
+        when: { type: 'email', status: ['draft', 'scheduled', 'paused', 'failed'] },
+      },
+      {
+        name: 'cancel',
+        label: 'Cancel delivery',
+        action: 'Actions/Dashboard/Marketing/CampaignCancelAction',
+        icon: 'i-hugeicons-cancel-circle',
+        confirm: 'Messages that have not gone out yet are not sent. Ones already sent cannot be recalled.',
+        destructive: true,
+        on: ['record'],
+        when: { type: 'email', status: ['scheduled', 'sending'] },
+      },
+    ],
+  },
+} as const)

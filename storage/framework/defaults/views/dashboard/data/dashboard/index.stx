@@ -1,0 +1,11 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Data Models')
+<PageLayout>
+  <ModelsOverview
+    title="Data Models"
+    description="Browse the models currently available to this application."
+  />
+</PageLayout>
+@endsection

@@ -1,0 +1,97 @@
+<script client>
+import type { RecoveryDestinationInput } from '../../../../functions/operations'
+
+const open = useReactiveProp('isOpen', false)
+const busy = useReactiveProp('busy', false)
+const emit = defineEmits(['close', 'save'])
+
+const name = state('')
+const provider = state<RecoveryDestinationInput['provider']>('aws_s3')
+const bucket = state('')
+const endpoint = state('')
+const prefix = state('stacks')
+const region = state('')
+const accessKeyId = state('')
+const secretAccessKey = state('')
+const sessionToken = state('')
+const encryption = state<RecoveryDestinationInput['encryption']>('provider')
+const encryptionKey = state('')
+// Text, as the shared input reports it; a number where it is sent.
+const lockDays = state('0')
+const allowPrivate = state(false)
+const forcePathStyle = state(false)
+
+function close(): void {
+  if (!busy())
+    emit('close')
+}
+
+function submit(): void {
+  emit('save', {
+    name: name().trim(),
+    provider: provider(),
+    bucket: bucket().trim(),
+    endpoint: endpoint().trim(),
+    prefix: prefix().trim(),
+    region: region().trim(),
+    allowPrivate: allowPrivate(),
+    forcePathStyle: forcePathStyle(),
+    encryption: encryption(),
+    encryptionKey: encryptionKey(),
+    lockDays: Number(lockDays()),
+    credentials: {
+      accessKeyId: accessKeyId().trim(),
+      secretAccessKey: secretAccessKey(),
+      sessionToken: sessionToken(),
+    },
+  } satisfies RecoveryDestinationInput)
+}
+</script>
+
+<Modal :isOpen="open()" title="Connect recovery destination" description="Backups are only protected after the destination passes a real write, read, checksum, and cleanup test." size="lg" :closable="!busy()" @close="close">
+  <form id="recovery-destination-form" class="grid gap-4" @submit.prevent="submit">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="name" id="recovery-destination-name" label="Name" :required="true" placeholder="Production backups" />
+      <Select v-model:value="provider" id="recovery-destination-provider" label="Provider" placeholder="" :options="[{ value: 'aws_s3', label: 'AWS S3' }, { value: 's3_compatible', label: 'S3 compatible' }, { value: 'aws_backup', label: 'AWS Backup' }]" />
+    </div>
+
+    <div :if="provider() !== 'aws_backup'" class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="bucket" id="recovery-destination-bucket" label="Bucket" :required="true" placeholder="stacks-production-backups" :spellcheck="false" />
+      <Input v-model:value="region" id="recovery-destination-region" label="Region" placeholder="us-east-1" :spellcheck="false" />
+      <Input v-model:value="prefix" id="recovery-destination-prefix" label="Object prefix" placeholder="stacks" :spellcheck="false" />
+      <div :if="provider() === 's3_compatible'">
+        <Input v-model:value="endpoint" id="recovery-destination-endpoint" label="HTTPS endpoint" type="url" inputmode="url" placeholder="https://objects.example.com" />
+      </div>
+    </div>
+
+    <details :if="provider() !== 'aws_backup'" class="p-4 bg-gray-50 dark:bg-neutral-900/60 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <summary class="font-medium text-gray-900 text-sm dark:text-white cursor-pointer">Static credentials, optional</summary>
+      <p class="mt-1 text-gray-500 text-xs dark:text-neutral-400">Leave blank to use the runtime's AWS credential chain. Submitted credentials are encrypted in the control plane.</p>
+      <div class="grid gap-4 sm:grid-cols-2 mt-4">
+        <Input v-model:value="accessKeyId" ariaLabel="Access key id" autocomplete="off" placeholder="Access key id" :spellcheck="false" :monospace="true" />
+        <Input v-model:value="secretAccessKey" ariaLabel="Secret access key" type="password" autocomplete="new-password" placeholder="Secret access key" />
+        <div class="sm:col-span-2">
+          <Input v-model:value="sessionToken" ariaLabel="Session token" type="password" autocomplete="new-password" placeholder="Session token, optional" />
+        </div>
+      </div>
+    </details>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Select v-model:value="encryption" id="recovery-destination-encryption" label="Encryption" placeholder="" :options="[{ value: 'provider', label: 'Provider managed' }, { value: 'client_side', label: 'Client side' }, { value: 'both', label: 'Both' }]" />
+      <Input v-model:value="lockDays" id="recovery-destination-lock" label="Immutable retention days" type="number" min="0" max="36500" step="1" inputmode="numeric" />
+    </div>
+    <div :if="encryption() !== 'provider'">
+      <Input v-model:value="encryptionKey" id="recovery-destination-key" label="Client encryption key" type="password" :minLength="32" autocomplete="new-password" :required="true" hint="At least 32 characters. Keep an independent recovery copy outside this control plane." />
+    </div>
+    <div :if="provider() === 's3_compatible'" class="flex flex-wrap gap-4">
+      <Toggle v-model:checked="forcePathStyle" label="Force path-style URLs" />
+      <Toggle v-model:checked="allowPrivate" label="Allow private endpoint" />
+    </div>
+  </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button variant="secondary" :disabled="busy()" @click="close">Cancel</Button>
+      <Button type="submit" form="recovery-destination-form" :loading="busy()">Connect destination</Button>
+    </div>
+  </template>
+</Modal>

@@ -1,0 +1,11 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Models')
+<PageLayout>
+  <ModelsOverview
+    title="Models"
+    description="Inspect application and framework models, record counts, and generated API surfaces."
+  />
+</PageLayout>
+@endsection

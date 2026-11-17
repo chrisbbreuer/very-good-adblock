@@ -1,0 +1,183 @@
+@extends('layouts/storefront')
+
+@section('title', 'Your cart')
+
+<script server>
+// The columns the line query selects.
+interface CartItemRow {
+  id: number
+  quantity: number | string
+  unit_price: number | string
+  total_price: number | string
+  product_name: string
+  product_image: string | null
+  product_sku: string
+  weight_grams: number | null
+}
+
+// The columns of `carts` this page reads. The query selects `*`.
+interface CartRow {
+  id: number
+  currency: string | null
+}
+
+interface StorefrontLineItem { lineTotal: number }
+
+const { verifyCartCookie } = require('../../app/Storefront/CartCookie')
+const { readStorefront } = require('../../app/Storefront/StorefrontDatabase')
+const { storefrontCurrency, storefrontMoney, storefrontSummary } = require('../../app/Storefront/StorefrontMoney')
+
+// Signed by the storefront actions as the token, a dot and its HMAC. An
+// unsigned or tampered cookie is no cart, and is never looked up.
+const token = verifyCartCookie(requestContext.cookie('stacks_cart'))
+
+const found = token
+  ? readStorefront('views/cart.stx', { cart: null, items: [] }, (db: import('bun:sqlite').Database) => {
+      const row = db.query<CartRow, [string]>(`SELECT * FROM carts WHERE session_token = ?1 AND status = 'active' LIMIT 1`).get(token)
+      if (!row)
+        return { cart: null, items: [] }
+
+      // Every amount below is integer minor units of the cart's currency.
+      const currency = storefrontCurrency(row.currency)
+      const lines = db.query<CartItemRow, [number]>(`
+        SELECT ci.id, ci.quantity, ci.unit_price, ci.total_price, ci.product_name,
+              ci.product_image, ci.product_sku, p.weight_grams
+        FROM cart_items ci
+        LEFT JOIN products p ON p.slug = ci.product_sku
+        WHERE ci.cart_id = ?1
+        ORDER BY ci.id ASC
+      `).all(row.id).map((line: CartItemRow) => {
+        const qty = Number(line.quantity)
+        const price = Number(line.unit_price)
+        const lineTotal = Number(line.total_price)
+        return {
+          id: line.id,
+          slug: line.product_sku,
+          name: line.product_name,
+          weight: line.weight_grams ? `${line.weight_grams}g` : '',
+          qty,
+          priceLabel: storefrontMoney(price, currency),
+          lineTotal,
+          lineTotalLabel: storefrontMoney(lineTotal, currency),
+          image: line.product_image,
+        }
+      })
+
+      return { cart: row, items: lines }
+    })
+  : { cart: null, items: [] }
+
+const cart = found.cart
+const items = found.items
+
+// The same shipping rule PlaceOrderAction charges with
+// (app/Actions/Storefront/_shipping.ts), in minor units, so the price the
+// shopper sees in their cart matches the total they're actually charged.
+const subtotal = items.reduce((sum: number, i: StorefrontLineItem) => sum + i.lineTotal, 0)
+
+// Pre-format every amount so the OrderSummary component template doesn't
+// have to format a defineProps local — STX's SSR pass doesn't reliably
+// expose those locals, so callers do the formatting.
+const summary = storefrontSummary(subtotal, storefrontCurrency(cart?.currency))
+const subtotalLabel = summary.subtotalLabel
+const shippingLabel = summary.shippingLabel
+const totalLabel = summary.totalLabel
+const freeShippingNote = summary.freeShippingNote
+
+// What the form just posted from this page did, said once (stacksjs/stacks#3312).
+const cartNotice = requestContext.notice()
+// Why the form this page posted was refused, when it was not about one field
+// ("Your cart is empty."). Shown once (stacksjs/stacks#3311).
+const formError = requestContext.formError()
+</script>
+
+@section('content')
+  <div class="mx-auto px-6 py-12 max-w-5xl">
+
+    <p class="font-medium text-stone-500 text-xs tracking-wider uppercase">Your bowl</p>
+    <h1 class="mt-2 font-bold text-4xl text-stone-900 tracking-tight">Cart</h1>
+    <p class="mt-2 text-stone-600">{{ items.length }} item{{ items.length === 1 ? '' : 's' }}{{ items.length > 0 ? ' ready to ship' : '' }}.</p>
+
+    @if (formError)
+      <p role="alert" class="mt-6 px-4 py-3 font-medium text-red-800 text-sm bg-red-50 border border-red-200 rounded-xl">{{ formError }}</p>
+    @endif
+
+    @if (cartNotice)
+      <p role="status" class="mt-6 px-4 py-3 font-medium text-sm text-stone-800 bg-stone-100 border border-stone-200 rounded-xl">{{ cartNotice }}</p>
+    @endif
+
+    @if (items.length === 0)
+      <div class="mt-12 p-12 md:p-16 text-center bg-stone-50 border border-dashed border-stone-300 rounded-3xl">
+        <div class="inline-flex items-center justify-center mx-auto h-14 w-14 bg-stone-100 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-stone-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .956-.343 1.087-.835l1.872-7.024A1.125 1.125 0 0019.797 5.25H5.106M7.5 14.25L5.106 5.25M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+        </div>
+        <p class="mt-5 font-medium text-base text-stone-700">Your cart is empty.</p>
+        <p class="mt-1 text-sm text-stone-500">Pick a treat and we'll start your bowl.</p>
+        <a href="/products" class="inline-flex gap-2 items-center mt-6 px-6 py-3 font-semibold text-sm text-stone-50 bg-stone-900 hover:bg-stone-800 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-50 focus-visible:ring-stone-900 transition-colors">
+          Browse the shop
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+        </a>
+      </div>
+    @else
+      <div class="grid gap-10 items-start lg:gap-12 lg:grid-cols-[2fr_1fr] mt-10">
+
+        <div class="space-y-4">
+          @foreach (items as item)
+            <article class="flex gap-4 p-4 bg-stone-50 border border-stone-200 rounded-2xl hover:border-stone-300 transition-colors">
+              <a
+                href="/products/{{ item.slug }}"
+                class="block overflow-hidden flex-shrink-0 h-24 w-24 bg-stone-200 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-50 focus-visible:ring-stone-900"
+                aria-label="View {{ item.name }}"
+              >
+                <img src="{{ item.image }}" alt="" class="object-cover h-full w-full">
+              </a>
+              <div class="flex flex-1 flex-col min-w-0">
+                <div class="flex gap-3 items-start justify-between">
+                  <div class="min-w-0">
+                    <a href="/products/{{ item.slug }}" class="block font-semibold text-stone-900 truncate hover:underline">{{ item.name }}</a>
+                    @if (item.weight)
+                      <p class="mt-0.5 text-stone-500 text-xs">{{ item.weight }} · {{ item.priceLabel }} each</p>
+                    @else
+                      <p class="mt-0.5 text-stone-500 text-xs">{{ item.priceLabel }} each</p>
+                    @endif
+                  </div>
+                  <p class="font-semibold text-stone-900 whitespace-nowrap">{{ item.lineTotalLabel }}</p>
+                </div>
+                <div class="flex gap-3 items-end justify-between mt-auto pt-3">
+                  <form action="/api/cart/update" method="POST" class="inline-flex overflow-hidden items-center border border-stone-300 rounded-full" data-cart-row>
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <button type="submit" name="quantity" value="{{ item.qty - 1 }}" class="px-3 py-1.5 text-stone-600 hover:text-stone-900 focus-visible:bg-stone-100 hover:bg-stone-100 focus-visible:outline-none transition-colors" aria-label="Decrease quantity">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                    </button>
+                    <span class="px-2 min-w-[1.5rem] font-semibold tabular-nums text-center text-sm text-stone-900">{{ item.qty }}</span>
+                    <button type="submit" name="quantity" value="{{ item.qty + 1 }}" class="px-3 py-1.5 text-stone-600 hover:text-stone-900 focus-visible:bg-stone-100 hover:bg-stone-100 focus-visible:outline-none transition-colors" aria-label="Increase quantity">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m-7-7h14"/></svg>
+                    </button>
+                  </form>
+                  <form action="/api/cart/update" method="POST">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    <input type="hidden" name="quantity" value="0">
+                    <button type="submit" class="font-medium text-stone-500 text-xs underline-offset-4 focus-visible:text-stone-900 focus-visible:underline hover:text-stone-900 hover:underline focus-visible:outline-none transition-colors" aria-label="Remove {{ item.name }}">Remove</button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          @endforeach
+        </div>
+
+        <OrderSummary
+          subtotalLabel="{{ subtotalLabel }}"
+          shippingLabel="{{ shippingLabel }}"
+          totalLabel="{{ totalLabel }}"
+          freeShippingNote="{{ freeShippingNote }}"
+          ctaHref="/checkout/contact"
+          ctaLabel="Checkout"
+          secondaryHref="/products"
+          secondaryLabel="Keep shopping"
+          :sticky="true"
+        />
+
+      </div>
+    @endif
+  </div>
+@endsection

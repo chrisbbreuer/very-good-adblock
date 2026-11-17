@@ -1,0 +1,154 @@
+<script client>
+import type { ProductChoice } from '../../../../app/Actions/Dashboard/Commerce/commerce-choice-records'
+import type { ProductUnitRecord } from '../../../../app/Actions/Dashboard/Commerce/product-unit-records'
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { formErrorMessages } from '../../../../functions/dashboard-form'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as ProductUnitRecord | null)
+const types = useReactiveProp('types', [] as string[])
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const abbreviation = state('')
+const type = state('')
+const descriptionText = state('')
+const productId = state('')
+const isDefault = state(false)
+let hydrationKey = ''
+
+// The product choices are a server search (stacksjs/stacks#3218): this used
+// to be handed the first 500 products by name, so a unit could not be given
+// any later product.
+const productChoices = state<ProductChoice[]>([])
+const productMatches = state(0)
+const productQuery = state('')
+let productRequest = 0
+let productTimer: ReturnType<typeof setTimeout> | null = null
+
+async function loadProducts(term: string): Promise<void> {
+  const request = ++productRequest
+  const params = new URLSearchParams()
+  if (term)
+    params.set('q', term)
+  let found: ProductChoice[] = []
+  let count = 0
+  try {
+    const data = await dashboardApi<{ choices?: ProductChoice[], total?: number }>(`/api/dashboard/commerce/product-choices${term ? `?${params}` : ''}`)
+    found = Array.isArray(data.choices) ? data.choices : []
+    count = Number(data.total) || found.length
+  }
+  catch {
+    // Soft-fail: the unit's own product stays selectable.
+  }
+  if (request !== productRequest)
+    return
+  productChoices.set(found)
+  productMatches.set(count)
+}
+
+function searchProductsSoon(): void {
+  if (productTimer)
+    clearTimeout(productTimer)
+  productTimer = setTimeout(() => { void loadProducts(productQuery().trim()) }, 250)
+}
+
+/** The choices to show: the search results, with the unit's own product kept in. */
+function products(): ProductChoice[] {
+  const found = productChoices()
+  const current = record()
+  if (!current?.productId || found.some(choice => choice.id === current.productId))
+    return found
+  return [{ id: current.productId, label: current.productName || `Product ${current.productId}`, detail: '' }, ...found]
+}
+
+function moreProductsLabel(): string {
+  const shown = productChoices().length
+  const total = productMatches()
+  return total > shown ? `Showing ${shown} of ${total.toLocaleString()} matching products. Search to narrow it down.` : ''
+}
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  abbreviation.set(current?.abbreviation || '')
+  type.set(current?.type || '')
+  descriptionText.set(current?.description || '')
+  productId.set(current?.productId || '')
+  isDefault.set(current?.isDefault || false)
+  productQuery.set('')
+  void loadProducts('')
+})
+
+function submit(): void {
+  if (!name().trim() || !abbreviation().trim() || !type().trim())
+    return
+  emit('submit', {
+    name: name().trim(),
+    abbreviation: abbreviation().trim(),
+    type: type().trim(),
+    description: descriptionText().trim(),
+    productId: productId() ? Number(productId()) : null,
+    isDefault: isDefault(),
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit product unit' : 'Add product unit'"
+  description="Fields and relationships come from the ProductUnit model."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="product-unit-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Input v-model:value="name" label="Name" :maxLength="100" :required="true" />
+            <Input v-model:value="abbreviation" label="Abbreviation" :maxLength="10" :required="true" />
+          </div>
+          <div>
+            <Input v-model:value="type" label="Type" list="product-unit-types" :required="true" />
+            <datalist id="product-unit-types"><option :for="unitType in types()" :key="unitType" :value="unitType"></option></datalist>
+          </div>
+          <div>
+            <Input v-model:value="productQuery" label="Product" type="search" name="product_search" ariaLabel="Search products by name or id" placeholder="Search by name or id" @input="searchProductsSoon()" />
+          </div>
+          <div>
+            <Select v-model:value="productId" ariaLabel="Product" placeholder="" :options="[{ value: '', label: 'Unassigned' }, ...products().map(product => ({ value: product.id, label: product.label }))]" />
+            <p :if="moreProductsLabel()" class="mt-1 text-gray-500 text-xs dark:text-neutral-400" :text="moreProductsLabel()"></p>
+          </div>
+          <div>
+            <Textarea v-model:value="descriptionText" label="Description" :rows="3" :maxLength="255" />
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="isDefault" label="Default for this type" description="Selecting this clears any other default in the same unit type." labelPosition="left" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+        <Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button>
+        <Button type="submit" form="product-unit-form" :loading="busy()" :disabled="!name().trim() || !abbreviation().trim() || !type().trim()">
+          {{ mode() === 'edit' ? 'Save product unit' : 'Add product unit' }}
+        </Button>
+    </div>
+  </template>
+</Modal>

@@ -1,0 +1,254 @@
+@import('../UI/Table')
+
+<script client>
+import { dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface AuthorRecord {
+  id: string
+  name: string
+  email: string
+  bio: string
+  avatar: string
+  postCount: number
+  createdAt: string
+}
+
+interface AuthorDraft {
+  name: string
+  email: string
+  bio: string
+  avatar: string
+}
+
+const authors = state<AuthorRecord[]>([])
+const assignedPostCount = state(0)
+const loading = state(true)
+const loadError = state('')
+const formOpen = state(false)
+const editingAuthor = state<AuthorRecord | null>(null)
+const saving = state(false)
+const saveError = state('')
+const deletingAuthor = state<AuthorRecord | null>(null)
+const deleting = state(false)
+const deleteError = state('')
+
+function normalize(record: any): AuthorRecord {
+  return {
+    id: String(record?.id || ''),
+    name: String(record?.name || ''),
+    email: String(record?.email || ''),
+    bio: String(record?.bio || ''),
+    avatar: String(record?.avatar || ''),
+    postCount: Number(record?.postCount || 0),
+    createdAt: String(record?.created_at || ''),
+  }
+}
+
+const COLUMNS = [
+  // Slotted: the cell is an avatar, or the author's initials when there is no
+  // image, with the name and email beside it.
+  { key: 'name', label: 'Author', sortable: true, slotted: true },
+  { key: 'postCount', label: 'Posts', type: 'number' as const, sortable: true, class: 'text-gray-500 dark:text-neutral-400' },
+  { key: 'createdAt', label: 'Created', type: 'date' as const, sortable: true, emptyText: 'Unknown', class: 'text-gray-500 dark:text-neutral-400' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit author' },
+  { action: 'delete', label: 'Delete author' },
+]
+
+/**
+ * `UI/Table` owns the search. `initialsLabel` is computed per row rather than
+ * called from the slot, because a slot body reads the row through attribute
+ * bindings and keeping the derivation here is one less thing to depend on.
+ */
+function visibleAuthors(): Array<AuthorRecord & { initialsLabel: string }> {
+  return authors().map(author => ({ ...author, initialsLabel: initials(author.name) }))
+}
+
+function handleRowAction(payload: { action: string, row: AuthorRecord }): void {
+  if (payload.action === 'edit')
+    openEdit(payload.row)
+  else
+    openDelete(payload.row)
+}
+
+function initials(value: string): string {
+  return value.split(/\s+/).filter(Boolean).slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || '').join('') || '?'
+}
+
+async function loadAuthors(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<{ authors?: unknown[], assignedPostCount?: number }>('/api/dashboard/authors')
+    if (!Array.isArray(data.authors))
+      throw new TypeError('Authors were not returned in the expected shape.')
+    authors.set(data.authors.map(normalize))
+    assignedPostCount.set(Number(data.assignedPostCount || 0))
+  }
+  catch (error) {
+    loadError.set(error instanceof Error ? error.message : String(error))
+    pushToast('error', 'Could not load authors', { detail: loadError() })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openCreate(): void {
+  editingAuthor.set(null)
+  saveError.set('')
+  formOpen.set(true)
+}
+
+function openEdit(author: AuthorRecord): void {
+  editingAuthor.set(author)
+  saveError.set('')
+  formOpen.set(true)
+}
+
+function closeForm(): void {
+  if (!saving())
+    formOpen.set(false)
+}
+
+async function saveAuthor(draft: AuthorDraft): Promise<void> {
+  const author = editingAuthor()
+  saving.set(true)
+  saveError.set('')
+  try {
+    await dashboardApi(author ? `/api/dashboard/authors/${author.id}` : '/api/dashboard/authors', {
+      method: author ? 'PATCH' : 'POST',
+      body: draft,
+    })
+    formOpen.set(false)
+    pushToast('success', author ? 'Author updated' : 'Author created')
+    await loadAuthors()
+  }
+  catch (error) {
+    saveError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDelete(author: AuthorRecord): void {
+  deletingAuthor.set(author)
+  deleteError.set('')
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingAuthor.set(null)
+}
+
+function deleteDescription(): string {
+  const author = deletingAuthor()
+  return author
+    ? `${author.name} will be removed. Their posts will be kept without an assigned author.`
+    : ''
+}
+
+async function deleteAuthor(): Promise<void> {
+  const author = deletingAuthor()
+  if (!author)
+    return
+  deleting.set(true)
+  deleteError.set('')
+  try {
+    await dashboardApi(`/api/dashboard/authors/${author.id}`, { method: 'DELETE' })
+    deletingAuthor.set(null)
+    pushToast('success', 'Author deleted')
+    await loadAuthors()
+  }
+  catch (error) {
+    deleteError.set(error instanceof Error ? error.message : String(error))
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadAuthors()
+})
+</script>
+
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="font-semibold text-blue-600 text-xs tracking-wide uppercase dark:text-blue-400">Content</p>
+      <h1 class="mt-1 font-bold text-2xl text-gray-900 dark:text-white">Authors</h1>
+      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Manage the people who write posts, and which posts each one wrote.</p>
+    </div>
+    <div class="flex gap-2">
+      <Button :loading="loading()" variant="secondary" @click="loadAuthors()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+      <Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>New author</Button>
+    </div>
+  </header>
+
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadAuthors()">Retry</Button></div>
+
+  <section aria-label="Author metrics" class="grid gap-3 grid-cols-1 sm:grid-cols-3">
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Total</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ authors().length }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Assigned posts</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ assignedPostCount() }}</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Newest</p><p class="mt-2 font-semibold text-gray-900 text-lg truncate dark:text-white">{{ authors()[0]?.name || 'None' }}</p></article>
+  </section>
+
+  <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+    {{-- Slot bodies read the row through `x-text` and `:attr`; an
+         interpolation in slot content is preserved but not evaluated on the
+         installed stx. See stacksjs/stx#2095. --}}
+    <Table
+      :columns="COLUMNS"
+      :data="visibleAuthors()"
+      :loading="loading()"
+      :row-actions="ROW_ACTIONS"
+      action-label-key="name"
+      searchable
+      search-placeholder="Search authors"
+      paginated
+      :page-size="25"
+      empty-title="No authors found"
+      empty-description="Adjust the search or create an author."
+      @row-action="handleRowAction"
+    >
+      <template #cell="{ row }">
+        <div class="flex gap-3 items-center">
+          <div class="flex overflow-hidden flex-shrink-0 items-center justify-center h-9 w-9 font-semibold text-blue-700 text-xs dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 rounded-full">
+            <img :if="row.avatar" :src="row.avatar" :alt="row.name" class="object-cover h-full w-full" />
+            <span :else x-text="row.initialsLabel"></span>
+          </div>
+          <div class="min-w-0">
+            <p class="font-medium text-gray-900 text-sm truncate dark:text-white" x-text="row.name"></p>
+            <p class="text-gray-500 text-xs truncate dark:text-neutral-400" x-text="row.email"></p>
+          </div>
+        </div>
+      </template>
+    </Table>
+  </section>
+</div>
+
+<AuthorEditorDialog
+  :open="formOpen()"
+  :author="editingAuthor()"
+  :busy="saving()"
+  :error="saveError()"
+  @close="closeForm"
+  @submit="saveAuthor"
+/>
+
+<ConfirmDialog
+  :isOpen="Boolean(deletingAuthor())"
+  title="Delete author?"
+  :description="deleteDescription()"
+  confirmLabel="Delete author"
+  :busy="deleting()"
+  :error="deleteError()"
+  @close="closeDelete"
+  @confirm="deleteAuthor"
+/>

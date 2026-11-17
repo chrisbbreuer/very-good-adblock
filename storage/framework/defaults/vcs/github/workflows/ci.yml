@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  # So a maintainer can ship without pushing an empty commit.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pantry
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+        with:
+          install: 'false'
+
+      - name: Use cached node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install Dependencies
+        # Frozen: a lockfile that no longer matches package.json fails here,
+        # not in the deploy that installs from it.
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun buddy lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pantry
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+        with:
+          install: 'false'
+
+      - name: Use cached node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install dependencies
+        # Frozen: a lockfile that no longer matches package.json fails here,
+        # not in the deploy that installs from it.
+        run: bun install --frozen-lockfile
+
+      - name: Set Application Key
+        run: bun buddy key:generate
+
+      - name: Typecheck
+        run: bun buddy test:types
+
+  test:
+    name: Test
+    needs: [lint, typecheck]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pantry
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+        with:
+          install: 'false'
+
+      - name: Use cached node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            node-modules-
+
+      - name: Install Dependencies
+        # Frozen: a lockfile that no longer matches package.json fails here,
+        # not in the deploy that installs from it.
+        run: bun install --frozen-lockfile
+
+      - name: Set Application Key
+        run: bun buddy key:generate
+
+      # Feature tests query real tables, and a fresh checkout has no database
+      # file at all: it is gitignored, being machine-local state. Without this
+      # the suite fails in beforeAll with "no such table", which reads like a
+      # broken test rather than a missing schema.
+      - name: Migrate the database
+        run: bun buddy migrate
+
+      # Build once before tests which consume compiled libraries/hosted assets.
+      # No-library applications are an explicit native no-op.
+      - name: Prepare Library Candidate
+        id: library
+        run: bun buddy release:prepare
+
+      - name: Test Suite
+        run: bun run test
+
+      # This upload is reached only after lint, types and the actual tests pass.
+      - name: Retain Tested Library Candidate
+        if: steps.library.outputs.prepared == 'true' && steps.library.outputs.source_eligible == 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stacks-library-candidate
+          path: storage/framework/runtime/library-release/
+          if-no-files-found: error
+          retention-days: 30

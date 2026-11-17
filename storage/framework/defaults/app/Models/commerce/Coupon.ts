@@ -1,0 +1,201 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'Coupon',
+  table: 'coupons',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'code', 'discountType', 'discountValue', 'startDate', 'endDate'],
+      searchable: ['code', 'description', 'discountType'],
+      sortable: ['createdAt', 'startDate', 'endDate', 'discountValue', 'usageCount'],
+      filterable: ['discountType'],
+    },
+
+    useSeeder: {
+      count: 15,
+    },
+
+    useApi: {
+      uri: 'coupons',
+      middleware: ['auth'],
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Product'],
+  hasMany: ['Order'],
+
+  attributes: {
+    code: {
+      unique: true,
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(50),
+        message: {
+          max: 'Code must have a maximum of 50 characters',
+        },
+      },
+      factory: faker => faker.string.alphanumeric(8).toUpperCase(),
+    },
+
+    description: {
+      order: 2,
+      fillable: true,
+      type: 'text',
+      validation: {
+        rule: schema.string(),
+      },
+      factory: faker => faker.commerce.productDescription(),
+    },
+
+    status: {
+      default: 'Active',
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['Active', 'Scheduled', 'Expired']).required(),
+        message: {
+          required: 'Status is required',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement(['Active', 'Scheduled', 'Expired']),
+    },
+
+    isActive: {
+      order: 4,
+      fillable: true,
+      default: true,
+      validation: {
+        rule: schema.boolean().required(),
+      },
+      factory: () => true,
+    },
+
+    discountType: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.enum(['fixed_amount', 'percentage']).required(),
+        message: {
+          required: 'Discount type is required',
+        },
+      },
+      factory: faker => faker.helpers.arrayElement(['fixed_amount', 'percentage']),
+    },
+
+    discountValue: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0.01),
+        message: {
+          required: 'Discount value is required',
+          min: 'Discount value must be greater than 0.01',
+        },
+      },
+      // A percentage stays a plain number; a fixed amount is integer minor units
+      // ($5 to $50). discountType is declared above, so the seeder has drawn it.
+      factory: (faker, { discountType }) => discountType === 'fixed_amount'
+        ? faker.helpers.arrayElement([500, 1000, 1500, 2000, 2500, 5000])
+        : faker.number.int({ min: 5, max: 50 }),
+    },
+
+    minOrderAmount: {
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+        message: {
+          min: 'Min order amount must be greater than 0',
+        },
+      },
+      // Integer minor units: no minimum, or $25 to $100.
+      factory: faker => faker.helpers.arrayElement([0, 2500, 5000, 7500, 10000]),
+    },
+
+    maxDiscountAmount: {
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+        message: {
+          min: 'Max discount amount must be greater than 0',
+        },
+      },
+      // Integer minor units: $10 to $100.
+      factory: faker => faker.number.int({ min: 1000, max: 10000 }),
+    },
+
+    freeProductId: {
+      order: 9,
+      fillable: true,
+      validation: {
+        rule: schema.string(),
+      },
+      // Stored and shown, never resolved: nothing redeems or joins on it yet,
+      // so what it holds is left to the feature that does. No factory, so a
+      // seed does not invent one (stacksjs/stacks#3002).
+    },
+
+    usageLimit: {
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(1),
+        message: {
+          min: 'Usage limit must be greater than 1',
+        },
+      },
+      factory: faker => faker.number.int({ min: 1, max: 100 }),
+    },
+
+    usageCount: {
+      default: 0,
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+        message: {
+          min: 'Usage count must be greater than 0',
+        },
+      },
+      factory: faker => faker.number.int({ min: 0, max: 50 }),
+    },
+
+    startDate: {
+      order: 12,
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: faker => faker.date.recent().toISOString().slice(0, 10),
+    },
+
+    endDate: {
+      order: 13,
+      fillable: true,
+      validation: {
+        rule: schema.date(),
+      },
+      factory: faker => faker.date.future().toISOString().slice(0, 10),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+  },
+} as const)

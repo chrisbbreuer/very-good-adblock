@@ -1,0 +1,83 @@
+<script client>
+import type { ManufacturerRecord } from '../../../../app/Actions/Dashboard/Commerce/manufacturer-records'
+import { formErrorMessages } from '../../../../functions/dashboard-form'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as ManufacturerRecord | null)
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const descriptionText = state('')
+const country = state('')
+const featured = state(false)
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  descriptionText.set(current?.description || '')
+  country.set(current?.country || '')
+  featured.set(current?.featured || false)
+})
+
+function submit(): void {
+  if (!name().trim() || !country().trim())
+    return
+  emit('submit', {
+    manufacturer: name().trim(),
+    description: descriptionText().trim(),
+    country: country().trim(),
+    featured: featured(),
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit manufacturer' : 'Add manufacturer'"
+  description="Store only fields declared by the Manufacturer model."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="manufacturer-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="space-y-4">
+          <div>
+            <Input v-model:value="name" label="Name" :maxLength="100" :required="true" />
+          </div>
+          <div>
+            <Textarea v-model:value="descriptionText" label="Description" :rows="4" :maxLength="2000" />
+          </div>
+          <div>
+            <Input v-model:value="country" label="Country" :maxLength="100" :required="true" />
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="featured" label="Featured manufacturer" labelPosition="left" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+        <Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button>
+        <Button type="submit" form="manufacturer-form" :loading="busy()" :disabled="!name().trim() || !country().trim()">
+          {{ mode() === 'edit' ? 'Save manufacturer' : 'Add manufacturer' }}
+        </Button>
+    </div>
+  </template>
+</Modal>

@@ -1,0 +1,123 @@
+<script client>
+import type { TaxRateRecord } from '../../../../app/Actions/Dashboard/Commerce/tax-rate-records'
+import { formErrorMessages } from '../../../../functions/dashboard-form'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as TaxRateRecord | null)
+const types = useReactiveProp('types', [] as string[])
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const rate = state<number | string>(0)
+/** The rate as a number: the input reports what was typed, as text. Not a number while it is empty. */
+const rateValue = derived(() => rate() === '' ? Number.NaN : Number(rate()))
+const rateValid = derived(() => rateValue() >= 0 && rateValue() <= 100)
+const type = state('')
+const country = state('')
+const region = state('North America')
+const status = state<'active' | 'inactive'>('active')
+const isDefault = state(false)
+const code = state('')
+const exemptible = state(false)
+let hydrationKey = ''
+
+const regions = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Oceania', 'Antarctica'] as const
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  rate.set(current?.rate || 0)
+  type.set(current?.type || '')
+  country.set(current?.country || '')
+  region.set(current?.region || 'North America')
+  status.set(current?.status || 'active')
+  isDefault.set(current?.isDefault || false)
+  code.set(current?.code || '')
+  exemptible.set(current?.exemptible || false)
+})
+
+function submit(): void {
+  if (!name().trim() || !type().trim() || !country().trim() || !rateValid())
+    return
+  emit('submit', {
+    name: name().trim(),
+    rate: rateValue(),
+    type: type().trim(),
+    country: country().trim(),
+    region: region(),
+    status: status(),
+    isDefault: isDefault(),
+    code: code().trim(),
+    exemptible: exemptible(),
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit tax rate' : 'Add tax rate'"
+  description="All fields follow the TaxRate model validation rules."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="tax-rate-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="space-y-4">
+          <div>
+            <Input v-model:value="name" label="Name" :maxLength="255" :required="true" />
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Input v-model:value="rate" label="Rate (%)" type="number" min="0" max="100" step="0.01" :required="true" />
+            <div>
+              <Input v-model:value="type" label="Type" list="tax-rate-types" :maxLength="100" :required="true" />
+              <datalist id="tax-rate-types"><option :for="taxType in types()" :key="taxType" :value="taxType"></option></datalist>
+            </div>
+          </div>
+          <div>
+            <Input v-model:value="country" label="Country" :maxLength="100" :required="true" />
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Select v-model:value="region" label="Region" placeholder="" :options="[...regions.map(regionOption => ({ value: regionOption, label: regionOption }))]" />
+            <Select v-model:value="status" label="Status" placeholder="" :options="[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]" />
+          </div>
+          <div>
+            <Input v-model:value="code" label="Code" placeholder="sales" :monospace="true" hint="What the application matches on. Renaming the rate above does not change what is charged; changing this can." />
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="isDefault" label="Default tax rate" description="Selecting this clears the default flag from every other rate." labelPosition="left" />
+          </div>
+          {{--
+            Spelled out rather than labelled "exempt", because the two read
+            alike and mean opposite things: this marks the component as one an
+            exemption can lift, not one that is currently unpaid.
+          --}}
+          <div class="p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="exemptible" label="Can be exempted" description="Customers who qualify for an exemption are not charged this component. Leave off for anything owed regardless - an excise or a city levy is usually still due." labelPosition="left" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+        <Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button>
+        <Button type="submit" form="tax-rate-form" :loading="busy()" :disabled="!name().trim() || !type().trim() || !country().trim() || !rateValid()">
+          {{ mode() === 'edit' ? 'Save tax rate' : 'Add tax rate' }}
+        </Button>
+    </div>
+  </template>
+</Modal>

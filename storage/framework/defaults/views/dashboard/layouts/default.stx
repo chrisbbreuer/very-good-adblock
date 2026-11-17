@@ -1,0 +1,801 @@
+<script server>
+// Dashboard chrome. The navigation pane is `@stacksjs/components`' <Sidebar>
+// in its `macos` theme - the same component Craft apps use, so the dashboard
+// and a native Craft build render the identical source list.
+//
+// This used to be a hand-rolled <aside> plus ~180 lines of plain CSS, because
+// @stacksjs/components 0.2.9x shipped only its hashed dist/ output and the
+// component fatal-errored with an ENOENT (stacksjs/stacks#1989). That package
+// now publishes its .stx sources, so the real component resolves and the
+// duplicate markup is gone.
+//
+// A package specifier, not relative: the stx client bundler resolves a
+// relative import against the PAGE that extends this layout, not against this
+// file, so `../../..` pointed somewhere different for every page depth. Nor
+// a path from the project root (`~/`), where the tree exists only while it is
+// vendored or linked. `@stacksjs/defaults/*` is mapped onto the vendored tree in
+// `storage/framework/tsconfig.app.json` and falls back to the installed
+// package when there is none, so it resolves in both layouts.
+import { buildWebSidebarSections, webSidebarRoleMap } from '@stacksjs/defaults/resources/functions/dashboard/sidebar'
+
+export const sidebarSections = buildWebSidebarSections()
+
+// Role gating (stacksjs/stacks#1843). Models can declare
+// `dashboard.roles: ['admin', 'dev']`; rows for those models are hidden from
+// viewers who hold none of them. Emitted as an id-keyed map rather than a
+// `data-required-roles` attribute on each row, which keeps the generic
+// Sidebar component free of Stacks-specific attributes.
+// Published as an object, not as JSON text. The server-to-client bridge
+// serializes what it publishes, so a value stringified here arrived on the
+// client double-encoded - as the JSON string rather than the map. The client
+// then ran `Object.entries` over that string, which yields index/character
+// pairs, and called `.some()` on a single character. Every dashboard load
+// threw inside applyRoleFilter before it could filter anything.
+export const sidebarRoleMap: Record<string, string[]> = webSidebarRoleMap(sidebarSections)
+
+// Declared, so the client block below gets the map typed rather than inferred
+// off the implicit bridge - which is what let the mismatch above go unseen.
+defineClientPayload({ sidebarRoleMap, sidebarSections })
+</script>
+
+@head
+<link rel="icon" href="/images/logos/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/images/logos/favicon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+@endhead
+
+<!-- Dashboard icon stylesheet. Most dashboard icons are applied via dynamic
+    `:class="…"` bindings whose class names live in client script state, which the
+    stx Crosswind extractor cannot see, so their CSS is never generated inline and
+    they render as empty boxes. The dev server generates the full icon set once and
+    serves it here (browser-cached), instead of inlining ~260KB into every page.
+    Route: `/__deps/dashboard-icons.css` in actions/src/dev/dashboard.ts.
+
+    No angle-bracket tag names in this comment. stx parses them as elements, which
+    breaks OUT of the comment: the closing marker is then never emitted, and the
+    browser swallows everything after it as comment content. That is what hid the
+    entire sidebar once this layout started rendering it through a component. -->
+<link rel="stylesheet" href="/__deps/dashboard-icons.css">
+
+<!-- The native STX appearance bootstrap runs synchronously at this position.
+    It validates persisted values and stamps the root element before the shell
+    below is parsed, so hard reloads never flash the default skin or color mode. -->
+@appearanceBootstrap({
+  storageKey: 'stacks-dashboard-appearance',
+  appearance: {
+    key: 'sidebarStyle',
+    attribute: 'appearance',
+    allowed: ['macos', 'arc'],
+    default: 'macos',
+  },
+  colorMode: {
+    key: 'colorMode',
+    attribute: 'color-mode',
+    default: 'system',
+  },
+})
+
+<style>
+/*
+ * Make every chart canvas fill its wrapper. @stacksjs/charts sizes its
+ * bitmap from `getBoundingClientRect()`, so without CSS dimensions the
+ * canvas stays at the intrinsic 300x150 default and the chart renders
+ * cropped (bar charts lose right-side bars; doughnuts overflow because
+ * the parent grid cell is sized but the canvas isn't).
+ */
+canvas[id$="_chart"] {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/*
+ * The window background is owned by the main content pane, not the body element.
+ * In the native Craft window the WKWebView is transparent and an
+ * NSVisualEffectView (real macOS vibrancy) sits behind the sidebar strip; a
+ * solid body background would paint over it. So the body stays clear and the
+ * content color lives on the scrolling pane, which lets the frosted material
+ * read through the translucent sidebar. (Do not write angle-bracket tag names in
+ * a layout style-block comment - stx parses them as elements and breaks out.)
+ */
+body {
+  background: transparent;
+}
+/*
+ * Every native single select draws the same chevron as the shared UI Select:
+ * the browser's own arrow sat flush against the right border, with no room.
+ * The glyph is hugeicons arrow-down-01 (the one UI Select renders), in
+ * neutral-400 so it reads in both color modes, 8px from the edge, with the
+ * text kept clear of it. UI Select marks its own element, which already has
+ * an icon, and multi-row lists keep the native look.
+ */
+select:not([multiple]):not([size]):not([data-ui-select]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M18 9s-4.419 6-6 6s-6-6-6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.875rem 0.875rem;
+  padding-right: 2rem;
+}
+/*
+ * The pane offset follows the sidebar's own width variable, which the Sidebar
+ * writes onto this element via `shell-selector`. The literal fallback keeps
+ * the layout correct on the first paint, before the controller mounts, and
+ * the collapsed state animates because the variable changes rather than a
+ * class toggling a hard-coded margin.
+ */
+[data-stx-content] {
+  min-width: 0;
+  min-height: 100vh;
+  /* Wide tables scroll inside their own overflow containers without widening
+     the document or moving the fixed dashboard shell. */
+  overflow-x: hidden;
+  margin-left: var(--stx-sidebar-width, 250px);
+  background: #f4f4f5;
+  transition: margin-left 0.3s ease-out;
+}
+/*
+ * A dialog or drawer covers the content pane: from the sidebar's edge to the
+ * window's, so a dialog is centred over the page and a drawer ends where the
+ * window does.
+ *
+ * `html` is in the selector for its weight, not its meaning. The dialogs also
+ * carry `inset-0`, a utility of the same weight as a bare class, and the
+ * utilities' stylesheet lands after this one on a fresh load and before it
+ * after navigating between pages. So which `left` applied depended on how the
+ * visitor had arrived: centred on the whole window one time, 250px to the
+ * right the next.
+ *
+ * The width is set here for the same reason, and because a `dialog` is as
+ * wide as its content unless told otherwise. It was told `100vw`, which with
+ * this `left` ran the layer a sidebar's width past the window: a dialog sat
+ * half that far right of centre, and a drawer's edge was off the screen.
+ */
+html .dashboard-modal-layer {
+  right: 0;
+  left: var(--stx-sidebar-width, 250px);
+  width: auto;
+  transition: left 0.3s ease-out;
+}
+/*
+ * The window's sidebar pane while it is in the mobile drawer: it fills the
+ * drawer instead of sitting fixed at its window width, and gives up the
+ * window's z-index so the drawer's close button stays on top of it.
+ */
+[data-dashboard-mobile-sidebar] > [data-stx-component-wrapper] {
+  height: 100%;
+}
+[data-dashboard-mobile-sidebar] [data-stx-sidebar] {
+  position: relative;
+  z-index: auto;
+  width: 100% !important;
+  height: 100%;
+}
+@media (max-width: 1023px) {
+  [data-stx-content] {
+    margin-left: 0;
+  }
+  [data-dashboard-web-sidebar] {
+    display: none;
+  }
+  html .dashboard-modal-layer {
+    left: 0;
+  }
+}
+/*
+ * These three rules used to hide the web sidebar and collapse the content
+ * offset, because Craft rendered a real NSOutlineView in that strip and
+ * showing both would have meant two navigations side by side.
+ *
+ * That native sidebar is retired (see actions/src/dev/dashboard.ts: "the web
+ * one owns rendering and behavior"), and the dev server never requests one.
+ * It does request `webSidebarMaterial: true`, purely for the NSVisualEffectView
+ * vibrancy that sits BEHIND the stx-rendered rows.
+ *
+ * Craft conflates the two: macos.zig gates its native-sidebar bootstrap on
+ * `style.web_sidebar_material` alone, and that bootstrap sets the global
+ * `__craftNativeSidebar` flag. So asking for vibrancy silently asserted "a
+ * native sidebar exists", the marker got stamped on the root element, and
+ * these rules hid the only navigation the window had. The Craft window showed
+ * a vibrant empty strip.
+ *
+ * Removed rather than re-gated: with the native sidebar retired there is no
+ * state in which hiding the web sidebar is correct. The upstream conflation is
+ * worth fixing in Craft too, so the flag stops lying to every other consumer.
+ */
+.dark [data-stx-content] {
+  background: #0a0a0a;
+}
+
+/* ===========================================================================
+ * Appearance: Arc
+ *
+ * Selected in Settings, stamped on the root element as `data-appearance`.
+ * Everything here is keyed on that attribute, so switching is one attribute
+ * write and it reaches every page at once.
+ *
+ * Two halves, and only one of them is the sidebar.
+ *
+ * THE SHELL. Arc's defining move is that the content is not a pane butted up
+ * against a sidebar - it is a card floating ON the sidebar's background, inset
+ * and rounded on every side. So the panel color moves to the body, the sidebar
+ * goes transparent on top of it, and the content gets a margin all the way
+ * round. No sidebar theme can do this part; it belongs to the layout.
+ *
+ * THE ROWS. The installed @stacksjs/components predates its own `arc` theme,
+ * so the component renders macOS rows and this restyles them. The values are
+ * copied from that theme on purpose - 30px rows, 8px radius, a white card with
+ * a hairline and a one-pixel shadow instead of an accent fill - so that when
+ * the package ships it, the component and this skin agree and these rules
+ * become a no-op rather than a second, competing look.
+ *
+ * The selection overrides look redundantly specific because they have to be:
+ * the component paints the macOS selection from its own scoped stylesheet with
+ * selectors like `.scope [data-sidebar-selection="accent"][data-window-key]
+ * [data-sidebar-item][data-active]`. Matching that shape and adding the root
+ * attribute is what wins, and it wins by specificity rather than by `!important`
+ * so the rules stay overridable downstream.
+ * ======================================================================== */
+html[data-appearance="arc"] {
+  /* Warmer and a shade deeper than the content card it carries. The stx `arc`
+     theme paints its pane at #f7f5f1 over whatever sits behind it; here the
+     panel IS the backdrop, so it has to be flat and darker than white or the
+     floating card has no edge to read against. */
+  --dash-arc-panel: #efebe4;
+  --dash-arc-gap: 10px;
+  --dash-arc-radius: 12px;
+}
+/* The dark class is written onto the root element itself, so it stacks with
+   the appearance attribute rather than sitting above it. */
+html[data-appearance="arc"].dark {
+  --dash-arc-panel: #171717;
+}
+
+/* The gap around the content card is the body showing through, which is what
+   makes the card read as floating on the sidebar rather than beside it. */
+html[data-appearance="arc"] body {
+  background: var(--dash-arc-panel);
+}
+
+/* The card owns scrolling, so the page must not also scroll: a document
+   scrollbar would eat the right-hand gap and there would be nothing for it to
+   scroll anyway. */
+html[data-appearance="arc"],
+html[data-appearance="arc"] body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html[data-appearance="arc"] [data-stx-content] {
+  /* Only three margins. `margin-left` is deliberately left to the base rule.
+
+     It is the one margin that transitions (0.3s, for the sidebar collapse),
+     and overriding a transitioned longhand with a `calc()` over two custom
+     properties wedges the interpolation in WebKit: switching appearance leaves
+     it stuck at the old value until a reload. Inheriting the base declaration
+     means the property never changes when the appearance does, so there is
+     nothing to wedge - and the collapse animation keeps working identically in
+     both styles.
+
+     The panel strip down the card's left side is the sidebar's own trailing
+     padding, which is where it comes from in Arc too. */
+  margin-top: var(--dash-arc-gap);
+  margin-right: var(--dash-arc-gap);
+  margin-bottom: var(--dash-arc-gap);
+  /* Beats the base rule's `min-height: 100vh`, which would otherwise hold the
+     card a full viewport tall and push its bottom edge off-screen - losing the
+     one gap that shows it is floating. */
+  min-height: 0;
+  /* The card is exactly the viewport minus its own gaps, and scrolls its own
+     content. Letting the page scroll instead would grow the card past the
+     bottom of the window, so the one edge that proves it is floating - the
+     panel showing beneath it - would only ever appear at the end of a long
+     page. This is also what Arc does: the sidebar is stationary and the card
+     scrolls inside its frame. */
+  height: calc(100vh - (2 * var(--dash-arc-gap)));
+  overflow-y: auto;
+  border-radius: var(--dash-arc-radius);
+  background: #fff;
+  /* Clip page content to the rounded corners - full-bleed headers and tables
+     otherwise square them off at the top. */
+  overflow-x: hidden;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.06);
+  transition: margin-left 0.3s ease-out;
+}
+html[data-appearance="arc"].dark [data-stx-content] {
+  background: #0a0a0a;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* An overlay scrollbar inside the card, so the rounded corner is not cut by a
+   full-width native gutter. */
+html[data-appearance="arc"] [data-stx-content] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar {
+  width: 8px;
+}
+html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: content-box;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar-track {
+  background: transparent;
+}
+html[data-appearance="arc"].dark [data-stx-content] {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+html[data-appearance="arc"].dark [data-stx-content]::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* On narrow viewports the sidebar is hidden entirely, so the card would float
+   on nothing. Return it to a flush pane. */
+@media (max-width: 1023px) {
+  html[data-appearance="arc"],
+  html[data-appearance="arc"] body {
+    height: auto;
+    overflow: visible;
+  }
+  html[data-appearance="arc"] [data-stx-content] {
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: visible;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* The panel is the body; the pane just holds rows. */
+html[data-appearance="arc"] [data-stx-sidebar] {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #2c2a28;
+}
+html[data-appearance="arc"].dark [data-stx-sidebar] {
+  color: #ededf0;
+}
+/* Liquid Glass belongs to the macOS material. Arc's panel is flat. */
+html[data-appearance="arc"] .stx-sidebar-rim {
+  display: none;
+}
+
+/* Rows: discrete cards with a 2px gutter, not AppKit's contiguous run. */
+html[data-appearance="arc"] [data-sidebar-row] {
+  height: 32px;
+}
+html[data-appearance="arc"] [data-sidebar-item] {
+  height: 30px;
+  border-radius: 8px;
+  color: inherit;
+}
+html[data-appearance="arc"] [data-sidebar-item]:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+html[data-appearance="arc"].dark [data-sidebar-item]:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Selection: a raised white card, in both window states. Matching the
+   component's own selector shape is what gives these the specificity to win. */
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
+  background: #fff;
+  color: #1b1a19;
+  font-weight: 500;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* The icon, count and chevron turn white on a macOS accent fill. On a white
+   card they must not - they keep their own tint, the same as an idle row. */
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-icon],
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-chevron] {
+  color: var(--stx-sidebar-icon, currentColor);
+}
+html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
+  color: rgba(44, 42, 40, 0.45);
+}
+html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
+  color: rgba(237, 237, 240, 0.45);
+}
+
+/* Section headers: sentence case and quieter than the macOS uppercase strip. */
+html[data-appearance="arc"] [data-sidebar-section-header],
+html[data-appearance="arc"] [data-sidebar-section] > div:first-child {
+  opacity: 0.55;
+}
+
+/* A viewer can hide navigation sections they never use. Kept as CSS on an
+   attribute rather than a DOM removal so the rows stay hydrated and a later
+   change re-shows them without a re-render - the same approach the role
+   filter above uses. */
+[data-sidebar-section][data-viewer-hidden="true"] {
+  display: none;
+}
+/* Grips are separate controls, so dragging never follows a link or toggles disclosure. */
+[data-dashboard-sidebar-order] [data-sidebar-section],
+[data-dashboard-sidebar-order] [data-sidebar-row] { position: relative; }
+[data-dashboard-sidebar-order] [data-sidebar-item] { padding-right: 28px; }
+[data-dashboard-sidebar-order] [data-sidebar-section-header] { padding-right: 50px; }
+.dashboard-sidebar-order-grip {
+  position: absolute;
+  right: 1px;
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: currentColor;
+  opacity: .55;
+  cursor: grab;
+  touch-action: none;
+}
+.dashboard-sidebar-order-grip[data-sidebar-order-handle="section"] { right: 23px; top: 7px; }
+[data-section-id="top"] > .dashboard-sidebar-order-grip { right: 1px; top: 2px; }
+.dashboard-sidebar-order-grip > span { display: block; width: 14px; height: 14px; }
+.dashboard-sidebar-order-grip:hover,
+.dashboard-sidebar-order-grip:focus-visible { opacity: 1; background: rgba(127, 127, 127, .16); }
+.dashboard-sidebar-order-grip:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
+.dashboard-sidebar-order-grip:disabled { cursor: wait; opacity: .25; }
+[data-order-dragging="true"] > .dashboard-sidebar-order-grip { cursor: grabbing; opacity: 1; }
+[data-order-drop="before"] { box-shadow: 0 -2px #3b82f6; }
+[data-order-drop="after"] { box-shadow: 0 2px #3b82f6; }
+</style>
+
+<script client>
+// Global toast queue. Composables across the dashboard call
+// `pushToast(...)` (defined in defaults/functions/toasts.ts) when
+// network requests fail or succeed; that signal is rendered in the
+// fixed-position container below the <main> slot. Mounted in the
+// layout so every dashboard page picks it up without opting in.
+// A package specifier for the same reason as the sidebar import above.
+import type { ToastType } from '@stacksjs/defaults/functions/toasts'
+import type { CraftSidebarSelectEvent } from '@stacksjs/defaults/functions/craft'
+import { useToasts, dismissToast } from '@stacksjs/defaults/functions/toasts'
+import { ensureCraftNativeSidebarMarker, useCraftSidebarSelection } from '@stacksjs/defaults/functions/craft'
+import { readStoredAppearance, useAppearance } from '@stacksjs/defaults/views/dashboard/composables/useAppearance'
+import { authStore } from '@stacksjs/defaults/views/dashboard/stores/auth'
+import { kanbanStore } from '@stacksjs/defaults/views/dashboard/stores/kanban'
+import { createDashboardSidebarOrder } from '@stacksjs/defaults/functions/dashboard-sidebar-order'
+import { rbacStore } from '@stacksjs/defaults/views/dashboard/stores/rbac'
+const { toasts } = useToasts()
+registerStoresClient({ authStore, kanbanStore, rbacStore })
+
+// Helpers below return COMPLETE class strings (static + dynamic) and are
+// applied via `:class="fn(...)"` because stx's `{{ ... }}` placeholder is
+// not reactively bound inside a `class` attribute - only inside text content.
+const toastIconClass = (type: ToastType) => `flex-shrink-0 h-5 w-5 mt-0.5 ${({
+  success: 'i-hugeicons-checkmark-circle-02 text-green-500 dark:text-green-400',
+  error: 'i-hugeicons-alert-02 text-red-500 dark:text-red-400',
+  warning: 'i-hugeicons-alert-circle text-yellow-500 dark:text-yellow-400',
+  info: 'i-hugeicons-information-circle text-blue-500 dark:text-blue-400',
+}[type] || 'i-hugeicons-information-circle text-gray-500 dark:text-neutral-400')}`
+
+const toastWrapperClass = (type: ToastType) => `pointer-events-auto overflow-hidden bg-white dark:bg-neutral-800 ring-1 ${({
+  success: 'ring-green-500/20',
+  error: 'ring-red-500/30',
+  warning: 'ring-yellow-500/20',
+  info: 'ring-blue-500/20',
+}[type] || 'ring-black/5 dark:ring-white/10')} rounded-lg shadow-lg`
+
+// Role-gated sidebar filter (stacksjs/stacks#1843).
+//
+// Permissive default: when the viewer is unauthenticated (the localhost
+// dev dashboard) every gated row stays visible. In production deployments
+// where `/api/dashboard/*` sits behind auth, the endpoint returns real role
+// data and the filter hides what the viewer can't reach.
+//
+// stx bridges referenced <script server> exports into this client scope.
+// Keep this as a normal identifier so imported client code remains valid
+// TypeScript throughout the bundling pipeline.
+const sidebarRoles = sidebarRoleMap
+const auth = authStore
+const route = useRoute()
+const sidebarHost = useRef('dashboardSidebarHost')
+const mobileSidebarHost = useRef('dashboardMobileSidebarHost')
+const sidebarOrderStatus = state({ ready: false, saving: false, custom: false, message: 'Loading sidebar order…' })
+const sidebarOrder = createDashboardSidebarOrder({
+  pane: () => sidebarPanes()[0],
+  sections: sidebarSections,
+  status: value => sidebarOrderStatus.set(value),
+})
+let removeCraftSidebarSelection = () => {}
+ensureCraftNativeSidebarMarker()
+auth.load()
+
+function sidebarPanes(): HTMLElement[] {
+  return [sidebarHost.current, mobileSidebarHost.current]
+    .map(host => host?.querySelector<HTMLElement>('[data-stx-sidebar]'))
+    .filter((pane): pane is HTMLElement => Boolean(pane))
+}
+
+function applyRoleFilter() {
+  const roleList = auth.roles()
+  const unauth = auth.unauthenticated()
+  for (const pane of sidebarPanes()) {
+    for (const [itemId, required] of Object.entries(sidebarRoles)) {
+      const row = pane.querySelector<HTMLElement>(`[data-sidebar-row][data-item-id="${itemId}"]`)
+      if (!row) continue
+      // Unauthenticated viewers see everything, which keeps the dev dashboard
+      // usable. Once authenticated, role membership is authoritative. CSS
+      // `display: none` keeps the DOM intact for SPA nav, so a later role
+      // change can re-show the row without a re-render.
+      const allowed = unauth || required.some(r => roleList.includes(r))
+      row.style.display = allowed ? '' : 'none'
+    }
+  }
+}
+
+effect(() => {
+  // Re-runs whenever `auth.roles()` / `auth.unauthenticated()` change,
+  // including the first run after the auth fetch resolves.
+  applyRoleFilter()
+})
+
+// ---------------------------------------------------------------------------
+// Appearance (Settings → Appearance).
+//
+// The inline bootstrap at the top of this layout already stamped the root
+// attributes for the first paint. These effects keep them in step afterwards:
+// re-running `applyAppearance` whenever a preference signal changes is what
+// makes the settings page feel immediate - the shell restyles under the user
+// while they are still looking at the picker, with no reload and no navigation.
+// ---------------------------------------------------------------------------
+
+const appearance = useAppearance()
+
+effect(() => {
+  // Reading the signals here is what subscribes this effect to them; `apply`
+  // reads them again internally, which is harmless and keeps it callable from
+  // anywhere.
+  appearance.sidebarStyle()
+  appearance.colorMode()
+  appearance.apply()
+})
+
+// Section visibility is applied here rather than filtered out of
+// `sidebarSections` server-side, so a viewer toggling one gets the row back
+// instantly instead of on the next full render.
+function applySectionVisibility() {
+  // The signal is read BEFORE the panes are looked up, and that order is the
+  // whole point. Read after an early return, it never gets tracked on the first
+  // pass - the panes are not mounted when effects first run - so the effect
+  // ends up with no dependency and never runs again. The toggle then appears to
+  // do nothing until a reload.
+  const hidden = appearance.hiddenSections()
+  for (const pane of sidebarPanes()) {
+    for (const section of pane.querySelectorAll<HTMLElement>('[data-sidebar-section]')) {
+      const id = section.dataset.sectionId || ''
+      section.setAttribute('data-viewer-hidden', String(hidden.includes(id)))
+    }
+  }
+}
+
+// The effect covers later toggles. It cannot cover the FIRST paint on its own:
+// effects run before the layout's refs are populated, so the very first pass
+// finds no panes, and on a fresh load the preference never changes afterwards -
+// leaving hidden sections visible until something else happens to touch the
+// signal. `onMount` below runs it again once the panes exist.
+effect(applySectionVisibility)
+
+
+// Another tab changed the preferences. `storage` only fires in OTHER tabs, so
+// this cannot loop back on the tab that made the change. The store's own
+// persistence writes but does not watch, so the re-read is explicit.
+useEventListener('storage', (event) => {
+  if (event?.key !== 'stacks-dashboard-appearance') return
+  const next = readStoredAppearance()
+  appearance.sidebarStyle.set(next.sidebarStyle)
+  appearance.colorMode.set(next.colorMode)
+  appearance.hiddenSections.set(next.hiddenSections)
+  appearance.apply()
+})
+
+function normalizeRoutePath(path: string | null | undefined): string {
+  return (path || '/').replace(/\/+$/, '') || '/'
+}
+
+// Highlight the current route. Longest-prefix matching keeps a detail page
+// such as /commerce/products/42 attached to its /commerce/products row while
+// preventing /health from matching /health-check.
+function syncActiveSidebarRow(url?: string): void {
+  let path = route.path
+  if (url) {
+    try {
+      path = new URL(url, 'https://stacks.local').pathname
+    }
+    catch {}
+  }
+
+  const currentPath = normalizeRoutePath(path)
+  for (const pane of sidebarPanes()) {
+    let bestMatch = null
+    let bestLength = -1
+    const links = pane.querySelectorAll('a[data-sidebar-item][href]')
+
+    for (const link of links) {
+      const href = link.getAttribute('href') || ''
+      if (href.startsWith('http')) continue
+      const candidatePath = normalizeRoutePath(href)
+      if (`${currentPath}/`.startsWith(`${candidatePath}/`) && candidatePath.length > bestLength) {
+        bestMatch = link
+        bestLength = candidatePath.length
+      }
+    }
+
+    for (const active of pane.querySelectorAll('[data-sidebar-item][data-active="true"]')) {
+      active.removeAttribute('data-active')
+      active.removeAttribute('aria-current')
+    }
+
+    if (bestMatch) {
+      bestMatch.setAttribute('data-active', 'true')
+      bestMatch.setAttribute('aria-current', 'page')
+    }
+  }
+}
+
+function handleSidebarItemClick(payload: { item?: { href?: string }, event?: { preventDefault: () => void } } | undefined): void {
+  const href = payload?.item?.href
+  if (!href || href.startsWith('http')) return
+  payload.event?.preventDefault()
+  navigate(href)
+}
+
+// Where the Sidebar sat in the window while it is lent to the drawer.
+let lentSidebar: { element: HTMLElement, parent: Node, next: Node | null } | null = null
+
+// The Sidebar's component wrapper moves, not just its pane: the wrapper is
+// where the layout's `@itemClick` listens, so a pane moved without it kept
+// selecting rows but never navigated.
+function showSidebarInDrawer() {
+  const pane = sidebarHost.current?.querySelector<HTMLElement>('[data-stx-sidebar]')
+  const element = pane?.closest<HTMLElement>('[data-stx-component-wrapper]') ?? pane
+  const drawer = mobileSidebarHost.current
+  if (element?.parentNode && drawer && !lentSidebar) {
+    lentSidebar = { element, parent: element.parentNode, next: element.nextSibling }
+    drawer.appendChild(element)
+  }
+  applyRoleFilter()
+  syncActiveSidebarRow()
+}
+
+// Back where it came from, before anything else looks for it. The drawer's
+// markup is already gone by now, so the Sidebar is put back from the
+// reference kept above rather than looked up.
+function returnSidebarFromDrawer() {
+  if (!lentSidebar) return
+  const { element, parent, next } = lentSidebar
+  lentSidebar = null
+  parent.insertBefore(element, next && next.parentNode === parent ? next : null)
+}
+
+function handleCraftSidebarSelection(event: CraftSidebarSelectEvent | undefined): void {
+  if (!event?.itemId) return
+  for (const pane of sidebarPanes()) {
+    const row = [...pane.querySelectorAll<HTMLElement>('[data-sidebar-row]')].find(
+      candidate => candidate.dataset.itemId === event.itemId,
+    )
+    const link = row?.querySelector('a[data-sidebar-item][href]')
+    const href = link?.getAttribute('href')
+    if (href) {
+      navigate(href)
+      return
+    }
+  }
+}
+
+function attachCraftSidebarSelection() {
+  removeCraftSidebarSelection()
+  removeCraftSidebarSelection = useCraftSidebarSelection(handleCraftSidebarSelection)
+}
+
+useEventListener('stx:navigate', (event: Event) => syncActiveSidebarRow((event as CustomEvent<{ url?: string }>).detail?.url))
+useEventListener('stx:hydrated', () => syncActiveSidebarRow(), { once: true })
+useEventListener('craft:ready', () => {
+  ensureCraftNativeSidebarMarker()
+  attachCraftSidebarSelection()
+})
+
+onMount(() => {
+  sidebarOrder.attach()
+  void sidebarOrder.load()
+  syncActiveSidebarRow()
+  applyRoleFilter()
+  applySectionVisibility()
+  attachCraftSidebarSelection()
+})
+
+onDestroy(() => {
+  sidebarOrder.destroy()
+  removeCraftSidebarSelection()
+})
+</script>
+
+<div ref="dashboardSidebarHost" data-dashboard-web-sidebar>
+  <Sidebar
+    :sections="sidebarSections"
+    theme="macos"
+    width="250"
+    placement="fixed"
+    persistKey="stacks-dashboard-sidebar"
+    shellSelector="[data-stx-content]"
+    :followSystemAppearance="false"
+    @itemClick="handleSidebarItemClick($event)"
+  >
+    <template #header>
+      <!-- Chrome strip. The traffic lights are the platform's, so this draws
+          none and reserves whatever room the host says they need. Craft
+          measures its own window: the far edge of the real buttons where they
+          float over this sidebar, and nothing where they do not: a window
+          that keeps them in a titlebar, a fullscreen one whose titlebar has
+          slid away, or a browser, which has no window buttons at all. It is also the window drag
+          region, and in a browser it is the same empty strip macOS sidebars
+          carry above their first row. -->
+      <SidebarHeader windowControls="native" />
+    </template>
+    <template #footer>
+      <div class="px-3 py-2 text-neutral-600 text-xs dark:text-neutral-300" data-sidebar-order-controls>
+        <p role="status" aria-live="polite" :text="sidebarOrderStatus.message"></p>
+        <Button :if="!sidebarOrderStatus.ready" variant="ghost" size="xs" @click="sidebarOrder.load()">Retry loading order</Button>
+        <Button :if="sidebarOrderStatus.ready" variant="ghost" size="xs" :disabled="sidebarOrderStatus.saving" @click="sidebarOrder.reset()">Reset order</Button>
+      </div>
+    </template>
+  </Sidebar>
+</div>
+
+<!-- The drawer holds the same Sidebar as the window, moved in while it is open
+    (`showSidebarInDrawer`). A second Sidebar here rendered all its rows again
+    on every page and doubled each page's first render (stacksjs/stacks#3177). -->
+<MobileSidebar @open="showSidebarInDrawer()" @close="returnSidebarFromDrawer()">
+  <div ref="dashboardMobileSidebarHost" data-dashboard-mobile-sidebar class="h-full"></div>
+</MobileSidebar>
+
+<main data-stx-content>
+  @slot('content')
+</main>
+
+<GlobalSearch />
+
+<!-- Global toast container. Top-right stack, newest at the bottom.
+    Pointer-events-none on the wrapper + auto on individual toasts so
+    surrounding UI stays clickable while a toast is up. -->
+<div class="flex fixed right-4 top-4 z-[60] flex-col gap-2 max-w-sm w-full pointer-events-none">
+  <div :for="toast in toasts" role="alert" aria-live="assertive" :class="toastWrapperClass(toast.type)">
+    <div class="flex gap-3 items-start p-4">
+      <div :class="toastIconClass(toast.type)"></div>
+      <div class="flex-1 min-w-0">
+        <p class="font-medium text-gray-900 text-sm dark:text-neutral-100">{{ toast.title }}</p>
+        <p :if="toast.detail" class="mt-1 break-words text-gray-500 text-xs dark:text-neutral-400">{{ toast.detail }}</p>
+      </div>
+      <Button variant="ghost" size="xs" iconOnly ariaLabel="Dismiss notification" @click="dismissToast(toast.id)">
+        <span aria-hidden="true" class="h-4 w-4 i-hugeicons-cancel-01"></span>
+      </Button>
+    </div>
+  </div>
+</div>

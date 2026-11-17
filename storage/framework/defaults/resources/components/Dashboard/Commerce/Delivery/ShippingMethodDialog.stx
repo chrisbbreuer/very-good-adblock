@@ -1,0 +1,102 @@
+<script client>
+import { minorToInput, moneyInputError, parseMoneyInput } from '@stacksjs/commerce/money'
+interface ShippingMethodRecord {
+  id: number
+  name: string
+  description: string
+  base_rate: number
+  free_shipping: number | null
+  status: 'active' | 'inactive' | 'draft'
+}
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'create')
+const record = useReactiveProp('record', null as ShippingMethodRecord | null)
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['invalid', 'submit', 'close'])
+const name = state('')
+const descriptionText = state('')
+const baseRate = state('')
+const freeShipping = state('')
+const status = state<'active' | 'inactive' | 'draft'>('active')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const nextKey = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === nextKey)
+    return
+  hydrationKey = nextKey
+  name.set(current?.name || '')
+  descriptionText.set(current?.description || '')
+  baseRate.set(current ? minorToInput(current.base_rate, 'USD') : '')
+  freeShipping.set(current?.free_shipping === null || current?.free_shipping === undefined
+    ? ''
+    : minorToInput(current.free_shipping, 'USD'))
+  status.set(current?.status || 'active')
+})
+
+// Amounts are typed in dollars and stored as integer cents.
+function submit(): void {
+  if (!name().trim()) {
+    emit('invalid', 'Method name is required.')
+    return
+  }
+  const baseRateError = moneyInputError(baseRate(), 'USD')
+  if (baseRateError) {
+    emit('invalid', `Base rate: ${baseRateError}`)
+    return
+  }
+  const freeShippingError = moneyInputError(freeShipping(), 'USD', { required: false })
+  if (freeShippingError) {
+    emit('invalid', `Free shipping threshold: ${freeShippingError}`)
+    return
+  }
+  emit('submit', {
+    name: name().trim(),
+    description: descriptionText().trim(),
+    baseRate: parseMoneyInput(baseRate(), 'USD'),
+    freeShipping: parseMoneyInput(freeShipping(), 'USD', { required: false }),
+    status: status(),
+  })
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit shipping method' : 'Add shipping method'"
+  description="Rates are stored as integer minor units to keep pricing exact."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="shipping-method-form" @submit.prevent="submit">
+        <div :if="error()" class="mb-5 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ error() }}</div>
+
+        <div class="space-y-4">
+          <div>
+            <Input v-model:value="name" label="Method name" :required="true" :maxLength="100" autocomplete="off" placeholder="Ground shipping" />
+          </div>
+          <div>
+            <Textarea v-model:value="descriptionText" label="Description" :rows="3" :maxLength="500" placeholder="How and when this method is used" />
+          </div>
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <Input v-model:value="baseRate" label="Base rate" type="number" :required="true" min="0" step="0.01" inputmode="decimal" placeholder="0.00" />
+            <Input v-model:value="freeShipping" label="Free shipping threshold" type="number" min="0" step="0.01" inputmode="decimal" placeholder="No threshold" />
+          </div>
+          <div>
+            <Select v-model:value="status" label="Status" placeholder="" :options="[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'draft', label: 'Draft' }]" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="emit('close')">Cancel</Button>
+      <Button type="submit" form="shipping-method-form" :loading="busy()">{{ mode() === 'edit' ? 'Save changes' : 'Add method' }}</Button>
+    </div>
+  </template>
+</Modal>

@@ -1,0 +1,145 @@
+import { defineModel, parentOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+export default defineModel({
+  name: 'CartItem',
+  table: 'cart_items',
+  primaryKey: 'id',
+  autoIncrement: true,
+
+  // No owner of its own: these rows are owned by whoever owns the cart's customer
+  // (stacksjs/stacks#2375). Resolved through the parent so it follows any change
+  // to how Cart decides ownership.
+  ownership: parentOwnership('Cart', 'cart_id'),
+
+  traits: {
+    useUuid: true,
+    useTimestamps: true,
+    useSearch: {
+      displayable: ['id', 'cartId', 'productName', 'productSku', 'quantity', 'unitPrice', 'totalPrice'],
+      searchable: ['id', 'cartId', 'productName', 'productSku'],
+      sortable: ['createdAt', 'updatedAt', 'quantity', 'unitPrice'],
+      filterable: ['cartId', 'productSku'],
+    },
+
+    useSeeder: {
+      count: 50,
+    },
+
+    useApi: {
+      uri: 'cart-items',
+      middleware: ['auth'],
+    },
+
+    observe: true,
+  },
+
+  belongsTo: ['Cart'],
+
+  attributes: {
+    quantity: {
+      order: 1,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(1),
+      },
+      factory: faker => faker.number.int({ min: 1, max: 10 }),
+    },
+
+    unitPrice: {
+      order: 2,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0),
+      },
+      // Integer minor units, in the same range as Product.price.
+      factory: faker => faker.number.int({ min: 100, max: 10000 }),
+    },
+
+    totalPrice: {
+      order: 3,
+      fillable: true,
+      validation: {
+        rule: schema.number().required().min(0),
+      },
+      factory: faker => faker.number.int({ min: 100, max: 50000 }),
+    },
+
+    taxRate: {
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.number.int({ min: 0, max: 20 }),
+    },
+
+    taxAmount: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      factory: faker => faker.number.int({ min: 0, max: 1000 }),
+    },
+
+    discountPercentage: {
+      order: 6,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0).max(100),
+      },
+      factory: faker => faker.number.int({ min: 0, max: 50 }),
+    },
+
+    discountAmount: {
+      order: 7,
+      fillable: true,
+      validation: {
+        rule: schema.number().min(0),
+      },
+      // At most $1.00, so it never exceeds the smallest unit price above.
+      factory: faker => faker.number.int({ min: 0, max: 100 }),
+    },
+
+    productName: {
+      order: 8,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(255),
+      },
+      factory: faker => faker.commerce.productName(),
+    },
+
+    productSku: {
+      order: 9,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(100),
+      },
+      factory: faker => faker.string.alphanumeric(10),
+    },
+
+    productImage: {
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(255),
+      },
+      factory: faker => faker.image.url(),
+    },
+
+    notes: {
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.string().max(500),
+      },
+      factory: faker => faker.lorem.sentence(),
+    },
+  },
+
+  dashboard: {
+    highlight: true,
+  },
+} as const)

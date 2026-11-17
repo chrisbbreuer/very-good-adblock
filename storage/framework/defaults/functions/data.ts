@@ -1,0 +1,76 @@
+import { dashboardApi } from './dashboard-api'
+
+export interface DataStats {
+  total: number
+  [key: string]: number
+}
+
+export interface DashboardActivity {
+  id: number
+  type: string
+  description: string
+  subjectType: string
+  subjectId: number
+  causer: string
+  createdAt: string
+}
+
+export interface DashboardUser {
+  id: number
+  name: string
+  email: string
+  /** Erased under the app's data-subject rules: the name and email are placeholders. */
+  anonymized?: boolean
+  emailVerifiedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DashboardTeam {
+  id: number
+  name: string
+  description: string
+  memberCount: number
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DashboardSubscriber {
+  id: number
+  email: string
+  status: string
+  source: string
+  unsubscribedAt: string
+  createdAt: string
+}
+
+export interface DashboardDataResponse<T> {
+  stats: DataStats
+  activities?: T[]
+  users?: T[]
+  teams?: T[]
+  subscribers?: T[]
+}
+
+export type DataMode = 'activity' | 'users' | 'teams' | 'subscribers'
+
+const endpointByMode: Record<DataMode, string> = {
+  activity: '/api/dashboard/data/activity',
+  users: '/api/dashboard/data/users',
+  teams: '/api/dashboard/data/teams',
+  subscribers: '/api/dashboard/data/subscribers',
+}
+
+export async function fetchDashboardData<T>(mode: DataMode): Promise<DashboardDataResponse<T>> {
+  return dashboardApi<DashboardDataResponse<T>>(endpointByMode[mode])
+}
+
+/**
+ * A page's row of numbers, without the rows. Users, Teams and Subscribers
+ * are listed by the model browser; their pages ask here for the stats alone.
+ */
+export async function fetchDashboardStats(mode: DataMode): Promise<DataStats> {
+  const answer = await dashboardApi<{ stats?: DataStats }>(`${endpointByMode[mode]}?only=stats`)
+  return answer.stats ?? { total: 0 }
+}

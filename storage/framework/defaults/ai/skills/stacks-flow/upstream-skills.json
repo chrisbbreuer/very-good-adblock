@@ -1,0 +1,757 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "repository": "coreyhaines31/marketingskills",
+      "revision": "96798cf38736ecdba015a1d2b0521b0c8f8f41dd",
+      "expectedSkills": 53,
+      "skills": [
+        {
+          "source": "ab-testing",
+          "path": "skills/ab-testing/SKILL.md",
+          "target": "stacks-marketing-ab-testing",
+          "disposition": "ported",
+          "version": "2.0.4",
+          "sha256": "c5c547f2ccee5034bf24b1afa5e7c1ae2913f2618bc65f3e0788a1c55f7759b9"
+        },
+        {
+          "source": "ad-creative",
+          "path": "skills/ad-creative/SKILL.md",
+          "target": "stacks-marketing-ad-creative",
+          "disposition": "ported",
+          "version": "2.12.2",
+          "sha256": "7af23285e4ac6df65f2f23e940279cdc9a70280a908a34214e86954ab7b0b000"
+        },
+        {
+          "source": "ads",
+          "path": "skills/ads/SKILL.md",
+          "target": "stacks-marketing-ads",
+          "disposition": "ported",
+          "version": "2.7.0",
+          "sha256": "520e05602d6f58a8e92994360b35550d46aea9560c6648fb96c4c0c4a9c5f07a"
+        },
+        {
+          "source": "ai-seo",
+          "path": "skills/ai-seo/SKILL.md",
+          "target": "stacks-marketing-ai-seo",
+          "disposition": "ported",
+          "version": "2.12.0",
+          "sha256": "8e5532f13d069dc113316d3b18e26d98adc7e20a69b57b94d20d7e2a2f90c220"
+        },
+        {
+          "source": "analytics",
+          "path": "skills/analytics/SKILL.md",
+          "target": "stacks-marketing-analytics",
+          "disposition": "ported",
+          "version": "2.2.2",
+          "sha256": "c8cb2cbeb318393d3a014ebed366ae13e6cd84d205cb6a2ac03890698639a146"
+        },
+        {
+          "source": "aso",
+          "path": "skills/aso/SKILL.md",
+          "target": "stacks-marketing-aso",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "666d6096ffb3c5d9ebe646d1912da98e64d76e756da9d5ea7debc55d02ad5c08"
+        },
+        {
+          "source": "attribution",
+          "path": "skills/attribution/SKILL.md",
+          "target": "stacks-marketing-attribution",
+          "disposition": "ported",
+          "version": "1.1.6",
+          "sha256": "950ed42f471fa5484eae4c122a2c2cd54aa4916ce65581b5cb2f51fe8c630710"
+        },
+        {
+          "source": "churn-prevention",
+          "path": "skills/churn-prevention/SKILL.md",
+          "target": "stacks-marketing-churn-prevention",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "425497b9c3415fa91a5cc4a7140a1bee727d3b6398beed1bb4fa4880503c0355"
+        },
+        {
+          "source": "co-marketing",
+          "path": "skills/co-marketing/SKILL.md",
+          "target": "stacks-marketing-co-marketing",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "1073aad4a1452b735e4f70ccb28b7b778658d2eb3b49946eb56265f00a69598c"
+        },
+        {
+          "source": "cold-email",
+          "path": "skills/cold-email/SKILL.md",
+          "target": "stacks-marketing-cold-email",
+          "disposition": "ported",
+          "version": "2.2.1",
+          "sha256": "6cf61f55b8ee530d78d4af6cc2a42006f7d84374ed55b967d196ae9a354bbf9b"
+        },
+        {
+          "source": "community-marketing",
+          "path": "skills/community-marketing/SKILL.md",
+          "target": "stacks-marketing-community-marketing",
+          "disposition": "ported",
+          "version": "2.0.2",
+          "sha256": "93af6e03d5e67202364c8eb2316d7ed87a757c9a0aea7b59cce36683f6a387c9"
+        },
+        {
+          "source": "competitor-profiling",
+          "path": "skills/competitor-profiling/SKILL.md",
+          "target": "stacks-marketing-competitor-profiling",
+          "disposition": "ported",
+          "version": "2.1.5",
+          "sha256": "66d93cd9c8120d63d45c4154f13bf6b475db99b7628569ed4e42eb271909e254"
+        },
+        {
+          "source": "competitors",
+          "path": "skills/competitors/SKILL.md",
+          "target": "stacks-marketing-competitors",
+          "disposition": "ported",
+          "version": "2.3.0",
+          "sha256": "ff77b76dfe43158b2fc248bb8c41fe94745d1264abb0a0c665b2c55318287a35"
+        },
+        {
+          "source": "content-strategy",
+          "path": "skills/content-strategy/SKILL.md",
+          "target": "stacks-marketing-content-strategy",
+          "disposition": "ported",
+          "version": "2.1.5",
+          "sha256": "5e74201646b8ae0b7ddfd2f4a4a14149096f490667b32bcb9e3a35e7326d88b0"
+        },
+        {
+          "source": "copy-editing",
+          "path": "skills/copy-editing/SKILL.md",
+          "target": "stacks-marketing-copy-editing",
+          "disposition": "ported",
+          "version": "2.2.1",
+          "sha256": "cec5a771ce37ade292f7f1f6b418e8a6ce6ec3f50163fa5e664afbcb03e085fc"
+        },
+        {
+          "source": "copywriting",
+          "path": "skills/copywriting/SKILL.md",
+          "target": "stacks-marketing-copywriting",
+          "disposition": "ported",
+          "version": "2.3.2",
+          "sha256": "02f0ab1ddd41d95b3c230d4bcff3de6578c8f2e45776c8ef2e4b931636af5bee"
+        },
+        {
+          "source": "cro",
+          "path": "skills/cro/SKILL.md",
+          "target": "stacks-marketing-cro",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "6e172cc38178c800ff41ceb097f36c6a1db8035fb88a1fee53043f8ec38a6f35"
+        },
+        {
+          "source": "customer-research",
+          "path": "skills/customer-research/SKILL.md",
+          "target": "stacks-marketing-customer-research",
+          "disposition": "ported",
+          "version": "2.0.5",
+          "sha256": "22964b89315a6cf5524d3f627904843e7826d40e06689a07faa5df25fc730bc7"
+        },
+        {
+          "source": "directory-submissions",
+          "path": "skills/directory-submissions/SKILL.md",
+          "target": "stacks-marketing-directory-submissions",
+          "disposition": "ported",
+          "version": "2.1.4",
+          "sha256": "9550a92b427638506875fcc2bdd772fb972d52ff10c923f3b2164f3f91c02ca8"
+        },
+        {
+          "source": "emails",
+          "path": "skills/emails/SKILL.md",
+          "target": "stacks-marketing-emails",
+          "disposition": "ported",
+          "version": "2.1.4",
+          "sha256": "8709631cc21717d17db9bb7e787ea44768d77182daf9846de8718a2ae7433b91"
+        },
+        {
+          "source": "events",
+          "path": "skills/events/SKILL.md",
+          "target": "stacks-marketing-events",
+          "disposition": "ported",
+          "version": "1.0.0",
+          "sha256": "2861ad31d71db0f9fd067303993d3386958eba57799aa9ece902163244dcdfbd"
+        },
+        {
+          "source": "free-tools",
+          "path": "skills/free-tools/SKILL.md",
+          "target": "stacks-marketing-free-tools",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "77b08d1c534fa3d4513c63df51b7efe165c4d6997500f3d97f5d1ef4e0e6950b"
+        },
+        {
+          "source": "image",
+          "path": "skills/image/SKILL.md",
+          "target": "stacks-marketing-image",
+          "disposition": "ported",
+          "version": "2.0.3",
+          "sha256": "65194b8fa6b7f24fdf95863f02283bbdf6ed36438d8ab195fbc8be56157759c6"
+        },
+        {
+          "source": "influencer-marketing",
+          "path": "skills/influencer-marketing/SKILL.md",
+          "target": "stacks-marketing-influencer-marketing",
+          "disposition": "ported",
+          "version": "1.4.0",
+          "sha256": "219b2c3f68ac0416ad254a6113d2ab8023d9f2e1e3b5f9d1da94c9f2598060d1"
+        },
+        {
+          "source": "launch",
+          "path": "skills/launch/SKILL.md",
+          "target": "stacks-marketing-launch",
+          "disposition": "ported",
+          "version": "2.2.0",
+          "sha256": "30537ad3f4b0429fcc4053cf6bf04bc0dee316b9e5f7e7ec2e74a9bc44a9ead7"
+        },
+        {
+          "source": "lead-magnets",
+          "path": "skills/lead-magnets/SKILL.md",
+          "target": "stacks-marketing-lead-magnets",
+          "disposition": "ported",
+          "version": "2.1.1",
+          "sha256": "b119ffeb164fb55f08f3b057265b8120eade2f0b4440a7503e451dc7688f2bb7"
+        },
+        {
+          "source": "marketing-council",
+          "path": "skills/marketing-council/SKILL.md",
+          "target": "stacks-marketing-council",
+          "disposition": "ported",
+          "version": "1.0.0",
+          "sha256": "0b94358427c344e1f5f50169770cce44e0b065ec8b05fc887a800daed008ac31"
+        },
+        {
+          "source": "marketing-ideas",
+          "path": "skills/marketing-ideas/SKILL.md",
+          "target": "stacks-marketing-ideas",
+          "disposition": "ported",
+          "version": "2.0.2",
+          "sha256": "945c46ea4e3bf2a237bcae0942ea2db44b981b63ec34db1bc636caf6e665d294"
+        },
+        {
+          "source": "marketing-loops",
+          "path": "skills/marketing-loops/SKILL.md",
+          "target": "stacks-marketing-loops",
+          "disposition": "ported",
+          "version": "1.8.0",
+          "sha256": "7863a6642d22500afb57a45f4126fade2cc5471b68ef1cda04a139c75bba821e"
+        },
+        {
+          "source": "marketing-plan",
+          "path": "skills/marketing-plan/SKILL.md",
+          "target": "stacks-marketing-plan",
+          "disposition": "ported",
+          "version": "1.2.2",
+          "sha256": "2b75dfae852bdb61fd96eebe3d2b373f99f67c86ff830f796310f662ba8906e8"
+        },
+        {
+          "source": "marketing-psychology",
+          "path": "skills/marketing-psychology/SKILL.md",
+          "target": "stacks-marketing-psychology",
+          "disposition": "ported",
+          "version": "2.0.0",
+          "sha256": "573bbe4f6e300e7fb75299e314f56e26382d284782caa2ae0e0f33eb2e646548"
+        },
+        {
+          "source": "offers",
+          "path": "skills/offers/SKILL.md",
+          "target": "stacks-marketing-offers",
+          "disposition": "ported",
+          "version": "1.0.3",
+          "sha256": "8d6b9b746a457d0817f6fcd136ddbc9bb8cbfb65e0d2738fa1373cf31dd8b4f0"
+        },
+        {
+          "source": "onboarding",
+          "path": "skills/onboarding/SKILL.md",
+          "target": "stacks-marketing-onboarding",
+          "disposition": "ported",
+          "version": "2.0.2",
+          "sha256": "61b808c85207e6567f39e5d6b7876fdad77b5f17f5811afcd8b28cfce6dcbe31"
+        },
+        {
+          "source": "paywalls",
+          "path": "skills/paywalls/SKILL.md",
+          "target": "stacks-marketing-paywalls",
+          "disposition": "ported",
+          "version": "2.1.1",
+          "sha256": "1dbd83f379a32cff8e7936ae3051430759e07a02e87f1a5aca10046970d0faee"
+        },
+        {
+          "source": "popups",
+          "path": "skills/popups/SKILL.md",
+          "target": "stacks-marketing-popups",
+          "disposition": "ported",
+          "version": "2.0.1",
+          "sha256": "0cd28ac115f7f1ef591200b466e6f329cdf70a86290eff8bb69973dc5ed926a9"
+        },
+        {
+          "source": "pricing",
+          "path": "skills/pricing/SKILL.md",
+          "target": "stacks-marketing-pricing",
+          "disposition": "ported",
+          "version": "2.1.4",
+          "sha256": "b0318f64140e60a28d0cf71b1a6bf2aa214b96ef2bc3253c60d16ae480367d25"
+        },
+        {
+          "source": "product-marketing",
+          "path": "skills/product-marketing/SKILL.md",
+          "target": "stacks-marketing-product-marketing",
+          "disposition": "ported",
+          "version": "2.2.0",
+          "sha256": "19ece0fa75c72a5a8b6e90db80f506586f54cc93bae6bffbb1bd2ef4ae7d603c"
+        },
+        {
+          "source": "programmatic-seo",
+          "path": "skills/programmatic-seo/SKILL.md",
+          "target": "stacks-marketing-programmatic-seo",
+          "disposition": "ported",
+          "version": "2.1.1",
+          "sha256": "5fbbf874bcc65cbc8b527bd6074a21168c73e191e1bc2c124438dfae710ccf04"
+        },
+        {
+          "source": "prospecting",
+          "path": "skills/prospecting/SKILL.md",
+          "target": "stacks-marketing-prospecting",
+          "disposition": "ported",
+          "version": "1.5.0",
+          "sha256": "bb9ca9c00ab0dc87e1ed6bb40afd93e559eabb80139ad788d597ebfa7dd11ccf"
+        },
+        {
+          "source": "public-relations",
+          "path": "skills/public-relations/SKILL.md",
+          "target": "stacks-marketing-public-relations",
+          "disposition": "ported",
+          "version": "1.2.1",
+          "sha256": "a04cd2f27e2d78e0b3851553661f377f5203eaf75fff724c5abb3e4979701c8d"
+        },
+        {
+          "source": "referrals",
+          "path": "skills/referrals/SKILL.md",
+          "target": "stacks-marketing-referrals",
+          "disposition": "ported",
+          "version": "2.2.1",
+          "sha256": "d1b9e0840b0bc788b51decd5283fba505be29ae22ec8d92e912ebee36020d7fb"
+        },
+        {
+          "source": "revops",
+          "path": "skills/revops/SKILL.md",
+          "target": "stacks-marketing-revops",
+          "disposition": "ported",
+          "version": "2.2.2",
+          "sha256": "ac0849626fcacc2da6c64e2ce0305dedf742032dfb7ab0f051c0cd8c8e2a985a"
+        },
+        {
+          "source": "sales-enablement",
+          "path": "skills/sales-enablement/SKILL.md",
+          "target": "stacks-marketing-sales-enablement",
+          "disposition": "ported",
+          "version": "2.4.0",
+          "sha256": "d30008d34e6a314b422e0a35cacf38aea39d39d2c48683e1ef6edcbdfca30ebd"
+        },
+        {
+          "source": "schema",
+          "path": "skills/schema/SKILL.md",
+          "target": "stacks-marketing-schema",
+          "disposition": "ported",
+          "version": "2.0.2",
+          "sha256": "d298f5d6e1b33b6825f38ecaa05c4d33ba9e45e346b224bd86f9834e46f67a94"
+        },
+        {
+          "source": "seo-audit",
+          "path": "skills/seo-audit/SKILL.md",
+          "target": "stacks-marketing-seo-audit",
+          "disposition": "ported",
+          "version": "2.2.2",
+          "sha256": "e0ebb5808787f2ff26b96d7b429423874d9785541cd4ab775629a5cf1137e7a9"
+        },
+        {
+          "source": "signup",
+          "path": "skills/signup/SKILL.md",
+          "target": "stacks-marketing-signup",
+          "disposition": "ported",
+          "version": "2.0.1",
+          "sha256": "d50b1183be692ba5ce1db31afbbd0aa2a5ec06940b22105f85ea1764b15ca930"
+        },
+        {
+          "source": "site-architecture",
+          "path": "skills/site-architecture/SKILL.md",
+          "target": "stacks-marketing-site-architecture",
+          "disposition": "ported",
+          "version": "2.1.0",
+          "sha256": "55c0128ac29f628944444f8850b97913517f57131673824ebcad4d5ffb26ddd2"
+        },
+        {
+          "source": "sms",
+          "path": "skills/sms/SKILL.md",
+          "target": "stacks-marketing-sms",
+          "disposition": "ported",
+          "version": "1.1.0",
+          "sha256": "b4c7365b280ce1b2cffa58cffb11ca9f0d414fbccefae3e73c52312c52afab85"
+        },
+        {
+          "source": "social",
+          "path": "skills/social/SKILL.md",
+          "target": "stacks-marketing-social",
+          "disposition": "ported",
+          "version": "2.4.2",
+          "sha256": "e34e66ad425840acf728fd64866ab8c8da01049408b5c814fa5d90aca7861071"
+        },
+        {
+          "source": "video",
+          "path": "skills/video/SKILL.md",
+          "target": "stacks-marketing-video",
+          "disposition": "ported",
+          "version": "2.4.0",
+          "sha256": "1f0ee7367c731cbbd760c63c308b4e9e3aeebe94a03f2f31aa2c23309f9723a8"
+        },
+        {
+          "source": "conversion-tracking",
+          "path": "skills/conversion-tracking/SKILL.md",
+          "target": "stacks-marketing-conversion-tracking",
+          "disposition": "ported",
+          "sha256": "995b14f6ea66132e6b7e202616500371940adda84983fec3934f18d48b657fde",
+          "version": "1.0.1"
+        },
+        {
+          "source": "link-building",
+          "path": "skills/link-building/SKILL.md",
+          "target": "stacks-marketing-link-building",
+          "disposition": "ported",
+          "sha256": "1ba02b7d18057351f654bdd9c4105dfbcbd94e19cf973f5ca1db6115d96ea321",
+          "version": "1.0.1"
+        },
+        {
+          "source": "reverse-engineer-marketing",
+          "path": "skills/reverse-engineer-marketing/SKILL.md",
+          "target": "stacks-marketing-reverse-engineer-marketing",
+          "disposition": "ported",
+          "sha256": "b1fe5dd200920878f18163177a3ab966ba321e96f389f6f2a1a1ebb9ae1f9858",
+          "version": "1.1.1"
+        }
+      ]
+    },
+    {
+      "repository": "mattpocock/skills",
+      "revision": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "expectedSkills": 39,
+      "skills": [
+        {
+          "source": "ask-matt",
+          "path": "skills/engineering/ask-matt/SKILL.md",
+          "target": "stacks-flow",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "1371f5ce005de0992a44b137748bfb960a56948aa9871b405fe9d90b24332e3c"
+        },
+        {
+          "source": "code-review",
+          "path": "skills/engineering/code-review/SKILL.md",
+          "target": "stacks-review",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "9c921a8d88138a41401d8897ca1bb852088ab1b7b605cdd04edc13e3e8aab6dd"
+        },
+        {
+          "source": "codebase-design",
+          "path": "skills/engineering/codebase-design/SKILL.md",
+          "target": "stacks-codebase-design",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "2c20617f87ec8af6a434859f381b2f061a69b530444e74eb39e78bb016a6d1e2"
+        },
+        {
+          "source": "diagnosing-bugs",
+          "path": "skills/engineering/diagnosing-bugs/SKILL.md",
+          "target": "stacks-investigate",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "849198df88cdb65fd0d97236604c1fca7ff2f22d2f705f9724a800d0266b118d"
+        },
+        {
+          "source": "domain-modeling",
+          "path": "skills/engineering/domain-modeling/SKILL.md",
+          "target": "stacks-domain-modeling",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "7b925d7b1e341a2eeae33ad68a8a8c0ab889a38ddd22a7598e4c240e5a7556a3"
+        },
+        {
+          "source": "grill-with-docs",
+          "path": "skills/engineering/grill-with-docs/SKILL.md",
+          "target": "stacks-grill-with-docs",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "7de372c13488f1ee96cc11cd8907b56b6809cc93eef776eeddd37de6b6cbe3fe"
+        },
+        {
+          "source": "implement-spec",
+          "path": "skills/engineering/implement-spec/SKILL.md",
+          "target": "stacks-implement-spec",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "1993a473cec40ac85d081c112cdffdc63ec3267c2e412055ad09e013a2f623d1"
+        },
+        {
+          "source": "implement",
+          "path": "skills/engineering/implement/SKILL.md",
+          "target": "stacks-implement",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "483bdc4ccf4ac31d86ac7beeaa0d0db80313e71e120bb8c59b3196ae5decd53d"
+        },
+        {
+          "source": "improve-codebase-architecture",
+          "path": "skills/engineering/improve-codebase-architecture/SKILL.md",
+          "target": "stacks-improve-codebase-architecture",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "35b03a3db61e0f5aa333ea59b54963e45a3d2ace6649b2ef4f9576603e2582a6"
+        },
+        {
+          "source": "pr",
+          "path": "skills/engineering/pr/SKILL.md",
+          "target": "stacks-pr",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "ab63f1cf78647389edcd386c9427c5dfca27ed2836930c24773ffee834c19bcd"
+        },
+        {
+          "source": "prototype",
+          "path": "skills/engineering/prototype/SKILL.md",
+          "target": "stacks-prototype",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "714de632d116bb73f65cdb5a882db15b9369a6713b9a47c0fad827848f0bfbe3"
+        },
+        {
+          "source": "research",
+          "path": "skills/engineering/research/SKILL.md",
+          "target": "stacks-research",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "1f629e18ab899412683bc6a1c4efb4339999e27c2fdac328f26ee10a8c031d33"
+        },
+        {
+          "source": "retro",
+          "path": "skills/engineering/retro/SKILL.md",
+          "target": "stacks-retro",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "33fbc28568e3146f20fd908b12998bc0ab30aa4f4c87288199a40793efa94696"
+        },
+        {
+          "source": "setup-matt-pocock-skills",
+          "path": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
+          "target": "stacks-setup-engineering",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "b01e05bfe8c323171275c6ceec78b12f1bd4c62dfd26c2cfe8be806d3883f1ed"
+        },
+        {
+          "source": "tdd",
+          "path": "skills/engineering/tdd/SKILL.md",
+          "target": "stacks-tdd",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "5505d25bbaa8fc14a79e4d20163936958992a2995b7f1dd1d6197edc9ed722e0"
+        },
+        {
+          "source": "to-spec",
+          "path": "skills/engineering/to-spec/SKILL.md",
+          "target": "stacks-to-spec",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "43ad9cf318e5e7d3d1fa360253a37021796dc87a0c2e595ad262661a10f85088"
+        },
+        {
+          "source": "to-tickets",
+          "path": "skills/engineering/to-tickets/SKILL.md",
+          "target": "stacks-to-tickets",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "56ec23c5b2782785d4e65bff9e315b6d3aeb4ef977c174a219e99489fada1995"
+        },
+        {
+          "source": "triage",
+          "path": "skills/engineering/triage/SKILL.md",
+          "target": "stacks-triage",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "917b0baf74be583e74f110857ed45df2766617f75c00baf61fd136d7af515edf"
+        },
+        {
+          "source": "wayfinder",
+          "path": "skills/engineering/wayfinder/SKILL.md",
+          "target": "stacks-wayfinder",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "0c9fa96791aebf3b7d654cf35c6aadde97d81f57c17b07d13b27c14d9c46561f"
+        },
+        {
+          "source": "wizard",
+          "path": "skills/engineering/wizard/SKILL.md",
+          "target": "stacks-wizard",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "bdf31d48211ea559878f95a4f344aeabf8d85897488ba564382bab0b000daac1"
+        },
+        {
+          "source": "chief-of-staff",
+          "path": "skills/in-progress/chief-of-staff/SKILL.md",
+          "target": "stacks-chief-of-staff",
+          "disposition": "ported",
+          "experimental": true,
+          "sha256": "f4c1d6533edece6b275155911cb627154a6b13e2bc19934f77330f3afdd07987"
+        },
+        {
+          "source": "claude-handoff",
+          "path": "skills/in-progress/claude-handoff/SKILL.md",
+          "target": "stacks-handoff",
+          "disposition": "refreshed",
+          "experimental": true,
+          "sha256": "79357a18425d66d4c24048bedf83dceb79d3bba356f38014950f764a7fab4026"
+        },
+        {
+          "source": "loop-me",
+          "path": "skills/in-progress/loop-me/SKILL.md",
+          "target": "stacks-loop",
+          "disposition": "ported",
+          "experimental": true,
+          "sha256": "e44d1cc3e760fb86ac42964c2a5f1fcac511715db50fb375f3f7be814de1eaa7"
+        },
+        {
+          "source": "setup-ts-deep-modules",
+          "path": "skills/in-progress/setup-ts-deep-modules/SKILL.md",
+          "target": "stacks-setup-deep-modules",
+          "disposition": "native-substitute",
+          "experimental": true,
+          "sha256": "29acca66ac99d4532e2a6f0370d8125d7cba1e87c9ac66573203c75189d3e6c7",
+          "notes": "Honor real Stacks package exports and prove public-entrypoint, fixture, and cycle rules with a Bun-based check; do not assume src/packages root files are the public surface."
+        },
+        {
+          "source": "writing-beats",
+          "path": "skills/in-progress/writing-beats/SKILL.md",
+          "target": "stacks-writing-beats",
+          "disposition": "ported",
+          "experimental": true,
+          "sha256": "a96abafa2372eede8267d770138b322d6125da8adaa7ccf0a5e08e4ee13ee71e"
+        },
+        {
+          "source": "writing-fragments",
+          "path": "skills/in-progress/writing-fragments/SKILL.md",
+          "target": "stacks-writing-fragments",
+          "disposition": "ported",
+          "experimental": true,
+          "sha256": "298b0edd23df229183630de592ed8aa4289233560f2040691f6eb77caeaad4ea"
+        },
+        {
+          "source": "writing-shape",
+          "path": "skills/in-progress/writing-shape/SKILL.md",
+          "target": "stacks-writing-shape",
+          "disposition": "ported",
+          "experimental": true,
+          "sha256": "f5e6c57bdd85178ace4a260c92f46da6b64ddee18215b461d875739c68976f72"
+        },
+        {
+          "source": "git-guardrails-claude-code",
+          "path": "skills/misc/git-guardrails-claude-code/SKILL.md",
+          "target": "stacks-guard",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "69b291d655626a01602b998a1836fcb93c058ede68dfafddfd71e87f17074764"
+        },
+        {
+          "source": "migrate-to-shoehorn",
+          "path": "skills/misc/migrate-to-shoehorn/SKILL.md",
+          "target": "stacks-test-fixtures",
+          "disposition": "native-substitute",
+          "experimental": false,
+          "sha256": "de4da4c11d924fac79c924b2ee3d2db4a5cb98386eb490a599119463d036ae72",
+          "notes": "Use typed fixture builders and real public seams in Bun tests; preserve invalid-input tests without adding a mandatory dependency."
+        },
+        {
+          "source": "scaffold-exercises",
+          "path": "skills/misc/scaffold-exercises/SKILL.md",
+          "target": "stacks-scaffold-exercises",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "75f5c9d771606fb9762f16522efc954df11c324f87148d8ff069bce166257de9"
+        },
+        {
+          "source": "setup-pre-commit",
+          "path": "skills/misc/setup-pre-commit/SKILL.md",
+          "target": "stacks-git",
+          "disposition": "native-substitute",
+          "experimental": false,
+          "sha256": "c9819d7f1e3b198064edc1faa3154224ed67395e9f07f5d3cea4b67cf0a11a98",
+          "notes": "Use the existing bun-git-hooks and pickier integration supplied by better-dx instead of adding Husky, lint-staged, and Prettier."
+        },
+        {
+          "source": "grill-me",
+          "path": "skills/productivity/grill-me/SKILL.md",
+          "target": "stacks-grilling",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "caaf8b8de1684f96e26b28f3c29189db5c89cce4b73e1c93d86164f66ef88637"
+        },
+        {
+          "source": "grilling",
+          "path": "skills/productivity/grilling/SKILL.md",
+          "target": "stacks-grilling",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "a146842ed93ca43d833550fa9adf02e58cb63c83fea9d4b4522995b82242d4e2"
+        },
+        {
+          "source": "handoff",
+          "path": "skills/productivity/handoff/SKILL.md",
+          "target": "stacks-handoff",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "4cbb043950dad2ffd3662ff1a5a0b51ae676004b5cae10e3787e8ee7a4ee69d3"
+        },
+        {
+          "source": "teach",
+          "path": "skills/productivity/teach/SKILL.md",
+          "target": "stacks-teach",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "550482c2d674b085c9043b87bfdc14a8f2ec453c736119e7fcbb1e9332bffeba"
+        },
+        {
+          "source": "to-questionnaire",
+          "path": "skills/productivity/to-questionnaire/SKILL.md",
+          "target": "stacks-to-questionnaire",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "b5eb929842ee0e93d867c5e906d183d350f2f2d149eaeaa86967d94d8eda1d3b"
+        },
+        {
+          "source": "wait-what",
+          "path": "skills/productivity/wait-what/SKILL.md",
+          "target": "stacks-wait-what",
+          "disposition": "ported",
+          "experimental": false,
+          "sha256": "d961bb37defd975c539427edb8f450cdbccdcdd552e213c1ece46676a7970905"
+        },
+        {
+          "source": "writing-for-agents",
+          "path": "skills/productivity/writing-for-agents/SKILL.md",
+          "target": "stacks-writing-for-agents",
+          "disposition": "refreshed",
+          "experimental": false,
+          "sha256": "551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a"
+        },
+        {
+          "source": "software-factory",
+          "path": "skills/in-progress/software-factory/SKILL.md",
+          "target": "stacks-software-factory",
+          "disposition": "ported",
+          "sha256": "645ab761b6cca61a480072b1b510eb05fe0fe5cde2ce0495b6fc234311692253"
+        }
+      ]
+    }
+  ]
+}

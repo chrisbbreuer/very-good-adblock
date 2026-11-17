@@ -1,0 +1,55 @@
+<script server>
+// Laravel 5.7's 403 illustration (MIT), the same scene the framework's own
+// error pages use, so an app that opts into this layout matches them. Pass
+// `backgroundImage` to swap it for anything else.
+const backgroundImage = props.backgroundImage || '/svgs/403.svg'
+const appName = props.appName || 'Your App'
+const supportEmail = props.supportEmail || 'support@example.com'
+</script>
+
+<div class="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+  <!-- Left side content -->
+  <div class="flex items-center justify-center p-8 w-full lg:w-1/2">
+    <div class="max-w-xl w-full">
+      <div class="flex items-center justify-between mb-16">
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-slate-900 text-xl">{{ appName }}</h1>
+        </div>
+      </div>
+
+      <div class="">
+        <h2 class="mb-4 font-bold text-6xl text-slate-900">
+          Access Denied
+        </h2>
+        <p class="mb-8 font-bold text-8xl">
+          403
+        </p>
+        <p class="mb-8 text-slate-600 text-xl">
+          Sorry, you don't have permission to access this page.
+        </p>
+
+        <a
+          href="/"
+          class="inline-flex items-center justify-center px-6 py-3 text-white bg-slate-500 hover:bg-slate-600 rounded-lg duration-200 transition-colors"
+        >
+          <i class="mr-2 h-5 w-5 i-hugeicons-home-03"></i>
+          Back to Home
+        </a>
+      </div>
+
+      <div class="mt-16 pt-8 border-slate-200 border-t">
+        <p class="text-slate-600">
+          Need help? Contact us at
+          <a href="mailto:{{ supportEmail }}" class="text-slate-500 hover:text-slate-600">
+            {{ supportEmail }}
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side illustration -->
+  <div class="overflow-hidden relative h-64 w-full sm:h-80 lg:h-auto lg:w-1/2">
+    <img class="absolute inset-0 object-cover h-full w-full" src="{{ backgroundImage }}" alt="">
+  </div>
+</div>

@@ -1,0 +1,39 @@
+<script server>
+// Laravel 5.7's 404 illustration (MIT), the same scene the framework's own
+// error pages use, so an app that opts into this layout matches them. Pass
+// `backgroundImage` to swap it for anything else.
+const backgroundImage = props.backgroundImage || '/svgs/404.svg'
+</script>
+
+<div class="flex relative justify-center shrink-0 md:px-12 lg:px-0 min-h-full">
+  <div class="flex relative z-10 flex-1 flex-col sm:justify-center md:flex-none px-4 py-10 md:px-28 bg-white shadow-2xl">
+    <main class="mx-auto sm:px-4 md:px-0 max-w-md w-full md:max-w-sm md:w-96">
+      <div class="flex">
+        <a href="/" aria-label="Home">
+          <Logo class="h-10 w-auto" />
+        </a>
+      </div>
+
+      <p class="mt-20 font-medium text-gray-700 text-sm">
+        404
+      </p>
+
+      <h1 class="mt-3 font-semibold text-gray-900 text-lg">
+        Page not found
+      </h1>
+
+      <p class="mt-3 text-gray-700 text-sm">
+        Sorry, we couldn't find the page you're looking for.
+      </p>
+
+      <!-- The Stacks cobalt, from the logo's plate. White on #1747c9 is
+        7.55:1 and on the #0f359d hover 10.41:1, so both states clear AA. -->
+      <a href="/" class="inline-block mt-10 px-4 py-2 text-white bg-[#1747c9] hover:bg-[#0f359d] rounded">
+        Go back home
+      </a>
+    </main>
+  </div>
+  <div class="hidden sm:contents lg:block lg:relative lg:flex-1">
+    <img class="absolute inset-0 object-cover h-full w-full" src="{{ backgroundImage }}" alt="">
+  </div>
+</div>

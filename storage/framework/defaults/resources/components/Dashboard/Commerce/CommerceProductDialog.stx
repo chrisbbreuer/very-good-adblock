@@ -1,0 +1,171 @@
+<script client>
+import { formErrorMessages, slugify } from '../../../../functions/dashboard-form'
+import type {
+  CommerceProductRecord,
+  ProductOption,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
+import { minorToInput, moneyInputStep } from '@stacksjs/commerce/money'
+import {
+  productPriceInputError,
+  productWritePayload,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as CommerceProductRecord | null)
+const categories = useReactiveProp('categories', [] as ProductOption[])
+const manufacturers = useReactiveProp('manufacturers', [] as ProductOption[])
+const currency = useReactiveProp('currency', 'USD')
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const slug = state('')
+const descriptionText = state('')
+// The price as typed, in major units ("19.99"). It is stored as integer
+// minor units (1999), converted once in `productWritePayload`.
+const price = state('')
+const imageUrl = state('')
+const isAvailable = state(true)
+const inventoryCount = state('0')
+const preparationTime = state('1')
+const categoryId = state('')
+const manufacturerId = state('')
+const allergens = state('')
+const nutritionalInfo = state('{}')
+let hydrationKey = ''
+// The slug follows the name until someone edits it, and an existing product
+// keeps the one it has: changing it would break links to it.
+let slugTouched = false
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  slug.set(current?.slug || '')
+  slugTouched = Boolean(current?.slug)
+  descriptionText.set(current?.description || '')
+  price.set(current ? minorToInput(current.price, currency()) : '')
+  imageUrl.set(current?.imageUrl || '')
+  isAvailable.set(current?.isAvailable ?? true)
+  inventoryCount.set(String(current?.inventoryCount ?? 0))
+  preparationTime.set(String(current?.preparationTime ?? 1))
+  categoryId.set(current?.categoryId || '')
+  manufacturerId.set(current?.manufacturerId || '')
+  allergens.set(current?.allergens.join(', ') || '')
+  nutritionalInfo.set(current?.nutritionalInfoRaw || '{}')
+})
+
+effect(() => {
+  if (!open() || slugTouched)
+    return
+  slug.set(slugify(name()))
+})
+
+function markSlugTouched(): void {
+  slugTouched = true
+}
+
+function normalizeSlug(): void {
+  const normalized = slugify(slug())
+  if (normalized !== slug())
+    slug.set(normalized)
+}
+
+function nutritionValid(): boolean {
+  const raw = nutritionalInfo().trim()
+  if (!raw)
+    return true
+  try {
+    const parsed = JSON.parse(raw)
+    return Boolean(parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+  }
+  catch {
+    return false
+  }
+}
+
+function priceError(): string {
+  return productPriceInputError(price(), currency())
+}
+
+function valid(): boolean {
+  const parsedInventory = Number(inventoryCount())
+  const parsedPreparation = Number(preparationTime())
+  return Boolean(
+    name().trim()
+    && slugify(slug())
+    && !priceError()
+    && Number.isFinite(parsedInventory)
+    && parsedInventory >= 0
+    && Number.isInteger(parsedInventory)
+    && Number.isFinite(parsedPreparation)
+    && parsedPreparation >= 1
+    && Number.isInteger(parsedPreparation)
+    && nutritionValid()
+  )
+}
+
+function submit(): void {
+  if (!valid())
+    return
+  emit('submit', productWritePayload({
+    name: name(),
+    slug: slugify(slug()),
+    description: descriptionText(),
+    price: price(),
+    imageUrl: imageUrl(),
+    isAvailable: isAvailable(),
+    inventoryCount: inventoryCount(),
+    preparationTime: preparationTime(),
+    allergens: allergens(),
+    nutritionalInfo: nutritionalInfo(),
+    categoryId: categoryId(),
+    manufacturerId: manufacturerId(),
+  }, currency()))
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit product' : 'Add product'"
+  description="Store fields and belongs-to relationships declared by the native Product model."
+  size="xl"
+  @close="emit('close')"
+>
+    <form id="product-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <div class="sm:col-span-2"><Input v-model:value="name" label="Name" :maxLength="100" :required="true" /></div>
+          <div class="sm:col-span-2"><Input v-model:value="slug" label="Slug" :maxLength="255" :required="true" :spellcheck="false" :monospace="true" :hint="'The storefront address, /products/' + (slug() || 'slug') + '.'" @input="markSlugTouched" @blur="normalizeSlug" /></div>
+          <div class="sm:col-span-2"><Textarea v-model:value="descriptionText" label="Description" :rows="3" /></div>
+          <Input v-model:value="price" :label="'Price (' + currency() + ')'" type="number" min="0" :step="moneyInputStep(currency())" inputmode="decimal" :required="true" :error="price() !== '' ? priceError() : ''" />
+          <Input v-model:value="inventoryCount" label="Inventory count" type="number" min="0" step="1" :required="true" />
+          <Input v-model:value="preparationTime" label="Preparation time (minutes)" type="number" min="1" step="1" :required="true" />
+          <div class="self-end px-3 py-2 min-h-10 bg-gray-50 dark:bg-neutral-900/60 border border-gray-200 rounded-md dark:border-neutral-700">
+            <Toggle v-model:checked="isAvailable" label="Available for commerce" labelPosition="left" />
+          </div>
+          <Select v-model:value="categoryId" label="Category" placeholder="" :options="[{ value: '', label: 'Unassigned category' }, ...categories().map(option => ({ value: option.id, label: option.label }))]" />
+          <Select v-model:value="manufacturerId" label="Manufacturer" placeholder="" :options="[{ value: '', label: 'Unassigned manufacturer' }, ...manufacturers().map(option => ({ value: option.id, label: option.label }))]" />
+          <div class="sm:col-span-2"><Input v-model:value="imageUrl" label="Image URL" type="url" placeholder="Optional persisted asset URL" /></div>
+          <div class="sm:col-span-2"><Input v-model:value="allergens" label="Allergens" placeholder="Comma-separated, for example: Gluten, Soy" /></div>
+          <div class="sm:col-span-2"><Textarea v-model:value="nutritionalInfo" label="Nutritional information (JSON object)" :rows="4" :spellcheck="false" :monospace="true" :error="nutritionValid() ? '' : 'Enter a valid JSON object.'" /></div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full"><Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button><Button type="submit" form="product-form" :loading="busy()" :disabled="!valid()">{{ mode() === 'edit' ? 'Save product' : 'Add product' }}</Button></div>
+  </template>
+</Modal>

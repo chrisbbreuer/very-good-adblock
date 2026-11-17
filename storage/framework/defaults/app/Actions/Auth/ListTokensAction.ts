@@ -1,0 +1,30 @@
+import { Action } from '@stacksjs/actions/runtime'
+import { tokens } from '@stacksjs/auth'
+import { response } from '@stacksjs/router'
+
+export default new Action({
+  name: 'ListTokensAction',
+  description: 'List all access tokens for the authenticated user',
+  method: 'GET',
+  async handle(request: RequestInstance) {
+    const user = await request.user()
+
+    if (!user) {
+      return response.unauthorized('Authentication required')
+    }
+
+    const userTokens = await tokens(Number(user.id))
+
+    return response.json({
+      tokens: userTokens.map(token => ({
+        id: token.id,
+        name: token.name,
+        scopes: token.scopes,
+        expires_at: token.expiresAt?.toISOString() || null,
+        created_at: token.createdAt.toISOString(),
+        updated_at: token.updatedAt.toISOString(),
+      })),
+      count: userTokens.length,
+    })
+  },
+})

@@ -1,0 +1,13 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Browser Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="browsers"
+    title="Browser Analytics"
+    description="Browser families derived from recorded user agents."
+    emptyMessage="No browser user agents were recorded for this period."
+  />
+</PageLayout>
+@endsection

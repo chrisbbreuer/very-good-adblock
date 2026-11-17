@@ -1,0 +1,102 @@
+@import('../../UI/Table')
+
+<script client>
+interface DeliveryRouteRow {
+  id: number
+  courier: string
+  courier_id?: number | null
+  courier_record?: { id: number, name: string, vehicle_number: string }
+  vehicle: string
+  stops: number
+  delivery_time: number
+  total_distance: number
+  last_active: string
+}
+
+const routes = useReactiveProp('routes', [] as DeliveryRouteRow[])
+const loading = useReactiveProp('loading', false)
+/**
+ * The server pages and sorts what the parent's search matches
+ * (stacksjs/stacks#3218): how many routes match, the page shown and its size.
+ */
+const total = useReactiveProp('total', 0)
+const currentPage = useReactiveProp('currentPage', 1)
+const perPage = useReactiveProp('perPage', 25)
+const emit = defineEmits(['edit', 'delete', 'page-change', 'page-size-change', 'sort'])
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
+}
+
+/** Time and distance carry their units, so they read as text and sort by the number. */
+const COLUMNS = [
+  { key: 'routeLabel', label: 'Route', sortable: true, class: 'font-medium tabular-nums text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'courierLabel', label: 'Courier', sortable: true, subtitleKey: 'courierNote', class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'vehicle', label: 'Vehicle', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'stops', label: 'Stops', type: 'number' as const, sortable: true, class: 'tabular-nums' },
+  { key: 'delivery_time', label: 'Delivery time', sortable: true, slotted: true },
+  { key: 'total_distance', label: 'Distance', sortable: true, slotted: true },
+  { key: 'last_active', label: 'Last active', type: 'datetime' as const, sortable: true, emptyText: 'Not recorded', class: 'whitespace-nowrap' },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => routes().map(route => ({
+  ...route,
+  routeLabel: `#${route.id}`,
+  courierLabel: route.courier_record?.name || route.courier,
+  courierNote: route.courier_id ? `Linked courier #${route.courier_id}` : 'Legacy snapshot',
+  timeLabel: `${formatNumber(route.delivery_time)} min`,
+  distanceLabel: `${formatNumber(route.total_distance)} mi`,
+  actionName: `delivery route ${route.id} for ${route.courier}`,
+})))
+
+function handleRowAction(payload: { action: string, row: DeliveryRouteRow }): void {
+  emit(payload.action, payload.row)
+}
+
+function changePage(page: number): void {
+  emit('page-change', page)
+}
+
+function changePageSize(size: number): void {
+  emit('page-size-change', size)
+}
+
+function changeSort(sort: { key: string, direction: string }): void {
+  emit('sort', sort)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box,
+  and the server pages and sorts what it matches. The table stays mounted
+  while a page loads.
+--}}
+<Table
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  manual-pagination
+  manual-sort
+  :total="total()"
+  :current-page="currentPage()"
+  :page-size="perPage()"
+  empty-title="No delivery routes found"
+  empty-description="Add a route, or adjust the search."
+  @row-action="handleRowAction"
+  @page-change="changePage"
+  @page-size-change="changePageSize"
+  @sort="changeSort"
+>
+  <template #cell="{ row, column }">
+    <span :if="column.key === 'delivery_time'" class="tabular-nums whitespace-nowrap" x-text="row.timeLabel"></span>
+    <span :if="column.key === 'total_distance'" class="tabular-nums whitespace-nowrap" x-text="row.distanceLabel"></span>
+  </template>
+</Table>

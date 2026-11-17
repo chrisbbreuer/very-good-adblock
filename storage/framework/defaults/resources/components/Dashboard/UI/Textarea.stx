@@ -1,0 +1,134 @@
+<script client>
+type TextareaResize = 'none' | 'vertical' | 'horizontal' | 'both'
+
+const liveValue = useReactiveProp('value', '')
+const liveLabel = useReactiveProp('label', '')
+const livePlaceholder = useReactiveProp('placeholder', '')
+const liveError = useReactiveProp('error', '')
+const liveHint = useReactiveProp('hint', '')
+const liveDisabled = useReactiveProp('disabled', false)
+const liveReadonly = useReactiveProp('readonly', false)
+const liveRequired = useReactiveProp('required', false)
+const liveRows = useReactiveProp('rows', 3)
+const liveMaxLength = useReactiveProp('maxLength', 0)
+// The shortest text the browser accepts, as an input's `minLength`.
+const liveMinLength = useReactiveProp('minLength', 0)
+const liveShowCount = useReactiveProp('showCount', false)
+const liveResize = useReactiveProp('resize', 'vertical' as TextareaResize)
+const liveName = useReactiveProp('name', '')
+const liveId = useReactiveProp('id', '')
+const liveAriaLabel = useReactiveProp('ariaLabel', '')
+const liveClass = useReactiveProp('class', '')
+// Code and structured text (JSON) read better in a fixed-width face.
+const liveMonospace = useReactiveProp('monospace', false)
+// Null leaves it to the browser. False for what is not prose: JSON, a template.
+const liveSpellcheck = useReactiveProp<boolean | null>('spellcheck', null)
+const emit = defineEmits(['update:value', 'input', 'change', 'blur', 'keydown'])
+const generatedId = useId('textarea')
+
+const resizeClasses: Record<TextareaResize, string> = {
+  none: 'resize-none',
+  vertical: 'resize-y',
+  horizontal: 'resize-x',
+  both: 'resize',
+}
+
+const textareaId = derived(() => liveId() || generatedId)
+const valueLength = derived(() => String(liveValue() || '').length)
+const headerVisible = derived(() => Boolean(liveLabel() || (liveShowCount() && liveMaxLength())))
+// The same surface, border, text size and states as Input and Select, so a
+// form's fields read as one set.
+const textareaClass = derived(() => [
+  'block w-full rounded-lg border px-3 py-2 transition-all duration-150',
+  'bg-white dark:bg-white/10',
+  'text-stone-900 dark:text-neutral-100',
+  'placeholder:text-stone-400 dark:placeholder:text-neutral-500',
+  'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0',
+  liveMonospace() ? 'font-mono text-[12px]' : 'text-[13px]',
+  resizeClasses[liveResize()] || resizeClasses.vertical,
+  liveError()
+    ? 'border-red-400/60 dark:border-red-500/60 focus:border-red-500 focus:ring-red-500/30'
+    : 'border-stone-200/80 dark:border-white/15 focus:border-blue-400 hover:border-stone-300 dark:hover:border-white/25',
+  liveDisabled() ? 'opacity-40 cursor-not-allowed bg-stone-50 dark:bg-white/5' : '',
+  liveClass(),
+].join(' '))
+const limitedCountLabel = derived(() => `${valueLength()}/${liveMaxLength()}`)
+const openCountLabel = derived(() => `${valueLength()} characters`)
+
+function textareaValue(event: Event): string {
+  return (event.target as HTMLTextAreaElement).value
+}
+
+function handleInput(event: Event): void {
+  const value = textareaValue(event)
+  emit('update:value', value)
+  emit('input', value)
+}
+
+function handleChange(event: Event): void {
+  emit('change', textareaValue(event))
+}
+
+function handleBlur(event: Event): void {
+  emit('blur', textareaValue(event))
+}
+
+/**
+ * A key pressed in the field, as the event itself: a dialog that saves on
+ * Enter, or sends on Command+Enter, decides, and can prevent the default.
+ */
+function handleKeydown(event: KeyboardEvent): void {
+  emit('keydown', event)
+}
+</script>
+
+<div>
+  <div :if="headerVisible()" class="flex items-center justify-between mb-1.5">
+    <label
+      :if="liveLabel()"
+      :for="textareaId()"
+      class="block font-medium text-[13px] tracking-tight"
+      :class="liveError() ? 'text-red-600 dark:text-red-400' : 'text-stone-600 dark:text-neutral-400'"
+    >
+      <span :text="liveLabel()"></span>
+      <span :if="liveRequired()" class="ml-0.5 text-red-500">*</span>
+    </label>
+    <span
+      :if="liveShowCount() && liveMaxLength()"
+      class="text-neutral-500 text-xs dark:text-neutral-500"
+      :text="limitedCountLabel()"
+    ></span>
+  </div>
+
+  <div class="relative">
+    <textarea
+      :id="textareaId()"
+      :name="liveName() || null"
+      :rows="liveRows()"
+      :placeholder="livePlaceholder()"
+      :aria-label="liveAriaLabel() || liveLabel() || null"
+      :aria-invalid="liveError() ? 'true' : null"
+      :maxlength="liveMaxLength() || null"
+      :minlength="liveMinLength() || null"
+      :spellcheck="liveSpellcheck() === null ? null : String(liveSpellcheck())"
+      :class="textareaClass()"
+      x-model="liveValue"
+      :disabled="liveDisabled()"
+      :readonly="liveReadonly()"
+      :required="liveRequired()"
+      @input="handleInput"
+      @change="handleChange"
+      @blur="handleBlur"
+      @keydown="handleKeydown"
+    ></textarea>
+
+    <span
+      :if="liveShowCount() && !liveMaxLength()"
+      class="absolute bottom-2 right-2 px-1 text-neutral-500 text-xs dark:text-neutral-500 bg-white dark:bg-neutral-900"
+      :text="openCountLabel()"
+    ></span>
+  </div>
+
+  <p :if="liveError()" class="mt-1.5 text-[12px] text-red-600 dark:text-red-400" :text="liveError()"></p>
+  <p :if="!liveError() && liveHint()" class="mt-1.5 text-[12px] text-stone-500 dark:text-neutral-400" :text="liveHint()"></p>
+</div>

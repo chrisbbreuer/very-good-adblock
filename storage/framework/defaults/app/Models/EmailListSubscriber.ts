@@ -1,0 +1,96 @@
+import { defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
+
+/**
+ * Pivot row between Subscriber and EmailList.
+ *
+ * One subscriber can be on many lists; the subscribers.email unique
+ * constraint stays intact because membership lives here. Each pivot
+ * row carries its own UUID, which doubles as the per-list unsubscribe
+ * token — that lets a recipient drop "Weekly Digest" via one link
+ * without dropping every other list (or transactional mail).
+ */
+export default defineModel({
+  name: 'EmailListSubscriber',
+  table: 'email_list_subscribers',
+  primaryKey: 'id',
+  autoIncrement: true,
+  belongsTo: ['EmailList', 'Subscriber'],
+
+  traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 20 },
+    gdpr: { subject: { via: 'Subscriber' }, erasure: 'delete', basis: 'consent', purpose: 'Mailing list membership' },
+    useUuid: true,
+    useTimestamps: true,
+    useApi: {
+      uri: 'email-list-subscribers',
+      routes: ['index', 'show'],
+      // The pivot leaks list-membership PII (which addresses are on
+      // which list, signup source, status). Auth-gate it. Public
+      // unsubscribe goes through the dedicated token route, not this
+      // CRUD surface.
+      middleware: ['auth'],
+    },
+  },
+
+  attributes: {
+    emailListId: {
+      required: true,
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+      },
+    },
+
+    subscriberId: {
+      required: true,
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+      },
+    },
+
+    status: {
+      required: true,
+      fillable: true,
+      default: 'subscribed',
+      validation: {
+        rule: schema.enum(['subscribed', 'unsubscribed', 'pending', 'bounced']),
+      },
+      factory: faker => faker.helpers.arrayElement(['subscribed', 'subscribed', 'subscribed', 'unsubscribed']),
+    },
+
+    source: {
+      required: false,
+      fillable: true,
+      default: 'api',
+      validation: {
+        rule: schema.string().max(100),
+      },
+      factory: faker => faker.helpers.arrayElement(['homepage', 'blog', 'landing-page', 'api', 'import']),
+    },
+
+    subscribedAt: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: faker => faker.date.recent({ days: 90 }).toISOString().slice(0, 19).replace('T', ' '),
+    },
+
+    unsubscribedAt: {
+      required: false,
+      fillable: true,
+      validation: {
+        rule: schema.timestamp(),
+      },
+      factory: () => null,
+    },
+  },
+
+  dashboard: {
+    columns: ['subscriber', 'emailList', 'status', 'source', 'subscribedAt'],
+  },
+} as const)

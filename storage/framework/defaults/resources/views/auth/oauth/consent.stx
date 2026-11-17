@@ -1,0 +1,149 @@
+<script server>
+import type { OAuthAuthorizationConsentView } from '@stacksjs/auth'
+
+/**
+ * The default OAuth consent screen. Applications may replace this file at
+ * `resources/views/auth/oauth/consent.stx` without changing the provider.
+ *
+ * The action supplies display-only identity labels and the consent model. The
+ * form returns only middleware-owned CSRF proof, the opaque request handle,
+ * and the user's decision. Client callback, PKCE, subject, and workspace
+ * authority remain in the server-side authorization-request record.
+ */
+declare const consent: OAuthAuthorizationConsentView
+declare const signedInIdentity: string
+declare const selectedWorkspace: string | null
+declare const consentAction: string
+declare const csrfToken: string
+
+/*
+ * This file is a page as well as the action's template, so `/auth/oauth/consent`
+ * can be asked for on its own: by a visitor, a crawler, or the server warming
+ * its pages at start. Nothing hands it a request then. Reading `consent`
+ * directly threw "consent is not defined", which left every variable in this
+ * script undefined and rendered an empty shell with a warning on each visit.
+ * `typeof` is the one read of an undeclared name that does not throw. Without
+ * an authorization request there is nothing to consent to, so it is a 404.
+ */
+const hasRequest = typeof consent !== 'undefined'
+if (!hasRequest)
+  notFound()
+
+const clientTypeLabel = hasRequest && consent.client.type === 'public' ? 'Public client' : 'Confidential client'
+</script>
+
+@if (hasRequest)
+<main class="flex items-center justify-center px-4 py-10 sm:px-6 min-h-dvh text-neutral-950 dark:text-white bg-neutral-50 dark:bg-neutral-950">
+  <section class="max-w-xl w-full" aria-labelledby="oauth-consent-title">
+    <div class="flex gap-2 items-center justify-center mb-5 text-neutral-500 text-sm dark:text-neutral-400">
+      <i class="h-5 w-5 i-hugeicons-shield-key" aria-hidden="true"></i>
+      <span>Secure authorization</span>
+    </div>
+
+    <div class="overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 rounded-2xl dark:border-neutral-800 shadow-sm">
+      <header class="px-6 py-6 sm:px-8 border-b border-neutral-200 dark:border-neutral-800">
+        <p class="font-medium text-neutral-500 text-sm dark:text-neutral-400">Authorization request</p>
+        <h1 id="oauth-consent-title" class="mt-2 font-semibold text-2xl tracking-tight sm:text-3xl">
+          {{ consent.client.name }} wants to connect
+        </h1>
+        <p class="mt-3 leading-6 text-neutral-600 text-sm dark:text-neutral-300">
+          Review exactly what this application can access before you continue.
+        </p>
+      </header>
+
+      <div class="px-6 py-6 space-y-7 sm:px-8">
+        <dl class="grid gap-4 p-4 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl">
+          <div class="flex gap-3 items-start">
+            <i class="shrink-0 mt-0.5 h-5 w-5 text-neutral-500 dark:text-neutral-400 i-hugeicons-user-circle" aria-hidden="true"></i>
+            <div>
+              <dt class="font-medium text-neutral-500 text-xs tracking-wide uppercase dark:text-neutral-400">Signed in as</dt>
+              <dd class="mt-1 font-medium text-neutral-900 text-sm dark:text-white">{{ signedInIdentity }}</dd>
+            </div>
+          </div>
+
+          @if (selectedWorkspace)
+            <div class="flex gap-3 items-start">
+              <i class="shrink-0 mt-0.5 h-5 w-5 text-neutral-500 dark:text-neutral-400 i-hugeicons-building-03" aria-hidden="true"></i>
+              <div>
+                <dt class="font-medium text-neutral-500 text-xs tracking-wide uppercase dark:text-neutral-400">Workspace</dt>
+                <dd class="mt-1 font-medium text-neutral-900 text-sm dark:text-white">{{ selectedWorkspace }}</dd>
+              </div>
+            </div>
+          @endif
+
+          <div class="flex gap-3 items-start">
+            <i class="shrink-0 mt-0.5 h-5 w-5 text-neutral-500 dark:text-neutral-400 i-hugeicons-computer-programming-01" aria-hidden="true"></i>
+            <div>
+              <dt class="font-medium text-neutral-500 text-xs tracking-wide uppercase dark:text-neutral-400">Application type</dt>
+              <dd class="mt-1 font-medium text-neutral-900 text-sm dark:text-white">{{ clientTypeLabel }}</dd>
+            </div>
+          </div>
+        </dl>
+
+        <section aria-labelledby="oauth-permissions-title">
+          <h2 id="oauth-permissions-title" class="font-semibold text-base">Permissions requested</h2>
+          <ul class="mt-3 border border-neutral-200 divide-neutral-200 divide-y rounded-xl dark:border-neutral-800 dark:divide-neutral-800">
+            @foreach (consent.permissions as permission)
+              <li class="flex gap-3 items-start px-4 py-4">
+                <i class="shrink-0 mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-400 i-hugeicons-key-01" aria-hidden="true"></i>
+                <div>
+                  <p class="font-medium text-neutral-900 text-sm dark:text-white">{{ permission.description }}</p>
+                  <p class="mt-1 font-mono text-neutral-500 text-xs dark:text-neutral-400">{{ permission.name }}</p>
+                </div>
+              </li>
+            @endforeach
+          </ul>
+        </section>
+
+        @if (consent.resources.length)
+          <section aria-labelledby="oauth-resources-title">
+            <h2 id="oauth-resources-title" class="font-semibold text-base">Data access</h2>
+            <ul class="mt-3 space-y-2">
+              @foreach (consent.resources as resource)
+                <li class="flex gap-3 items-start px-4 py-3 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl">
+                  <i class="shrink-0 mt-0.5 h-5 w-5 text-neutral-500 dark:text-neutral-400 i-hugeicons-database-02" aria-hidden="true"></i>
+                  <div>
+                    <p class="font-medium text-neutral-900 text-sm dark:text-white">{{ resource.name }}</p>
+                    @if (resource.description)
+                      <p class="mt-1 leading-5 text-neutral-600 text-sm dark:text-neutral-300">{{ resource.description }}</p>
+                    @endif
+                  </div>
+                </li>
+              @endforeach
+            </ul>
+          </section>
+        @endif
+
+        <p class="px-4 py-3 leading-5 text-amber-950 text-sm dark:text-amber-100 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 rounded-xl dark:border-amber-900/70">
+          Only approve if you recognize this application and trust it with the permissions listed above.
+        </p>
+      </div>
+
+      <form method="POST" action="{{ consentAction }}" class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end px-6 py-5 sm:px-8 border-neutral-200 border-t dark:border-neutral-800">
+        <input type="hidden" name="_token" value="{{ csrfToken }}">
+        <input type="hidden" name="request_id" value="{{ consent.requestId }}">
+        <button
+          type="submit"
+          name="decision"
+          value="deny"
+          class="inline-flex items-center justify-center px-5 py-2.5 min-h-11 font-semibold text-neutral-800 text-sm dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 dark:focus:ring-offset-neutral-900"
+        >
+          Deny
+        </button>
+        <button
+          type="submit"
+          name="decision"
+          value="approve"
+          class="inline-flex items-center justify-center px-5 py-2.5 min-h-11 font-semibold text-sm text-white dark:text-neutral-950 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-950 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 dark:focus:ring-white"
+        >
+          Allow access
+        </button>
+      </form>
+    </div>
+
+    <p class="mt-5 leading-5 text-center text-neutral-500 text-xs dark:text-neutral-400">
+      You can revoke this connection later from your connected applications settings.
+    </p>
+  </section>
+</main>
+@endif

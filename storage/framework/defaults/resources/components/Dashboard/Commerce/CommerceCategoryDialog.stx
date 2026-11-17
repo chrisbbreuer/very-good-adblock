@@ -1,0 +1,138 @@
+<script client>
+import type { CommerceCategoryRecord } from '../../../../app/Actions/Dashboard/Commerce/commerce-category-records'
+import { formErrorMessages, slugify } from '../../../../functions/dashboard-form'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as CommerceCategoryRecord | null)
+const records = useReactiveProp('records', [] as CommerceCategoryRecord[])
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const descriptionText = state('')
+const slug = state('')
+const imageUrl = state('')
+const isActive = state(true)
+const parentCategoryId = state('')
+const displayOrder = state('0')
+let hydrationKey = ''
+let slugTouched = false
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  descriptionText.set(current?.description || '')
+  slug.set(current?.slug || '')
+  imageUrl.set(current?.imageUrl || '')
+  isActive.set(current?.isActive ?? true)
+  parentCategoryId.set(current?.parentCategoryId || '')
+  displayOrder.set(String(current?.displayOrder ?? 0))
+  slugTouched = Boolean(current?.slug)
+})
+
+effect(() => {
+  if (!open() || slugTouched)
+    return
+  slug.set(slugify(name()))
+})
+
+function markSlugTouched(): void {
+  slugTouched = true
+}
+
+function normalizeSlug(): void {
+  const normalized = slugify(slug())
+  if (normalized !== slug())
+    slug.set(normalized)
+}
+
+function forbiddenParentIds(): Set<string> {
+  const currentId = record()?.id
+  if (!currentId)
+    return new Set()
+  const forbidden = new Set([currentId])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const candidate of records()) {
+      if (candidate.parentCategoryId && forbidden.has(candidate.parentCategoryId) && !forbidden.has(candidate.id)) {
+        forbidden.add(candidate.id)
+        changed = true
+      }
+    }
+  }
+  return forbidden
+}
+
+function parentOptions(): CommerceCategoryRecord[] {
+  const forbidden = forbiddenParentIds()
+  return records()
+    .filter(candidate => !forbidden.has(candidate.id))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function valid(): boolean {
+  return Boolean(
+    name().trim()
+    && slug().trim()
+    && Number.isFinite(Number(displayOrder()))
+    && Number(displayOrder()) >= 0
+  )
+}
+
+function submit(): void {
+  if (!valid())
+    return
+  emit('submit', {
+    name: name().trim(),
+    description: descriptionText().trim(),
+    slug: slugify(slug()),
+    imageUrl: imageUrl().trim(),
+    isActive: isActive(),
+    // The select holds the id as text; the model declares a number (#3013).
+    parentCategoryId: parentCategoryId() ? Number(parentCategoryId()) : null,
+    displayOrder: Number(displayOrder()),
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit category' : 'Add category'"
+  description="Store hierarchy fields declared by the Category model."
+  size="lg"
+  @close="emit('close')"
+>
+    <form id="category-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <Input v-model:value="name" label="Name" :maxLength="50" :required="true" />
+          <Input v-model:value="slug" label="Slug" :required="true" :spellcheck="false" :monospace="true" @input="markSlugTouched" @blur="normalizeSlug" />
+          <div class="sm:col-span-2"><Textarea v-model:value="descriptionText" label="Description" :rows="3" /></div>
+          <div class="sm:col-span-2"><Input v-model:value="imageUrl" label="Image URL" placeholder="Optional persisted asset URL" hint="Use a stored asset URL. File uploads belong to the native storage workflow." /></div>
+          <Select v-model:value="parentCategoryId" label="Parent category" placeholder="" :options="[{ value: '', label: 'Root category' }, ...parentOptions().map(option => ({ value: option.id, label: option.name }))]" />
+          <Input v-model:value="displayOrder" label="Display order" type="number" min="0" step="1" :required="true" />
+          <div class="sm:col-span-2 p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="isActive" label="Active in the storefront" description="Availability is independent from the hierarchy." labelPosition="left" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full"><Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button><Button type="submit" form="category-form" :loading="busy()" :disabled="!valid()">{{ mode() === 'edit' ? 'Save category' : 'Add category' }}</Button></div>
+  </template>
+</Modal>

@@ -1,0 +1,14 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Commerce Web Analytics')
+<PageLayout>
+  <WebAnalyticsBreakdown
+    kind="pages"
+    scope="commerce"
+    title="Commerce Web Analytics"
+    description="Traffic to storefront and commerce routes grouped from recorded application requests."
+    emptyMessage="No successful storefront or commerce page requests were recorded for this period."
+  />
+</PageLayout>
+@endsection

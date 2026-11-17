@@ -1,0 +1,222 @@
+<script client>
+import { dashboardApi } from '../../../../../functions/dashboard-api'
+
+type LicenseKeyStatus = 'active' | 'inactive' | 'unassigned'
+
+interface LicenseKeyOption {
+  id: number
+  label: string
+  detail?: string
+}
+
+type ChoiceKind = 'customers' | 'products' | 'orders'
+
+interface LicenseKeyRecord {
+  id: number
+  key: string
+  template: string
+  customer_id?: number | null
+  product_id?: number | null
+  order_id?: number | null
+  expiry_date: string
+  status: LicenseKeyStatus
+  customer?: LicenseKeyOption | null
+  product?: LicenseKeyOption | null
+  order?: LicenseKeyOption | null
+}
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'create')
+const record = useReactiveProp('record', null as LicenseKeyRecord | null)
+const busy = useReactiveProp('busy', false)
+const error = useReactiveProp('error', '')
+const emit = defineEmits(['invalid', 'submit', 'close'])
+const keyValue = state('')
+const templateValue = state('Standard License')
+const customerId = state('')
+const productId = state('')
+const orderId = state('')
+const expiryDate = state('')
+const status = state<LicenseKeyStatus>('unassigned')
+let hydrationKey = ''
+
+// The customer, product and order choices are server searches
+// (stacksjs/stacks#3218): this used to be handed the first 500 of each, so a
+// key could not be linked to any later one.
+const choices = state<Record<ChoiceKind, LicenseKeyOption[]>>({ customers: [], products: [], orders: [] })
+const matches = state<Record<ChoiceKind, number>>({ customers: 0, products: 0, orders: 0 })
+const customerQuery = state('')
+const productQuery = state('')
+const orderQuery = state('')
+const requests: Record<ChoiceKind, number> = { customers: 0, products: 0, orders: 0 }
+const timers: Record<ChoiceKind, ReturnType<typeof setTimeout> | null> = { customers: null, products: null, orders: null }
+
+async function loadChoices(kind: ChoiceKind, term: string): Promise<void> {
+  const request = ++requests[kind]
+  const params = new URLSearchParams({ kind })
+  if (term)
+    params.set('q', term)
+  let found: LicenseKeyOption[] = []
+  let count = 0
+  try {
+    const data = await dashboardApi<{ choices?: LicenseKeyOption[], total?: number }>(`/api/dashboard/commerce/license-key-options?${params}`)
+    found = Array.isArray(data.choices) ? data.choices : []
+    count = Number(data.total) || found.length
+  }
+  catch {
+    // Soft-fail: the key's own links stay selectable.
+  }
+  if (request !== requests[kind])
+    return
+  choices.set({ ...choices(), [kind]: found })
+  matches.set({ ...matches(), [kind]: count })
+}
+
+function searchSoon(kind: ChoiceKind): void {
+  const timer = timers[kind]
+  if (timer)
+    clearTimeout(timer)
+  const query = kind === 'customers' ? customerQuery : kind === 'products' ? productQuery : orderQuery
+  timers[kind] = setTimeout(() => { void loadChoices(kind, query().trim()) }, 250)
+}
+
+/** The choices to show for one link: the search results, with the key's own kept in. */
+function optionsFor(kind: ChoiceKind): LicenseKeyOption[] {
+  const found = choices()[kind]
+  const current = record()
+  const own = kind === 'customers' ? current?.customer : kind === 'products' ? current?.product : current?.order
+  if (!own || found.some(option => option.id === own.id))
+    return found
+  return [own, ...found]
+}
+
+function moreLabel(kind: ChoiceKind, noun: string): string {
+  const shown = choices()[kind].length
+  const total = matches()[kind]
+  return total > shown ? `Showing ${shown} of ${total.toLocaleString()} matching ${noun}. Search to narrow it down.` : ''
+}
+
+function toDateTimeLocal(value?: string): string {
+  if (!value)
+    return ''
+  const timestamp = /^\d{10,13}$/.test(value)
+    ? Number(value) * (value.length === 10 ? 1000 : 1)
+    : value.replace(' ', 'T')
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime()))
+    return ''
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+}
+
+function toUnixTimestamp(value: string): number {
+  return Math.floor(new Date(value).getTime() / 1000)
+}
+
+function defaultExpiry(): string {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + 1)
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+}
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const nextKey = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === nextKey)
+    return
+  hydrationKey = nextKey
+  keyValue.set(current?.key || '')
+  templateValue.set(current?.template || 'Standard License')
+  customerId.set(current?.customer_id ? String(current.customer_id) : '')
+  productId.set(current?.product_id ? String(current.product_id) : '')
+  orderId.set(current?.order_id ? String(current.order_id) : '')
+  expiryDate.set(toDateTimeLocal(current?.expiry_date) || defaultExpiry())
+  status.set(current?.status || 'unassigned')
+  customerQuery.set('')
+  productQuery.set('')
+  orderQuery.set('')
+  void loadChoices('customers', '')
+  void loadChoices('products', '')
+  void loadChoices('orders', '')
+})
+
+function relationId(value: string): number | null {
+  const id = Number(value)
+  return value && Number.isInteger(id) && id > 0 ? id : null
+}
+
+function generateKey(): void {
+  const bytes = new Uint8Array(20)
+  crypto.getRandomValues(bytes)
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const characters = Array.from(bytes, value => alphabet[value % alphabet.length])
+  keyValue.set(Array.from({ length: 5 }, (_, index) => characters.slice(index * 4, index * 4 + 4).join('')).join('-'))
+}
+
+function submit(): void {
+  const normalizedKey = keyValue().trim().toUpperCase()
+  if (!/^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){4}$/.test(normalizedKey)) {
+    emit('invalid', 'License key must use five groups of four uppercase letters or numbers.')
+    return
+  }
+  if (!expiryDate()) {
+    emit('invalid', 'Expiry date is required.')
+    return
+  }
+
+  emit('submit', {
+    key: normalizedKey,
+    template: templateValue(),
+    customerId: relationId(customerId()),
+    productId: relationId(productId()),
+    orderId: relationId(orderId()),
+    expiryDate: toUnixTimestamp(expiryDate()),
+    status: status(),
+  })
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit license key' : 'Add license key'"
+  description="Generate a unique key and optionally assign its customer, product, and order relationships."
+  size="lg"
+  @close="emit('close')"
+>
+    <form id="license-key-form" @submit.prevent="submit()">
+        <div :if="error()" class="mb-5 p-3 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ error() }}</div>
+
+        <div class="space-y-4">
+          <div>
+            <label for="license-key-value" class="font-medium text-gray-700 text-sm dark:text-neutral-200">License key</label>
+            <span class="flex gap-2 mt-1">
+              <div class="flex-1 min-w-0"><Input id="license-key-value" v-model:value="keyValue" ariaLabel="License key" :required="true" :maxLength="24" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" :monospace="true" class="uppercase" /></div>
+              <Button variant="secondary" @click="generateKey()">Generate</Button>
+            </span>
+          </div>
+          <div>
+            <Select v-model:value="templateValue" label="Template" placeholder="" :options="[{ value: 'Standard License', label: 'Standard License' }, { value: 'Premium License', label: 'Premium License' }, { value: 'Enterprise License', label: 'Enterprise License' }]" />
+          </div>
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <div><Input v-model:value="customerQuery" label="Customer" type="search" name="customer_search" ariaLabel="Search customers by name or email" placeholder="Search by name or email" @input="searchSoon('customers')" /><div class="mt-2"><Select v-model:value="customerId" ariaLabel="Customer" placeholder="" :options="[{ value: '', label: 'Unassigned' }, ...optionsFor('customers').map(option => ({ value: option.id, label: option.label + (option.detail ? ' - ' + option.detail : '') }))]" /></div><p :if="moreLabel('customers', 'customers')" class="mt-1 text-gray-500 text-xs dark:text-neutral-400" :text="moreLabel('customers', 'customers')"></p></div>
+            <div><Input v-model:value="productQuery" label="Product" type="search" name="product_search" ariaLabel="Search products by name or id" placeholder="Search by name or id" @input="searchSoon('products')" /><div class="mt-2"><Select v-model:value="productId" ariaLabel="Product" placeholder="" :options="[{ value: '', label: 'Unassigned' }, ...optionsFor('products').map(option => ({ value: option.id, label: option.label }))]" /></div><p :if="moreLabel('products', 'products')" class="mt-1 text-gray-500 text-xs dark:text-neutral-400" :text="moreLabel('products', 'products')"></p></div>
+          </div>
+          <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <div><Input v-model:value="orderQuery" label="Order" type="search" name="order_search" ariaLabel="Search orders by number or status" placeholder="Search by number or status" @input="searchSoon('orders')" /><div class="mt-2"><Select v-model:value="orderId" ariaLabel="Order" placeholder="" :options="[{ value: '', label: 'Unassigned' }, ...optionsFor('orders').map(option => ({ value: option.id, label: option.label + (option.detail ? ' - ' + option.detail : '') }))]" /></div><p :if="moreLabel('orders', 'orders')" class="mt-1 text-gray-500 text-xs dark:text-neutral-400" :text="moreLabel('orders', 'orders')"></p></div>
+            <Input v-model:value="expiryDate" label="Expiry date" type="datetime-local" :required="true" />
+          </div>
+          <div>
+            <Select v-model:value="status" label="Status" placeholder="" :options="[{ value: 'unassigned', label: 'Unassigned' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]" />
+          </div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button :disabled="busy()" variant="secondary" @click="emit('close')">Cancel</Button>
+      <Button type="submit" form="license-key-form" :loading="busy()">{{ mode() === 'edit' ? 'Save changes' : 'Add key' }}</Button>
+    </div>
+  </template>
+</Modal>

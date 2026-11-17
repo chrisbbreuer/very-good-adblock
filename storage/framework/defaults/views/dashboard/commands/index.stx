@@ -1,0 +1,8 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Commands')
+<PageLayout>
+  <SourceInventory mode="commands" />
+</PageLayout>
+@endsection

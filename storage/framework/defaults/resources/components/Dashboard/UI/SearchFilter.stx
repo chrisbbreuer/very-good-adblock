@@ -1,0 +1,56 @@
+<script client>
+/**
+ * The dashboard's search input.
+ *
+ * Promoted here from `Commerce/Delivery/` because it is the shape that won.
+ * `UI/FilterBar` offered the same input plus a slot for sibling filters and an
+ * items-per-page select, and had no callers at all after all this time, while
+ * this had seven - callers lay out their own filter grid and want one input to
+ * drop into it, not a bar that owns the row. FilterBar is deleted rather than
+ * kept unused. See stacksjs/stacks#2924.
+ *
+ * `searchValue` is the one thing FilterBar had right and this did not: the
+ * parent can seed the box, so a filter restored from the URL or from storage
+ * shows up in it instead of being invisible.
+ */
+const placeholder = useReactiveProp('placeholder', 'Search...')
+// What a screen reader announces, when it is not the placeholder: a filter
+// bar names the list it searches ("Search coupons").
+const ariaLabel = useReactiveProp('ariaLabel', '')
+const requested = useReactiveProp('searchValue', '')
+const query = state(requested())
+const emit = defineEmits(['update:searchValue', 'search'])
+// What the box last showed that the parent already knows: the value it was
+// seeded with, or the last search reported. Only a change the person makes is
+// reported, so a page that reloads on `@search` does not reload as it mounts,
+// nor when it seeds the box itself.
+let known = requested()
+
+effect(() => {
+  const next = requested()
+  known = next
+  query.set(next)
+})
+
+effect(() => {
+  const value = query()
+  if (value === known)
+    return
+  known = value
+  emit('update:searchValue', value)
+  emit('search', value)
+})
+</script>
+
+<!--
+  The shared input with a search icon, so a search box is the same height,
+  border and focus ring as the dropdowns beside it (stacksjs/stacks#3310).
+  The box is the root, so a caller's `class` (a width) sizes the whole field.
+-->
+<div>
+  <Input v-model:value="query" type="search" name="search" :placeholder="placeholder()" :ariaLabel="ariaLabel() || placeholder()" autocomplete="off" :spellcheck="false">
+    <template #iconLeft>
+      <span aria-hidden="true" class="h-4 w-4 i-hugeicons-search-01"></span>
+    </template>
+  </Input>
+</div>

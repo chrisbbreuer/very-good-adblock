@@ -1,0 +1,793 @@
+/**
+ * Dashboard sidebar navigation data.
+ *
+ * Discovers model-provided dashboard rows and shapes every section for the
+ * native STX Sidebar component. Markup, icons, disclosure state, and
+ * persistence stay inside the component instead of being serialized as HTML.
+ */
+import { capitalCase, plural } from '@stacksjs/strings'
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { resolve } from 'node:path'
+
+type ModelCategory = 'userland' | 'data' | 'commerce' | 'content' | 'marketing' | 'system'
+
+/**
+ * Per-model dashboard configuration shape (stacksjs/stacks#1843).
+ * Mirror of `DashboardModelOptions` in `@stacksjs/types` — duplicated here
+ * because this file is consumed from STX server-script context where the
+ * full type imports aren't available. Keep in sync with the source.
+ */
+interface DashboardModelOptionsLite {
+  highlight?: boolean | number
+  access?: boolean
+  enabled?: boolean
+  label?: string
+  icon?: string
+  section?: string
+  roles?: string[]
+  description?: string
+  /** The app components the model places on its pages; read by `./regions`. */
+  regions?: unknown
+}
+
+export interface DiscoveredModel {
+  id: string
+  name: string
+  icon?: string
+  hasDedicatedPage?: boolean
+  category?: ModelCategory
+  /** Per-model dashboard config from `defineModel({ dashboard: … })`. */
+  dashboard?: DashboardModelOptionsLite
+}
+
+export interface DataRowToggles {
+  dashboard: boolean
+  activity: boolean
+  users: boolean
+  teams: boolean
+  subscribers: boolean
+  allModels: boolean
+}
+
+export interface DashboardSectionToggles {
+  library: boolean
+  content: boolean
+  commerce: boolean
+  marketing: boolean
+  analytics: boolean
+  management: boolean
+  utilities: boolean
+  /** CI tracking surface (stacksjs/stacks#1844). Lives under management. */
+  ci?: boolean
+  data: DataRowToggles
+}
+
+/** An application-defined sidebar row, from `config/dashboard.ts:nav`. */
+export interface AppNavItem {
+  label: string
+  href: string
+  icon?: string
+  roles?: string[]
+}
+
+export interface AppNavSection {
+  title: string
+  items: AppNavItem[]
+}
+
+export interface DiscoveredManifest {
+  models: DiscoveredModel[]
+  /** Native schema inventory, including private operational models. */
+  schemaModels?: string[]
+  sections: DashboardSectionToggles
+  /** Sections this application declared. Empty for a project that declared none. */
+  nav: AppNavSection[]
+}
+
+export const DEFAULT_DATA_TOGGLES: DataRowToggles = {
+  dashboard: true,
+  activity: true,
+  users: true,
+  teams: true,
+  subscribers: true,
+  allModels: true,
+}
+
+export const DEFAULT_TOGGLES: DashboardSectionToggles = {
+  library: true,
+  content: true,
+  commerce: true,
+  marketing: true,
+  analytics: true,
+  management: true,
+  utilities: true,
+  data: DEFAULT_DATA_TOGGLES,
+}
+
+interface NavItem {
+  id?: string
+  children?: NavItem[]
+  expanded?: boolean
+  to: string
+  icon: string
+  text: string
+  /**
+   * Role-gate metadata for sidebar items (stacksjs/stacks#1843).
+   * The layout maps this metadata to component row IDs and hides rows from
+   * viewers who do not hold a matching role.
+   */
+  roles?: string[]
+}
+
+/**
+ * Where `buddy dev --dashboard` writes the discovered-models manifest, and
+ * where this reads it: under `storage/framework/runtime/`, which `.gitignore`
+ * covers.
+ */
+export const DISCOVERED_MANIFEST_PATH = 'storage/framework/runtime/dashboard/.discovered-models.json'
+
+/**
+ * Where it used to be written, inside the vendored framework tree.
+ *
+ * Read as a fallback rather than dropped, because an app that upgrades does
+ * not get a new manifest until its next `buddy dev --dashboard` - and without
+ * this it would render an empty sidebar until then. New writes only ever go
+ * to the path above.
+ */
+export const LEGACY_DISCOVERED_MANIFEST_PATH = 'storage/framework/defaults/views/dashboard/.discovered-models.json'
+
+/** The first of the two manifest paths that exists, or null when neither does. */
+function discoveredManifestPath(cwd: string): string | null {
+  for (const rel of [DISCOVERED_MANIFEST_PATH, LEGACY_DISCOVERED_MANIFEST_PATH]) {
+    const candidate = resolve(cwd, rel)
+    if (existsSync(candidate))
+      return candidate
+  }
+  return null
+}
+
+/**
+ * Pull the discovered-models manifest written by the dashboard dev server.
+ * Returns the default empty payload when neither path has one (fresh project
+ * before the first dashboard run regenerates it).
+ */
+export function loadDiscoveredManifest(
+  manifestPath = discoveredManifestPath(process.cwd()),
+): DiscoveredManifest {
+  if (manifestPath === null || !existsSync(manifestPath))
+    return { models: [], sections: defaultToggles(), nav: [] }
+
+  try {
+    return parseDiscoveredManifest(readFileSync(manifestPath, 'utf8'))
+  }
+  catch (error) {
+    throw new Error(`Could not read dashboard model manifest: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+export function parseDiscoveredManifest(source: string): DiscoveredManifest {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(source)
+  }
+  catch (error) {
+    throw new Error(`invalid JSON: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  const envelope = objectValue(parsed, 'manifest')
+  if (!Array.isArray(envelope.models))
+    throw new TypeError('manifest models must be an array')
+
+  const models = envelope.models.map((value, index) => {
+    const model = objectValue(value, `manifest models[${index}]`)
+    if (typeof model.id !== 'string' || !model.id)
+      throw new TypeError(`manifest models[${index}].id must be a non-empty string`)
+    if (typeof model.name !== 'string' || !model.name)
+      throw new TypeError(`manifest models[${index}].name must be a non-empty string`)
+    return model as unknown as DiscoveredModel
+  }).sort((a, b) => a.name.localeCompare(b.name))
+
+  return {
+    models,
+    ...(envelope.schemaModels === undefined ? {} : { schemaModels: normalizeSchemaModels(envelope.schemaModels) }),
+    sections: normalizeManifestToggles(envelope.sections),
+    nav: normalizeManifestNav(envelope.nav),
+  }
+}
+
+function normalizeSchemaModels(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some(name => typeof name !== 'string'))
+    throw new TypeError('manifest schemaModels must be an array of model names')
+  return value as string[]
+}
+
+/** Hide built-in modules whose backing models are outside this app's schema. */
+export function filterSchemaNavSections(sections: Array<[string, string, NavItem[]]>, schemaModels?: readonly string[], capabilities: { inbox?: boolean } = {}): Array<[string, string, NavItem[]]> {
+  if (!schemaModels && capabilities.inbox !== false) return sections
+  const available = schemaModels ? new Set(schemaModels) : undefined
+  const required: Record<string, string[]> = {
+    '/activity': ['Activity'], '/teams': ['Team'], '/subscribers': ['Subscriber'],
+    '/releases': ['Release'], '/deployments': ['Deployment'], '/requests': ['Request'],
+    '/queries': ['QueryLog'], '/queries/slow': ['QueryLog'], '/queries/history': ['QueryLog'],
+    '/errors': ['Error'], '/notifications/dashboard': ['Notification'], '/logs': ['Log'],
+    '/management/permissions': ['Role', 'Permission'], '/kanban': ['Board', 'Card', 'Column'],
+    '/data/activity': ['Activity'], '/data/teams': ['Team'], '/data/subscribers': ['Subscriber'],
+    '/inbox/settings': ['MailPreference'],
+  }
+  return sections.map(([id, label, items]): [string, string, NavItem[]] => [id, label, id.startsWith('app-nav-') ? items : items.filter(item =>
+    (!(capabilities.inbox === false && ['/inbox', '/inbox/activity'].includes(item.to))
+      && (required[item.to] ?? []).every(model => !available || available.has(model))))])
+    .filter(([, , items]) => items.length > 0)
+}
+
+/**
+ * App-declared sections are validated at config load; this only has to survive
+ * a manifest written by an older framework version, which has no `nav` key.
+ */
+function normalizeManifestNav(value: unknown): AppNavSection[] {
+  if (value === undefined)
+    return []
+
+  if (!Array.isArray(value))
+    throw new TypeError('manifest nav must be an array')
+
+  return value.map((entry, index) => {
+    const section = objectValue(entry, `manifest nav[${index}]`)
+    if (typeof section.title !== 'string' || !section.title)
+      throw new TypeError(`manifest nav[${index}].title must be a non-empty string`)
+    if (!Array.isArray(section.items))
+      throw new TypeError(`manifest nav[${index}].items must be an array`)
+
+    return {
+      title: section.title,
+      items: section.items as AppNavItem[],
+    }
+  })
+}
+
+function normalizeManifestToggles(value: unknown): DashboardSectionToggles {
+  const sections = objectValue(value, 'manifest sections')
+  const data = sections.data === undefined
+    ? {}
+    : objectValue(sections.data, 'manifest sections.data')
+
+  return {
+    library: booleanValue(sections.library, 'manifest sections.library', true),
+    content: booleanValue(sections.content, 'manifest sections.content', true),
+    commerce: booleanValue(sections.commerce, 'manifest sections.commerce', true),
+    marketing: booleanValue(sections.marketing, 'manifest sections.marketing', true),
+    analytics: booleanValue(sections.analytics, 'manifest sections.analytics', true),
+    management: booleanValue(sections.management, 'manifest sections.management', true),
+    utilities: booleanValue(sections.utilities, 'manifest sections.utilities', true),
+    ci: booleanValue(sections.ci, 'manifest sections.ci', false),
+    data: {
+      dashboard: booleanValue(data.dashboard, 'manifest sections.data.dashboard', true),
+      activity: booleanValue(data.activity, 'manifest sections.data.activity', true),
+      users: booleanValue(data.users, 'manifest sections.data.users', true),
+      teams: booleanValue(data.teams, 'manifest sections.data.teams', true),
+      subscribers: booleanValue(data.subscribers, 'manifest sections.data.subscribers', true),
+      allModels: booleanValue(data.allModels, 'manifest sections.data.allModels', true),
+    },
+  }
+}
+
+function objectValue(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError(`${label} must be an object`)
+  return value as Record<string, unknown>
+}
+
+function booleanValue(value: unknown, label: string, fallback: boolean): boolean {
+  if (value === undefined)
+    return fallback
+  if (typeof value !== 'boolean')
+    throw new TypeError(`${label} must be a boolean`)
+  return value
+}
+
+function defaultToggles(): DashboardSectionToggles {
+  return {
+    ...DEFAULT_TOGGLES,
+    data: { ...DEFAULT_DATA_TOGGLES },
+  }
+}
+
+/** Return only the discovered model list for callers that do not need toggles. */
+export function loadDiscoveredModels(): DiscoveredModel[] {
+  return loadDiscoveredManifest().models
+}
+
+/**
+ * Pick discovered-model rows that belong to a category and turn them into
+ * web-sidebar nav items. The row visually lives under the categorized
+ * section but always links to `/models/<id>` — that's the dashboard's
+ * dynamic ORM viewer (`views/dashboard/models/[model].stx`), and the
+ * only catch-all that resolves arbitrary slugs. `dedicated` skips models
+ * the section already surfaces as a hand-built static row (e.g.
+ * `/commerce/customers` already exists, so the Customer model row would
+ * just duplicate it).
+ *
+ * The section a model surfaces under, after honouring the model's
+ * `dashboard.section` override. When no override is set, falls back to
+ * the path-derived category. Returns `undefined` when the model is
+ * explicitly disabled so callers can skip the row.
+ */
+function effectiveCategory(m: DiscoveredModel): string | undefined {
+  if (m.dashboard?.access === false || m.dashboard?.enabled === false)
+    return undefined
+  if (m.dashboard?.section)
+    return m.dashboard.section
+  return m.category ?? 'data'
+}
+
+function categoryNavItems(
+  models: DiscoveredModel[],
+  category: ModelCategory,
+  dedicated: Set<string>,
+): NavItem[] {
+  return models
+    .filter(m => effectiveCategory(m) === category)
+    .filter(m => !m.hasDedicatedPage && !dedicated.has(m.id))
+    .map((m): NavItem => ({
+      to: `/models/${m.id}`,
+      icon: m.dashboard?.icon ?? m.icon ?? 'table',
+      text: m.dashboard?.label ?? capitalCase(plural(m.name)),
+      ...(m.dashboard?.roles && m.dashboard.roles.length > 0
+        ? { roles: m.dashboard.roles }
+        : {}),
+    }))
+}
+
+/**
+ * The sidebar's navigation tree as data: `[sectionKey, sectionLabel, items]`
+ * per section, with all toggle and model logic applied.
+ */
+export function buildNavSections(
+  discoveredModels: DiscoveredModel[] = [],
+  toggles: DashboardSectionToggles = DEFAULT_TOGGLES,
+  appNav: AppNavSection[] = [],
+): Array<[string, string, NavItem[]]> {
+  const sections: Array<[string, string, NavItem[]]> = []
+
+  // Application sections come first. An app that declares its own pages is
+  // saying those are the product; the framework's operational surfaces
+  // (queue, logs, deployments) are support and belong below them.
+  for (const [index, section] of appNav.entries()) {
+    if (section.items.length === 0)
+      continue
+
+    sections.push([`app-nav-${index}`, section.title, section.items.map(item => ({
+      to: item.href,
+      icon: item.icon ?? 'circle',
+      text: item.label,
+      ...(item.roles && item.roles.length > 0 ? { roles: item.roles } : {}),
+    }))])
+  }
+
+  // Library section: the established views live at the project root
+  // (`/functions`, `/packages`, `/releases`). Components use the explicit
+  // `/library/components` path so it does not collide with STX's component
+  // source directory.
+  if (toggles.library) {
+    sections.push(['library', 'library', [
+      { to: '/library/components', icon: 'layout-table-01', text: 'Components' },
+      { to: '/functions', icon: 'function', text: 'Functions' },
+      { to: '/releases', icon: 'list-number', text: 'Releases' },
+      { to: '/packages', icon: 'package', text: 'Packages' },
+    ]])
+  }
+
+  if (toggles.content) {
+    sections.push(['content', 'content', [
+      { to: '/content/dashboard', icon: 'dashboard', text: 'Dashboard' },
+      { to: '/content/files', icon: 'files', text: 'Files' },
+      { to: '/content/blog', icon: 'post', text: 'Blog' },
+      { to: '/content/pages', icon: 'file', text: 'Pages' },
+      { to: '/content/posts', icon: 'post', text: 'Posts' },
+      { to: '/content/categories', icon: 'tags', text: 'Categories' },
+      { to: '/content/tags', icon: 'tag', text: 'Tags' },
+      { to: '/content/comments', icon: 'comment', text: 'Comments' },
+      { to: '/content/authors', icon: 'user-edit', text: 'Authors' },
+      { to: '/content/seo', icon: 'seo', text: 'SEO' },
+      ...categoryNavItems(discoveredModels, 'content', new Set([
+        'page', 'post', 'category', 'tag', 'comment', 'author',
+      ])),
+    ]])
+  }
+
+  // App section: every page lives at a flat root path (`/jobs`, `/queue`,
+  // `/inbox`, etc.). The historical `/app/*` prefix never matched a real
+  // file. Notifications resolves to the dashboard variant
+  // (`/notifications/dashboard`); the bare `/notifications` redirects.
+  sections.push(['app', 'app', [
+    { to: '/deployments', icon: 'rocket', text: 'Deployments' },
+    { to: '/operations/scheduler', icon: 'calendar-03', text: 'Operations' },
+    { to: '/requests', icon: 'api', text: 'Requests' },
+    { to: '/realtime', icon: 'link', text: 'Realtime' },
+    { to: '/actions', icon: 'bolt', text: 'Actions' },
+    { to: '/commands', icon: 'terminal', text: 'Commands' },
+    { to: '/queue', icon: 'queue', text: 'Queue' },
+    { to: '/search-engine', icon: 'search', text: 'Search Engine' },
+    { to: '/jobs', icon: 'briefcase', text: 'Jobs' },
+    { to: '/jobs/history', icon: 'clock', text: 'Job History' },
+    { to: '/queries', icon: 'search', text: 'Queries' },
+    { to: '/queries/slow', icon: 'clock', text: 'Slow Queries' },
+    { to: '/queries/history', icon: 'log', text: 'Query History' },
+    { to: '/errors', icon: 'log', text: 'Errors' },
+    { to: '/notifications/dashboard', icon: 'bell', text: 'Notifications' },
+    { to: '/inbox', icon: 'mail', text: 'Inbox' },
+    { to: '/inbox/activity', icon: 'activity', text: 'Mail Activity' },
+    { to: '/inbox/captured', icon: 'mail-send-02', text: 'Captured Mail' },
+    { to: '/inbox/settings', icon: 'settings', text: 'Mail Settings' },
+    ...categoryNavItems(discoveredModels, 'system', new Set()),
+  ]])
+
+  // Data pins model-declared highlights. Other visible models stay accessible
+  // through a collapsed disclosure using the shared Sidebar component.
+  // Per-model rows link to `/models/<id>` (dynamic ORM viewer); the
+  // built-in dashboard / activity / users / teams / subscribers rows keep
+  // their bespoke pages under `/data/<row>`.
+  const dataRows = toggles.data ?? DEFAULT_DATA_TOGGLES
+  const dedicatedDataRows: Record<string, keyof DataRowToggles> = { user: 'users', team: 'teams', subscriber: 'subscribers', activity: 'activity' }
+  const dataNav: NavItem[] = []
+  if (dataRows.dashboard) dataNav.push({ to: '/data/dashboard', icon: 'dashboard', text: 'Dashboard' })
+  if (dataRows.activity) dataNav.push({ to: '/data/activity', icon: 'activity', text: 'Activity' })
+  if (dataRows.users) dataNav.push({ to: '/data/users', icon: 'users', text: 'Users' })
+  if (dataRows.teams) dataNav.push({ to: '/data/teams', icon: 'group', text: 'Teams' })
+  if (dataRows.subscribers) dataNav.push({ to: '/data/subscribers', icon: 'mail', text: 'Subscribers' })
+  if (dataRows.allModels) dataNav.push({ to: '/models', icon: 'table', text: 'All Models' })
+  const moreModels: NavItem[] = []
+  const highlighted = (model: DiscoveredModel) => model.dashboard?.highlight === true
+    || (typeof model.dashboard?.highlight === 'number' && Number.isFinite(model.dashboard.highlight))
+  const rank = (model: DiscoveredModel) => typeof model.dashboard?.highlight === 'number' ? model.dashboard.highlight : Number.POSITIVE_INFINITY
+  const dataModels = [...discoveredModels].sort((a, b) => {
+    if (highlighted(a) !== highlighted(b)) return highlighted(a) ? -1 : 1
+    if (highlighted(a)) return rank(a) - rank(b) || a.name.localeCompare(b.name)
+    return a.name.localeCompare(b.name)
+  })
+  for (const m of dataModels) {
+    // Skip when:
+    //   - explicit `dashboard.enabled === false` (effectiveCategory returns undefined)
+    //   - pinned to a different section via `dashboard.section`
+    //   - already has a dedicated dashboard page
+    const eff = effectiveCategory(m)
+    if (eff !== 'userland' && eff !== 'data') continue
+    const dedicatedRow = dedicatedDataRows[m.id]
+    if (m.hasDedicatedPage && (!dedicatedRow || dataRows[dedicatedRow])) continue
+    const item: NavItem = {
+      to: `/models/${m.id}`,
+      icon: m.dashboard?.icon ?? m.icon ?? 'table',
+      text: m.dashboard?.label ?? capitalCase(plural(m.name)),
+      ...(m.dashboard?.roles && m.dashboard.roles.length > 0
+        ? { roles: m.dashboard.roles }
+        : {}),
+    }
+    if (highlighted(m)) dataNav.push(item)
+    else moreModels.push(item)
+  }
+  if (moreModels.length) dataNav.push({ id: 'models-more', to: '', text: 'More models', icon: 'table', expanded: false, children: moreModels })
+  sections.push(['data', 'data', dataNav])
+
+  if (toggles.commerce) {
+    sections.push(['commerce', 'commerce', [
+      { to: '/commerce/dashboard', icon: 'dashboard', text: 'Dashboard' },
+      { to: '/commerce/pos', icon: 'cart', text: 'POS' },
+      { to: '/commerce/customers', icon: 'user', text: 'Customers' },
+      { to: '/commerce/orders', icon: 'orders', text: 'Orders' },
+      { to: '/commerce/products', icon: 'package', text: 'Products' },
+      { to: '/commerce/categories', icon: 'tags', text: 'Categories' },
+      { to: '/commerce/manufacturers', icon: 'briefcase', text: 'Manufacturers' },
+      { to: '/commerce/units', icon: 'list-number', text: 'Units' },
+      { to: '/commerce/variants', icon: 'puzzle', text: 'Variants' },
+      { to: '/commerce/reviews', icon: 'star', text: 'Reviews' },
+      { to: '/commerce/coupons', icon: 'coupon', text: 'Coupons' },
+      { to: '/commerce/gift-cards', icon: 'gift', text: 'Gift Cards' },
+      { to: '/commerce/payments', icon: 'invoice', text: 'Payments' },
+      { to: '/commerce/taxes', icon: 'percent', text: 'Taxes' },
+      { to: '/commerce/printers/devices', icon: 'package', text: 'Printers' },
+      { to: '/commerce/printers/receipts', icon: 'invoice', text: 'Receipts' },
+      { to: '/commerce/waitlist/products', icon: 'clock', text: 'Product Waitlist' },
+      { to: '/commerce/waitlist/restaurant', icon: 'clock', text: 'Restaurant Waitlist' },
+      ...categoryNavItems(discoveredModels, 'commerce', new Set([
+        'customer', 'order', 'product', 'product-variant', 'product-unit',
+        'manufacturer', 'review', 'coupon', 'gift-card', 'payment', 'category',
+        'cart', 'cart-item', 'order-item', 'tax-rate',
+        'shipping-method', 'shipping-rate', 'shipping-zone',
+        'delivery-route', 'courier', 'license-key', 'digital-delivery',
+        'print-device', 'receipt',
+        'waitlist-product', 'waitlist-restaurant',
+      ])),
+    ]])
+
+    // Delivery section: routes/digital views ship under their full names
+    // (`delivery-routes.stx`, `digital-delivery.stx`), the abbreviated
+    // sidebar URLs from before never resolved.
+    sections.push(['delivery', 'delivery', [
+      { to: '/commerce/delivery', icon: 'truck', text: 'Overview' },
+      { to: '/commerce/delivery/shipping-methods', icon: 'truck', text: 'Shipping Methods' },
+      { to: '/commerce/delivery/shipping-rates', icon: 'percent', text: 'Shipping Rates' },
+      { to: '/commerce/delivery/shipping-zones', icon: 'globe', text: 'Shipping Zones' },
+      { to: '/commerce/delivery/couriers', icon: 'user', text: 'Couriers' },
+      { to: '/commerce/delivery/delivery-routes', icon: 'globe', text: 'Routes' },
+      { to: '/commerce/delivery/license-keys', icon: 'lock', text: 'License Keys' },
+      { to: '/commerce/delivery/digital-delivery', icon: 'package', text: 'Digital Delivery' },
+    ]])
+  }
+
+  if (toggles.marketing) {
+    sections.push(['marketing', 'marketing', [
+      { to: '/marketing/lists', icon: 'list-settings', text: 'Lists' },
+      { to: '/marketing/social-posts', icon: 'clock', text: 'Social Posts' },
+      { to: '/marketing/campaigns', icon: 'rocket', text: 'Campaigns' },
+      ...(toggles.commerce ? [{ to: '/marketing/abandoned-carts', icon: 'cart', text: 'Abandoned Carts' }] : []),
+      // Product reviews are commerce records, so with commerce off this page
+      // could only say so (stacksjs/stacks#3186).
+      ...(toggles.commerce ? [{ to: '/marketing/reviews', icon: 'star', text: 'Reviews' }] : []),
+      ...categoryNavItems(discoveredModels, 'marketing', new Set(['campaign'])),
+    ]])
+  }
+
+  // Analytics section: commerce/sales sub-pages live under
+  // `analytics/commerce/{web,sales}.stx`. The bare `/analytics/commerce`
+  // and `/analytics/sales` URLs from before never resolved. `/goals`
+  // had no view file at all and is dropped.
+  if (toggles.analytics) {
+    sections.push(['analytics', 'analytics', [
+      { to: '/analytics', icon: 'dashboard', text: 'Overview' },
+      { to: '/analytics/web', icon: 'globe', text: 'Web' },
+      { to: '/analytics/pages', icon: 'document', text: 'Top Pages' },
+      { to: '/analytics/referrers', icon: 'link', text: 'Referrers' },
+      { to: '/analytics/countries', icon: 'globe-search', text: 'Countries' },
+      { to: '/analytics/devices', icon: 'package', text: 'Devices' },
+      { to: '/analytics/browsers', icon: 'globe', text: 'Browsers' },
+      { to: '/analytics/events', icon: 'bolt', text: 'Events' },
+      { to: '/analytics/blog', icon: 'document', text: 'Blog' },
+      // Commerce's analytics follow the commerce section. With the feature
+      // off its models are never loaded, so Sales could only answer 503
+      // (stacksjs/stacks#3183).
+      ...(toggles.commerce
+        ? [
+            { to: '/analytics/commerce/web', icon: 'cart', text: 'Commerce' },
+            { to: '/analytics/commerce/sales', icon: 'sale-tag', text: 'Sales' },
+          ]
+        : []),
+      { to: '/analytics/marketing', icon: 'megaphone', text: 'Marketing' },
+    ]])
+  }
+
+  // Management section: every page is at the root path; only
+  // `permissions` lives under a `/management/` subdir. The bare
+  // `/management/<x>` URLs from before never resolved.
+  if (toggles.management) {
+    const managementItems: NavItem[] = [
+      { to: '/cloud', icon: 'cloud', text: 'Cloud' },
+      { to: '/servers', icon: 'server', text: 'Servers' },
+      // Named commands and terminals on configured hosts (stacksjs/stacks#960).
+      // Hidden from client-role viewers; the gates decide who may use it.
+      { to: '/remote', icon: 'terminal', text: 'Remote', roles: ['admin', 'dev'] },
+      { to: '/serverless', icon: 'zap', text: 'Serverless' },
+      { to: '/dns', icon: 'globe-search', text: 'DNS' },
+      { to: '/management/permissions', icon: 'lock', text: 'Permissions' },
+      { to: '/mailboxes', icon: 'mailbox', text: 'Mailboxes' },
+      { to: '/logs', icon: 'log', text: 'Logs' },
+      { to: '/health', icon: 'activity', text: 'Health' },
+      { to: '/insights', icon: 'star', text: 'Insights' },
+      // Kanban surface (stacksjs/stacks#1846). Role-gated to admin and dev.
+      // The layout's role map hides the row from client-role viewers.
+      { to: '/kanban', icon: 'table', text: 'Kanban', roles: ['admin', 'dev'] },
+    ]
+    // CI tracking (stacksjs/stacks#1844) - opt-in via `ci.enabled` in
+    // config/dashboard.ts. Keep the row gate aligned with the page's
+    // `useRole().isDev()` check so client-only viewers never get a dead link.
+    if (toggles.ci)
+      managementItems.push({ to: '/ci', icon: 'check-circle', text: 'CI', roles: ['dev'] })
+    sections.push(['management', 'management', managementItems])
+  }
+
+  // Utilities section: real paths are flat (`/buddy`, `/environment`,
+  // `/access-tokens`) or under `/settings/*` for billing/mail. The
+  // historical `/utilities/*` URLs were uniformly 404s.
+  if (toggles.utilities) {
+    sections.push(['utilities', 'utilities', [
+      { to: '/buddy', icon: 'terminal', text: 'Buddy CLI' },
+      { to: '/environment', icon: 'settings', text: 'Environment' },
+      { to: '/access-tokens', icon: 'lock', text: 'Access Tokens' },
+      { to: '/settings', icon: 'settings', text: 'Settings' },
+      { to: '/settings/appearance', icon: 'paintbrush', text: 'Appearance' },
+      { to: '/settings/mail', icon: 'mail', text: 'Mail Settings' },
+    ]])
+  }
+
+  return sections
+}
+
+// ============================================================================
+// macOS web sidebar (@stacksjs/components' <Sidebar theme="macos">)
+// ============================================================================
+
+/**
+ * Navigation icon keys as SF-Symbol-style Iconify classes. The f7 icons
+ * mirror SF Symbols for the macOS web sidebar.
+ */
+const NAV_ICON_CLASSES: Record<string, string> = {
+  'home': 'i-f7-house',
+  'function': 'i-f7-function',
+  'list-number': 'i-f7-list-number',
+  'package': 'i-f7-cube-box',
+  'dashboard': 'i-f7-square-grid-2x2',
+  'files': 'i-f7-folder',
+  'file': 'i-f7-doc',
+  'post': 'i-f7-doc-text',
+  'tags': 'i-f7-tag',
+  'tag': 'i-f7-tag',
+  'comment': 'i-f7-chat-bubble',
+  'user-edit': 'i-f7-person',
+  'seo': 'i-f7-search',
+  'rocket': 'i-f7-rocket',
+  'api': 'i-f7-globe',
+  'link': 'i-f7-link',
+  'bolt': 'i-f7-bolt',
+  'terminal': 'i-f7-chevron-left-slash-chevron-right',
+  'queue': 'i-f7-list-bullet',
+  'briefcase': 'i-f7-briefcase',
+  'clock': 'i-f7-clock',
+  'search': 'i-f7-search',
+  'log': 'i-f7-doc-plaintext',
+  'bell': 'i-f7-bell',
+  'mail': 'i-f7-envelope',
+  'mailbox': 'i-f7-tray',
+  'activity': 'i-f7-waveform',
+  'settings': 'i-f7-gear-alt',
+  'paintbrush': 'i-f7-paintbrush',
+  'users': 'i-f7-person-2',
+  'user': 'i-f7-person',
+  'group': 'i-f7-person-3',
+  'table': 'i-f7-table',
+  'cart': 'i-f7-cart',
+  'check-circle': 'i-f7-checkmark-circle',
+  'cloud': 'i-f7-cloud',
+  'coupon': 'i-f7-ticket',
+  'document': 'i-f7-doc-text',
+  'gift': 'i-f7-gift',
+  'globe': 'i-f7-globe',
+  'globe-search': 'i-f7-globe',
+  'invoice': 'i-f7-money-dollar-circle',
+  'lock': 'i-f7-lock',
+  'list-settings': 'i-f7-list-bullet-below-rectangle',
+  'megaphone': 'i-f7-speaker-2',
+  'orders': 'i-f7-bag',
+  'percent': 'i-f7-percent',
+  'puzzle': 'i-f7-square-on-square',
+  'sale-tag': 'i-f7-tag',
+  'server': 'i-f7-rectangle-stack',
+  'star': 'i-f7-star',
+  'truck': 'i-f7-car-fill',
+  'zap': 'i-f7-bolt',
+}
+
+/** One row for `@stacksjs/components`' <Sidebar :sections>. */
+export interface WebSidebarItem {
+  id: string
+  label: string
+  icon: string
+  /** macOS system color name or CSS color for the icon tint. */
+  iconColor: string
+  href?: string
+  children?: WebSidebarItem[]
+  expanded?: boolean
+  roles?: string[]
+}
+
+export interface WebSidebarSection {
+  id: string
+  label: string
+  items: WebSidebarItem[]
+}
+
+/** Stable row id derived from the route (e.g. `/content/posts` → `content-posts`). */
+function navItemId(to: string): string {
+  return to.replace(/^\//, '').replace(/\//g, '-') || 'home'
+}
+
+function titleCase(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/**
+ * The dashboard navigation shaped for the macOS web sidebar. Reads the
+ * discovered-models manifest synchronously (stx server-script friendly)
+ * and applies the shared section and toggle logic.
+ */
+/**
+ * Framework sections name their icons from the map above. App-declared rows
+ * may instead give a full iconify class, which is passed through untouched -
+ * an application should not be limited to the icons the framework happened to
+ * name, and `i-hugeicons-champion` is the spelling its own templates use.
+ */
+export function resolveDashboardIcon(icon: string): string {
+  if (icon.startsWith('i-'))
+    return icon
+
+  return NAV_ICON_CLASSES[icon] ?? NAV_ICON_CLASSES.file!
+}
+
+/**
+ * Read app-declared sections straight from `config/dashboard.ts`.
+ *
+ * The manifest is the primary source, but it is written by the dashboard dev
+ * command - so an app running a published framework older than the `nav` key
+ * would get a manifest without one, and its own pages would stay unreachable.
+ * Reading the config directly also means editing it shows up on the next
+ * reload rather than on the next manifest write.
+ *
+ * `require` rather than `import`: this module is called synchronously from STX
+ * server-script context, and Bun transpiles the TS config on the way in.
+ */
+function loadAppNavFromConfig(configPath = resolve(process.cwd(), 'config/dashboard.ts')): AppNavSection[] {
+  if (!existsSync(configPath))
+    return []
+
+  let config: unknown
+  try {
+    const requireFrom = createRequire(import.meta.url)
+    const loaded = requireFrom(configPath) as { default?: unknown }
+    config = loaded?.default ?? loaded
+  }
+  catch {
+    // An unreadable config is the dashboard's problem elsewhere, not the
+    // sidebar's: fall back to the framework sections rather than blanking the
+    // whole navigation.
+    return []
+  }
+
+  // Validation deliberately outside the catch - a malformed `nav` is an
+  // authoring mistake and should say so, not silently render nothing.
+  return normalizeManifestNav((config as { nav?: unknown } | undefined)?.nav)
+}
+
+export function buildWebSidebarSections(): WebSidebarSection[] {
+  const manifest = loadDiscoveredManifest()
+  const appNav = manifest.nav.length > 0 ? manifest.nav : loadAppNavFromConfig()
+  const { config } = createRequire(import.meta.url)('@stacksjs/config')
+  // The current inbox SDK reads S3 objects. The native IMAP/SMTP server does
+  // not write that bucket; linking its mailboxes to this UI only produces 503s.
+  const mailServer = config.email?.server
+  const inbox = !(mailServer?.enabled && (mailServer.mode ?? 'server') === 'server')
+  const sections = filterSchemaNavSections(buildNavSections(manifest.models, manifest.sections, appNav), manifest.schemaModels, { inbox })
+
+  const webItem = (item: NavItem): WebSidebarItem => ({
+    id: item.id ?? navItemId(item.to),
+    label: item.text,
+    icon: resolveDashboardIcon(item.icon),
+    iconColor: 'blue',
+    ...(item.to ? { href: item.to } : {}),
+    ...(item.roles?.length ? { roles: item.roles } : {}),
+    ...(item.children ? { children: item.children.map(webItem), expanded: item.expanded ?? false } : {}),
+  })
+  return [
+    {
+      id: 'top',
+      label: '',
+      items: [{ id: 'home', label: 'Home', icon: NAV_ICON_CLASSES.home!, iconColor: 'blue', href: '/' }],
+    },
+    ...sections.map(([key, label, items]) => ({
+      id: key,
+      label: titleCase(label),
+      items: items.map(webItem),
+    })),
+  ]
+}
+
+/** Role metadata follows nested model rows as well as pinned rows. */
+export function webSidebarRoleMap(sections: WebSidebarSection[]): Record<string, string[]> {
+  const roles: Record<string, string[]> = Object.create(null)
+  const visit = (items: WebSidebarItem[]) => {
+    for (const item of items) {
+      if (item.roles?.length) roles[item.id] = item.roles
+      if (item.children) visit(item.children)
+    }
+  }
+  for (const section of sections) visit(section.items)
+  return roles
+}

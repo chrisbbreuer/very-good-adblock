@@ -1,0 +1,944 @@
+<script client>
+// The page every model gets for free (stacksjs/stacks#1838): a browsable,
+// sortable, filterable table over any model the app defines, with no
+// per-model code.
+//
+// All querying is server-side (`GET /api/dashboard/models/{slug}`), so this
+// works the same on a table with 10 rows and one with a million. Rows and
+// writes go through the model, so scopes, casts and observers apply.
+//
+// It is the one list of a model's records. A page with a place of its own
+// (Users, Teams, Subscribers) hosts it: it says which model, what the page is
+// called and where it lives, and puts its own summary above the table.
+import { useNavigation } from '@stacksjs/defaults/views/dashboard/composables/useNavigation'
+import { dashboardApi } from '@stacksjs/defaults/functions/dashboard-api'
+import type { ModelCustomAction, ModelRelationTarget, ModelWriteCapabilities } from '@stacksjs/defaults/functions/dashboard-model-record'
+import { deleteModelRecord, modelActionAsks, modelActionIconClass, modelActionNotice, modelActionsFor, modelDeleteNotice, modelDeleteWarning, modelListColumnNames, modelListFilters, modelRecordCreateHref, modelRecordEditHref, modelRecordHref, modelRelationCell, NO_WRITES, runModelAction, userInviteHref } from '@stacksjs/defaults/functions/dashboard-model-record'
+import type { ModelBulkResult } from '@stacksjs/defaults/functions/dashboard-model-bulk'
+import { deleteModelRecords, modelBulkActionConfirm, modelBulkActionScope, modelBulkActions, modelBulkDeleteConfirm, modelBulkDeleteTargets, modelBulkNotice, modelBulkTargets, runModelActionOnEach } from '@stacksjs/defaults/functions/dashboard-model-bulk'
+import type { ModelFieldDisplay, ModelFormattedValue } from '@stacksjs/defaults/functions/dashboard-model-format'
+import { modelCellDisplay, modelColumnIsNumeric } from '@stacksjs/defaults/functions/dashboard-model-format'
+import { dashboardLoaderTimer, dashboardReloadingClass } from '@stacksjs/defaults/functions/dashboard-loading'
+import type { ModelListFilter, ModelListFilterValue, ModelListFilterValues } from '@stacksjs/defaults/functions/dashboard-model-filters'
+import { modelFilterSummary, modelFiltersSet, modelListAddress } from '@stacksjs/defaults/functions/dashboard-model-filters'
+import { pushToast } from '@stacksjs/defaults/functions/toasts'
+import { modelPageStore } from '@stacksjs/defaults/views/dashboard/stores/model-page'
+
+interface ColumnMeta {
+  name: string
+  label: string
+  type: 'number' | 'boolean' | 'date' | 'json' | 'text'
+  /** How the model says the value reads (`dashboard.fields`): money, a size, a link. */
+  format?: ModelFieldDisplay
+}
+
+interface ResponseShape {
+  modelName: string
+  modelLabel?: string
+  tableName: string
+  rows: Array<Record<string, unknown>>
+  displayColumns: string[]
+  columnMeta: ColumnMeta[]
+  totalCount: number
+  page: number
+  perPage: number
+  lastPage: number
+  sort: string
+  dir: 'asc' | 'desc'
+  /** What the list can be narrowed by, and the columns it can be ordered by. */
+  filterable?: ModelListFilter[]
+  sortable?: string[]
+  writable: boolean
+  writeCapabilities: ModelWriteCapabilities
+  /** Rows erased under the app's data-subject rules (users only). */
+  anonymizedIds?: Array<number | string>
+  /** The columns erasure empties: placeholders in an anonymized row. */
+  anonymizedColumns?: string[]
+  /** The columns the list draws: the model's own choice, or all of them. */
+  listColumns?: string[]
+  relations?: Record<string, ModelRelationTarget>
+  relationNames?: Record<string, Record<string, string>>
+  /** The model's own actions (`dashboard.actions`), and which each row is offered. */
+  actions?: ModelCustomAction[]
+  rowActions?: Record<string, string[]>
+  updateColumns: string[]
+  migrated?: boolean
+  error: string | null
+}
+
+const PER_PAGE_OPTIONS = [25, 50, 100, 200]
+const navigation = useNavigation()
+
+// For a page that hosts this list. The model to list, when it is not the last
+// part of the address; what the page calls itself; and the page's own path,
+// so a record opened from here comes back here.
+const hostedModel = useReactiveProp('model', '')
+const heading = useReactiveProp('heading', '')
+const description = useReactiveProp('description', '')
+const home = useReactiveProp('home', '')
+// Told when a record was deleted or acted on, so a host can read its summary again.
+
+const modelName = state('')
+// The class name, for the one message that tells a developer what was looked for.
+const modelClass = state('')
+const tableName = state('')
+const rows = state<Array<Record<string, unknown>>>([])
+const anonymizedIds = state<string[]>([])
+// Columns that hold another model's id, and what those records are called.
+const relations = state<Record<string, ModelRelationTarget>>({})
+const relationNames = state<Record<string, Record<string, string>>>({})
+const columnMeta = state<ColumnMeta[]>([])
+const totalCount = state(0)
+const page = state(1)
+// Text, as the dropdown reports it; a number where the range and the request use it.
+const perPage = state('25')
+const lastPage = state(1)
+const sort = state('')
+const dir = state<'asc' | 'desc'>('desc')
+const search = state(navigation.urlQuery('q') || '')
+// A list opened from a record's panel arrives narrowed to that record.
+const filters = state<ModelListFilterValues>(modelListFilters(navigation.urlQuery('filters')))
+// What the list can be narrowed and ordered by. The server derives both from
+// the model's fields; nothing declares a filter.
+const filterable = state<ModelListFilter[]>([])
+const sortable = state<string[]>([])
+const writeCapabilities = state<ModelWriteCapabilities>(NO_WRITES)
+const error = state<string | null>(null)
+// False when the model's table has not been created yet: the server checked the
+// catalog after the query failed, so this is never a guess from an error.
+const migrated = state(true)
+const loading = state(true)
+// Whether a first answer has come. Until it has, nothing is known about the
+// model: not its columns, not how many rows it has. Nothing is drawn that
+// would say otherwise ("No records", a table of one column).
+const loaded = state(false)
+// Said only once a query has taken long enough to wonder about. A list that
+// answers at once never flashes a loader (`dashboardLoaderTimer`).
+const slow = state(false)
+// Open when it arrives filtered, so what narrowed the list can be seen and cleared.
+const showFilters = state(Object.keys(filters()).length > 0)
+
+const saving = state(false)
+const confirmingDelete = state<Record<string, unknown> | null>(null)
+// The model's own actions, and the rows the server says each is for.
+const actions = state<ModelCustomAction[]>([])
+const rowActions = state<Record<string, string[]>>({})
+// One of them waiting on its confirmation, and the one that is running.
+const confirmingAction = state<{ action: ModelCustomAction, row: Record<string, unknown> } | null>(null)
+const runningAction = state<{ name: string, id: string } | null>(null)
+
+// The rows ticked on this page, by id. A selection is what is on screen: it
+// is dropped whenever the rows are read again.
+const selected = state<string[]>([])
+// What the selection is about to have done to it, waiting on its confirmation.
+const confirmingBulk = state<{ kind: 'action', action: ModelCustomAction } | { kind: 'delete' } | null>(null)
+// How far a run over the selection has got. Null when none is running.
+const bulkProgress = state<{ done: number, total: number } | null>(null)
+// An action that takes input, with its form open: for one row, or (no row)
+// for the selection. And what its last try was refused for.
+const askingAction = state<{ action: ModelCustomAction, row: Record<string, unknown> | null } | null>(null)
+const actionError = state('')
+const actionErrors = state<Record<string, string[]>>({})
+
+/** The model's own actions that may be run on a selection: `on: ['bulk']`. */
+const bulkActions = derived(() => modelBulkActions(actions()))
+// A tick box is only drawn when there is something to do with a tick.
+const selectable = derived(() => migrated() && (bulkActions().length > 0 || writeCapabilities().destroy))
+const allSelected = derived(() => rows().length > 0 && rows().every(row => selected().includes(String(row.id))))
+const selectionLabel = derived(() => `${selected().length} selected`)
+const bulkBusy = derived(() => bulkProgress() !== null)
+const bulkProgressLabel = derived(() => {
+  const progress = bulkProgress()
+  return progress ? `Working: ${Math.min(progress.done + 1, progress.total)} of ${progress.total}` : ''
+})
+
+const slug = derived(() => hostedModel() || navigation.urlSegment(-1) || '')
+/** Where this list lives, for the pages it opens to come back to. */
+const listHref = derived(() => home() || `/models/${slug()}`)
+const title = derived(() => heading() || modelName())
+/** "user", "social post": the model in a sentence or on a button. */
+const oneRecord = derived(() => (modelName() || 'record').toLowerCase())
+// The columns erasure empties, for a row that has been anonymized.
+const anonymizedColumns = state<string[]>([])
+
+const recordLabel = derived(() => {
+  const n = totalCount()
+  return `${n.toLocaleString()} ${n === 1 ? 'record' : 'records'}`
+})
+
+const rangeLabel = derived(() => {
+  if (totalCount() === 0) return 'No records'
+  const from = (page() - 1) * Number(perPage()) + 1
+  const to = Math.min(page() * Number(perPage()), totalCount())
+  return `${from.toLocaleString()} to ${to.toLocaleString()} of ${totalCount().toLocaleString()}`
+})
+
+const activeFilters = derived(() => modelFiltersSet(filters()))
+const activeFilterCount = derived(() => Object.keys(activeFilters()).length)
+
+/**
+ * The filters that are narrowing the list, each as a chip that says what it
+ * is set to and clears it. One the list does not offer still gets a chip (a
+ * list opened from a record's panel is narrowed by that record), so nothing
+ * narrows the list out of sight.
+ */
+const filterChips = derived(() => Object.entries(activeFilters()).map(([column, value]) => {
+  const filter = filterable().find(candidate => candidate.name === column)
+  const label = filter?.label ?? columnMeta().find(candidate => candidate.name === column)?.label ?? column
+  return { column, label, text: modelFilterSummary(filter, value, relationNames()[column] ?? {}) }
+}))
+
+const filterLabel = derived(() => {
+  const n = activeFilterCount()
+  return n === 0 ? 'Filter' : `Filter (${n})`
+})
+
+// Not hidden while a query is in flight: what is on the page stays until the
+// answer replaces it.
+const isEmpty = derived(() => loaded() && !error() && migrated() && rows().length === 0)
+
+const subtitle = derived(() => {
+  // A page's own description is known from the start; a count is not.
+  if (!loaded())
+    return description()
+  if (!migrated())
+    return `The ${tableName()} table has not been created yet`
+  return description() || `${recordLabel()} in the ${tableName()} table`
+})
+
+const deleteDescription = derived(() => {
+  const row = confirmingDelete()
+  if (!row)
+    return ''
+  return modelDeleteWarning(`Row ${row.id}`, writeCapabilities().anonymize)
+})
+
+// While a query is in flight the rows already there stay, dimmed and out of
+// reach, and are swapped when the answer comes. Nothing collapses or jumps on
+// a keystroke, and there is no placeholder to draw.
+const bodyClass = derived(() => dashboardReloadingClass(loading(), 'divide-black/5 divide-y dark:divide-white/8'))
+// A hosting page's heading is known from the first paint, so the box does not
+// change its wording when the answer comes.
+const searchPlaceholder = derived(() => `Search ${(heading() || modelName() || 'records').toLowerCase()}`)
+const loadingLabel = derived(() => `Loading ${(title() || 'records').toLowerCase()}`)
+
+function formatDate(value: unknown): string {
+  const date = new Date(value as string | number)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatCell(value: unknown, type: ColumnMeta['type']): string {
+  if (value === null || value === undefined || value === '') return '-'
+  if (type === 'date') return formatDate(value)
+  if (type === 'boolean') return (value === true || value === 1 || value === '1') ? 'Yes' : 'No'
+  if (type === 'number' && typeof value === 'number') return value.toLocaleString()
+  if (typeof value === 'object') {
+    try { return JSON.stringify(value).slice(0, 90) }
+    catch { return '[object]' }
+  }
+  const text = String(value)
+  return text.length > 120 ? `${text.slice(0, 120)}…` : text
+}
+
+/** A cell that points at another model's record: its name, and where it leads. */
+function relationCell(row: Record<string, unknown>, column: ColumnMeta) {
+  return modelRelationCell(column.name, row[column.name], relations(), relationNames())
+}
+
+function relationHref(row: Record<string, unknown>, column: ColumnMeta): string {
+  return relationCell(row, column)?.href ?? ''
+}
+
+/**
+ * A cell as the model says it reads: "$12.00", "1.5 KB", a link, a picture.
+ * Null when the model does not say, or nothing is stored.
+ */
+function formatted(row: Record<string, unknown>, column: ColumnMeta): ModelFormattedValue | null {
+  return modelCellDisplay(column, row[column.name], row)
+}
+
+/**
+ * What an anonymized row says in a column erasure emptied. The row stores
+ * placeholders there ("[erased]", "erased-13"), which read as corrupt data:
+ * the first such column names the row for what it is, the rest say removed.
+ * Null for every other cell.
+ */
+function removed(row: Record<string, unknown>, column: ColumnMeta): string | null {
+  if (!isAnonymized(row) || !anonymizedColumns().includes(column.name))
+    return null
+  const first = columnMeta().find(candidate => anonymizedColumns().includes(candidate.name))
+  return first?.name === column.name ? `Anonymized ${oneRecord()}` : 'Removed'
+}
+
+/** How a cell is drawn: a link to a record, or what its format calls for, or words. */
+function cellKind(row: Record<string, unknown>, column: ColumnMeta): 'relation' | 'removed' | ModelFormattedValue['kind'] {
+  if (removed(row, column))
+    return 'removed'
+  if (relationHref(row, column))
+    return 'relation'
+  return formatted(row, column)?.kind ?? 'text'
+}
+
+function cellHref(row: Record<string, unknown>, column: ColumnMeta): string {
+  return formatted(row, column)?.href ?? ''
+}
+
+function cellTone(row: Record<string, unknown>, column: ColumnMeta): string {
+  return formatted(row, column)?.tone ?? 'neutral'
+}
+
+function cellValue(row: Record<string, unknown>, column: ColumnMeta): string {
+  const gone = removed(row, column)
+  if (gone)
+    return gone
+  if (relationCell(row, column))
+    return relationCell(row, column)!.text
+  // Words for what is stored: as the model says, as a status reads, or as it is.
+  return formatted(row, column)?.text ?? (column.format ? '-' : formatCell(row[column.name], column.type))
+}
+
+// Returned as COMPLETE class strings and applied with `:class`, because a
+// `{{ }}` placeholder inside a class attribute is not reactively bound.
+function cellClass(column: ColumnMeta): string {
+  const align = modelColumnIsNumeric(column) ? 'text-right tabular-nums' : 'text-left'
+  const mono = column.type === 'json' && !column.format ? ' font-mono text-[12px]' : ''
+  return `px-3 py-2 max-w-xs truncate whitespace-nowrap text-[13px] text-neutral-800 dark:text-neutral-200 ${align}${mono}`
+}
+
+function headerClass(column: ColumnMeta): string {
+  const align = modelColumnIsNumeric(column) ? 'justify-end' : 'justify-start'
+  return `flex items-center gap-1 w-full ${align} font-medium text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors`
+}
+
+/** A heading that is not pressed: the same line of text, without the button's hover. */
+function plainHeaderClass(column: ColumnMeta): string {
+  const align = modelColumnIsNumeric(column) ? 'justify-end' : 'justify-start'
+  return `flex items-center w-full ${align} font-medium text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400`
+}
+
+function sortIconClass(column: ColumnMeta): string {
+  if (sort() !== column.name) return 'h-3 w-3 opacity-0 group-hover:opacity-40 i-hugeicons-arrow-up-down'
+  return dir() === 'asc' ? 'h-3 w-3 i-hugeicons-arrow-up-01' : 'h-3 w-3 i-hugeicons-arrow-down-01'
+}
+
+async function load() {
+  if (!slug()) {
+    error.set('Missing model slug in the URL.')
+    loading.set(false)
+    return
+  }
+  loading.set(true)
+  error.set(null)
+  // The rows about to arrive may not be the ones that were ticked.
+  selected.set([])
+  const settle = dashboardLoaderTimer(slow)
+  try {
+    const params = new URLSearchParams({
+      page: String(page()),
+      per_page: perPage(),
+      dir: dir(),
+    })
+    if (sort()) params.set('sort', sort())
+    if (search()) params.set('q', search())
+    const active = activeFilters()
+    if (Object.keys(active).length > 0) params.set('filters', JSON.stringify(active))
+    // The address says what the list is narrowed by, so it can be sent to
+    // someone or come back to.
+    navigation.replacePath(modelListAddress(navigation.path(), search(), active))
+
+    const data = await dashboardApi<ResponseShape>(`/api/dashboard/models/${encodeURIComponent(slug())}?${params}`)
+
+    modelName.set(data.modelLabel ?? data.modelName ?? '')
+    modelClass.set(data.modelName ?? '')
+    tableName.set(data.tableName ?? '')
+    rows.set(data.rows ?? [])
+    anonymizedIds.set((data.anonymizedIds ?? []).map(String))
+    anonymizedColumns.set(data.anonymizedColumns ?? [])
+    // Only reassign when the column set actually changes. It is the same for
+    // every page and every sort of a given model, and re-rendering the
+    // header `:for` on each query both wastes work and trips a reconciler
+    // bug that leaves the columns rotated out of order.
+    relations.set(data.relations ?? {})
+    relationNames.set(data.relationNames ?? {})
+    actions.set(data.actions ?? [])
+    rowActions.set(data.rowActions ?? {})
+    filterable.set(data.filterable ?? [])
+    sortable.set(data.sortable ?? [])
+    // The columns the model chose for its list, and any the list is filtered on.
+    const every = data.columnMeta ?? []
+    const shown = modelListColumnNames(every.map(column => column.name), data.listColumns, active)
+    const nextColumns = shown.map(name => every.find(column => column.name === name)!).filter(Boolean)
+    const sameColumns = nextColumns.length === columnMeta().length
+      && nextColumns.every((c, i) => c.name === columnMeta()[i]?.name)
+    if (!sameColumns) columnMeta.set(nextColumns)
+    totalCount.set(data.totalCount ?? 0)
+    lastPage.set(data.lastPage ?? 1)
+    // For a component the app placed on this page: it follows the list.
+    modelPageStore.showList({ slug: slug(), rows: data.rows ?? [], total: data.totalCount ?? 0, search: search(), filters: active })
+    sort.set(data.sort ?? '')
+    writeCapabilities.set({ ...NO_WRITES, ...data.writeCapabilities })
+    migrated.set(data.migrated !== false)
+    error.set(data.error ?? null)
+  }
+  catch (e) {
+    error.set(e instanceof Error ? e.message : String(e))
+  }
+  finally {
+    settle()
+    loading.set(false)
+    loaded.set(true)
+  }
+}
+
+function toggleSort(column: ColumnMeta) {
+  if (!canSort(column)) return
+  if (sort() === column.name) dir.set(dir() === 'asc' ? 'desc' : 'asc')
+  else { sort.set(column.name); dir.set('asc') }
+  page.set(1)
+  void load()
+}
+
+// Debounced so a query is not fired per keystroke. Search and the per-column
+// filters deliberately share one debounce, the way they shared one timer id
+// before: typing in either should schedule a single reload, not two.
+const onSearchInput = useDebounce(() => {
+  page.set(1)
+  void load()
+}, 250)
+
+function setFilter(change: { name: string, value: ModelListFilterValue }) {
+  filters.set({ ...filters(), [change.name]: change.value })
+  // Typing a number or a value is not a query per keystroke.
+  onSearchInput()
+}
+
+function clearFilter(column: string) {
+  const { [column]: _cleared, ...rest } = filters()
+  filters.set(rest)
+  page.set(1)
+  void load()
+}
+
+/** Whether pressing a column's heading orders the list by it. */
+function canSort(column: ColumnMeta): boolean {
+  return sortable().includes(column.name)
+}
+
+function clearFilters() {
+  filters.set({})
+  search.set('')
+  page.set(1)
+  void load()
+}
+
+function goToPage(next: number) {
+  const target = Math.min(Math.max(1, next), lastPage())
+  if (target === page()) return
+  page.set(target)
+  void load()
+}
+
+function onPerPageChange() {
+  page.set(1)
+  void load()
+}
+
+// An anonymized account keeps its eye and loses its pencil and trash: there
+// is nothing left to edit, and deleting it again changes nothing.
+function isAnonymized(row: Record<string, unknown>): boolean {
+  return anonymizedIds().includes(String(row.id))
+}
+
+// The eye and the pencil each open a page of the record's own, which comes
+// back to this list wherever it is hosted.
+function startEdit(row: Record<string, unknown>) {
+  navigate(modelRecordEditHref(slug(), String(row.id), { from: home() || undefined }))
+}
+
+function startView(row: Record<string, unknown>) {
+  navigate(modelRecordHref(slug(), String(row.id), home() || undefined))
+}
+
+// Creating has a page of its own too.
+function openCreate(): void {
+  navigate(modelRecordCreateHref(slug(), home() || undefined))
+}
+
+// A user is invited, not typed in: the account's holder chooses the password.
+function openInvite(): void {
+  navigate(userInviteHref(listHref()))
+}
+
+/** The model's own actions this row is offered in a list. */
+function actionsFor(row: Record<string, unknown>): ModelCustomAction[] {
+  return modelActionsFor(actions(), rowActions(), String(row.id), 'row')
+}
+
+/** The name of the action running on this row, if one is. */
+function runningOn(row: Record<string, unknown>): string {
+  const current = runningAction()
+  return current && current.id === String(row.id) ? current.name : ''
+}
+
+function openActionForm(action: ModelCustomAction, row: Record<string, unknown> | null): void {
+  actionError.set('')
+  actionErrors.set({})
+  askingAction.set({ action, row })
+}
+
+// An action that takes input opens its form, one that asks first its
+// confirmation, and any other runs.
+function startAction(payload: { action: ModelCustomAction, record: Record<string, unknown> }): void {
+  if (modelActionAsks(payload.action))
+    openActionForm(payload.action, payload.record)
+  else if (payload.action.confirm)
+    confirmingAction.set({ action: payload.action, row: payload.record })
+  else
+    void runAction(payload.action, payload.record)
+}
+
+async function runAction(action: ModelCustomAction, row: Record<string, unknown>, input: Record<string, unknown> = {}): Promise<void> {
+  if (runningAction())
+    return
+  runningAction.set({ name: action.name, id: String(row.id) })
+  const result = await runModelAction(slug(), String(row.id), action.name, input)
+  runningAction.set(null)
+  confirmingAction.set(null)
+  // A refusal of what was typed is answered where it was typed.
+  if (!result.ok && askingAction()) {
+    actionError.set(result.error)
+    actionErrors.set(result.errors ?? {})
+    return
+  }
+  askingAction.set(null)
+  const notice = modelActionNotice(action, result)
+  pushToast(notice.tone, notice.title, { detail: notice.detail })
+  if (!result.ok)
+    return
+  modelPageStore.listChanged(slug())
+  if (result.redirect)
+    navigate(result.redirect)
+  else
+    // The row may read differently now, and be offered different actions.
+    await load()
+}
+
+function confirmAction(): void {
+  const pending = confirmingAction()
+  if (pending)
+    void runAction(pending.action, pending.row)
+}
+
+function isSelected(row: Record<string, unknown>): boolean {
+  return selected().includes(String(row.id))
+}
+
+function toggleSelected(row: Record<string, unknown>): void {
+  const id = String(row.id)
+  selected.set(isSelected(row) ? selected().filter(candidate => candidate !== id) : [...selected(), id])
+}
+
+function toggleAllSelected(): void {
+  selected.set(allSelected() ? [] : rows().map(row => String(row.id)))
+}
+
+/** The selected rows an action is for: the server has said which rows it applies to. */
+function bulkTargets(action: ModelCustomAction): string[] {
+  return modelBulkTargets(action, rowActions(), selected())
+}
+
+/** The selected rows a delete is for: an anonymized account is left alone. */
+function bulkDeleteTargets(): string[] {
+  return modelBulkDeleteTargets(selected(), anonymizedIds())
+}
+
+// Acting on many records always asks first, whatever a single press does.
+const bulkConfirm = derived(() => {
+  const pending = confirmingBulk()
+  if (!pending)
+    return { title: '', description: '', label: 'Run', destructive: false }
+  if (pending.kind === 'delete')
+    return { ...modelBulkDeleteConfirm(bulkDeleteTargets().length, selected().length, writeCapabilities().anonymize), label: 'Delete', destructive: true }
+  return { ...modelBulkActionConfirm(pending.action, bulkTargets(pending.action).length, selected().length), label: pending.action.label, destructive: pending.action.destructive }
+})
+
+// Acting on a selection always asks first: in the action's form when it
+// takes input, in a confirmation when it does not.
+function startBulkAction(action: ModelCustomAction): void {
+  if (modelActionAsks(action))
+    openActionForm(action, null)
+  else
+    confirmingBulk.set({ kind: 'action', action })
+}
+
+/** What the form is told beside the model's own sentence: how far the action reaches. */
+const actionFormNote = derived(() => {
+  const asking = askingAction()
+  return asking && !asking.row ? modelBulkActionScope(bulkTargets(asking.action).length, selected().length) : ''
+})
+
+function submitAction(input: Record<string, unknown>): void {
+  const asking = askingAction()
+  if (!asking)
+    return
+  if (asking.row)
+    void runAction(asking.action, asking.row, input)
+  else
+    void runBulk({ kind: 'action', action: asking.action }, input)
+}
+
+async function runBulk(pending = confirmingBulk(), input: Record<string, unknown> = {}): Promise<void> {
+  if (!pending || bulkBusy())
+    return
+  const track = (done: number, total: number) => bulkProgress.set({ done, total })
+  let result: ModelBulkResult
+  if (pending.kind === 'delete')
+    result = await deleteModelRecords(slug(), bulkDeleteTargets(), track)
+  else
+    result = await runModelActionOnEach(slug(), bulkTargets(pending.action), pending.action.name, { input, progress: track })
+  bulkProgress.set(null)
+  // What was typed was refused by the first record: nothing ran, and the
+  // form says which field and why.
+  if (Object.keys(result.invalid).length > 0) {
+    actionError.set(Object.keys(result.invalid).length === 1 ? 'Check the field marked below.' : `Check the ${Object.keys(result.invalid).length} fields marked below.`)
+    actionErrors.set(result.invalid)
+    return
+  }
+  askingAction.set(null)
+  confirmingBulk.set(null)
+  const notice = modelBulkNotice(pending.kind === 'delete' ? { kind: 'delete' } : { kind: 'action', label: pending.action.label }, modelName(), result)
+  pushToast(notice.tone, notice.title, { detail: notice.detail })
+  // Deleting every row of the final page would strand the viewer on an empty one.
+  if (pending.kind === 'delete' && result.done >= rows().length && page() > 1)
+    page.set(page() - 1)
+  if (result.done > 0)
+    modelPageStore.listChanged(slug())
+  await load()
+}
+
+async function confirmDelete() {
+  const row = confirmingDelete()
+  if (!row) return
+  saving.set(true)
+  try {
+    const outcome = await deleteModelRecord(slug(), String(row.id))
+    const notice = modelDeleteNotice(`${modelName()} ${row.id}`, outcome)
+    pushToast('success', notice.title, { detail: notice.detail })
+    confirmingDelete.set(null)
+    // Deleting the last row of the final page would strand the viewer on an
+    // empty page, so step back one.
+    if (rows().length === 1 && page() > 1) page.set(page() - 1)
+    modelPageStore.listChanged(slug())
+    await load()
+  }
+  catch (e) {
+    pushToast('error', 'Could not delete', { detail: e instanceof Error ? e.message : String(e) })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+// On mount, not while setting up: a page that hosts this list says which
+// model through a prop, and a prop is not bound until then. Loading sooner
+// asked for the model named by the last part of the host's own address.
+onMount(() => {
+  // Which list this is, before it has loaded: a component the app placed
+  // here never shows the list of the page before. Here and not sooner,
+  // because a hosting page's `model` is not bound until now.
+  modelPageStore.openList(slug(), () => { void load() })
+  void load()
+})
+
+onDestroy(() => {
+  modelPageStore.closeList(slug())
+})
+</script>
+
+<template>
+<div class="flex flex-col gap-4 p-6">
+
+  <!-- Written out rather than using <PageHeader>: that component renders on
+      the server, so a `{{ }}` placeholder in it is baked at render time and
+      would stay empty for a title that only exists once the fetch resolves.
+      `:text` bindings here stay reactive. -->
+  <div class="flex flex-wrap gap-4 items-start justify-between">
+    <div class="min-w-0">
+      <h1 class="font-bold text-2xl text-neutral-900 truncate dark:text-white" :text="title()"></h1>
+      <p class="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400" :text="subtitle()"></p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <Button
+        :if="writeCapabilities().create && !writeCapabilities().invite"
+        @click="openCreate"
+      >
+        <span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>
+        <span :text="'Create ' + oneRecord()"></span>
+      </Button>
+      <Button
+        :if="writeCapabilities().invite"
+        @click="openInvite"
+      >
+        <span aria-hidden="true" class="h-4 w-4 i-hugeicons-mail-send-01"></span>
+        <span :text="'Invite ' + oneRecord()"></span>
+      </Button>
+      <Button
+        :if="migrated() && (filterable().length > 0 || activeFilterCount() > 0)"
+        variant="secondary"
+        size="sm"
+        interaction="toggle"
+        :pressed="showFilters()"
+        @click="showFilters.set(!showFilters())"
+      >
+        <span class="h-4 w-4 i-hugeicons-filter"></span>
+        <span :text="filterLabel()"></span>
+      </Button>
+    </div>
+  </div>
+
+  <!-- What the model places above its list (`dashboard.regions.listTop`):
+      the row of stats over Users, Teams and Subscribers is one. -->
+  <ModelRegion place="listTop" />
+
+  <!-- Search + page size -->
+  <div :if="migrated()" class="flex flex-wrap gap-3 items-center">
+    <SearchFilter v-model:searchValue="search" :placeholder="searchPlaceholder()" class="flex-1 max-w-sm" @search="onSearchInput" />
+
+    <div :if="activeFilterCount() > 0 || search()" class="flex items-center">
+      <Button variant="ghost" size="sm" @click="clearFilters()">
+        Clear
+      </Button>
+    </div>
+
+    <div class="flex gap-2 items-center ml-auto text-[12px] text-neutral-500 dark:text-neutral-400">
+      <span>Show</span>
+      <Select v-model:value="perPage" ariaLabel="Records per page" size="sm" placeholder="" :options="PER_PAGE_OPTIONS.map(option => ({ value: String(option), label: String(option) }))" @change="onPerPageChange" />
+    </div>
+  </div>
+
+  <!-- What the list can be narrowed by. -->
+  <ModelFilterPanel
+    :if="migrated() && showFilters() && filterable().length > 0"
+    :filters="filterable()"
+    :values="filters()"
+    @change="setFilter"
+  />
+
+  <!-- What is narrowing it now. Always in view, so a filtered list never looks like the whole of it. -->
+  <div :if="filterChips().length > 0" data-filter-chips class="flex flex-wrap gap-2 items-center">
+    <span :for="chip in filterChips()" class="inline-flex gap-1.5 items-center pl-2.5 pr-1 h-7 text-[12px] text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-white/10 rounded-full" :data-filter-chip="chip.column">
+      <span class="font-medium" :text="chip.label + ':'"></span>
+      <span class="max-w-[16rem] truncate" :text="chip.text"></span>
+      <Button variant="ghost" size="xs" iconOnly :ariaLabel="'Clear ' + chip.label + ' filter'" @click="clearFilter(chip.column)">
+        <span aria-hidden="true" class="h-3 w-3 i-hugeicons-cancel-01"></span>
+      </Button>
+    </span>
+  </div>
+
+  <!-- What can be done to the ticked rows. Only there when some are ticked. -->
+  <div :if="selected().length > 0" role="region" aria-label="Selected rows" data-bulk-bar class="flex flex-wrap gap-3 items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 rounded-lg dark:border-blue-500/30">
+    <p class="font-medium text-[13px] text-neutral-800 dark:text-neutral-100" aria-live="polite">
+      <span :if="!bulkBusy()" :text="selectionLabel()"></span>
+      <span :if="bulkBusy()" :text="bulkProgressLabel()"></span>
+    </p>
+    <div class="flex flex-wrap gap-2 items-center">
+      <span :for="action in bulkActions()" class="contents">
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="bulkBusy() || bulkTargets(action).length === 0"
+          :title="bulkTargets(action).length === 0 ? 'Does not apply to any of the selected rows' : action.label"
+          @click="startBulkAction(action)"
+        >
+          <span aria-hidden="true" :class="modelActionIconClass(action)"></span>
+          {{ action.label }}
+        </Button>
+      </span>
+      <Button
+        :if="writeCapabilities().destroy"
+        variant="secondary"
+        size="sm"
+        :disabled="bulkBusy() || bulkDeleteTargets().length === 0"
+        @click="confirmingBulk.set({ kind: 'delete' })"
+      >
+        <span aria-hidden="true" class="h-4 w-4 text-red-500 i-hugeicons-delete-02"></span>
+        Delete
+      </Button>
+      <Button variant="ghost" size="sm" :disabled="bulkBusy()" @click="selected.set([])">Clear</Button>
+    </div>
+  </div>
+
+  <div :if="error()" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-xl dark:border-red-800">
+    <div class="flex gap-3 items-start">
+      <span class="flex-shrink-0 mt-0.5 h-5 w-5 text-red-500 i-hugeicons-alert-02"></span>
+      <div>
+        <h3 class="font-medium text-[13px] text-red-800 dark:text-red-200">Couldn't load <span :text="modelName()"></span></h3>
+        <p class="mt-1 text-[13px] text-red-600 dark:text-red-300" :text="error()"></p>
+        <p class="mt-2 text-[12px] text-red-500 dark:text-red-400">
+          Looked for an ORM model named <code :text="modelClass()"></code> and a table named <code :text="tableName()"></code>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div :if="loaded() && !loading() && !error() && !migrated()" role="status" class="p-12 text-center bg-white dark:bg-neutral-900 border border-black/8 rounded-xl dark:border-white/10">
+    <span aria-hidden="true" class="mx-auto h-10 w-10 text-neutral-300 dark:text-neutral-600 i-hugeicons-database-sync-01"></span>
+    <h3 class="mt-3 font-medium text-[15px] text-neutral-900 dark:text-white">
+      The <code :text="tableName()"></code> table has not been created yet
+    </h3>
+    <p class="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+      Run <code>./buddy migrate</code> to create it, then reload this page.
+    </p>
+  </div>
+
+  <div :if="isEmpty()" class="p-12 text-center bg-white dark:bg-neutral-900 border border-black/8 rounded-xl dark:border-white/10">
+    <span class="mx-auto h-10 w-10 text-neutral-300 dark:text-neutral-600 i-hugeicons-database-01"></span>
+    <h3 class="mt-3 font-medium text-[15px] text-neutral-900 dark:text-white">
+      <span :if="activeFilterCount() > 0 || search()">Nothing matches those filters</span>
+      <span :if="activeFilterCount() === 0 && !search()">No <span :text="modelName()"></span> records yet</span>
+    </h3>
+    <p class="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+      <span :if="activeFilterCount() > 0 || search()">Try a broader search, or clear the filters.</span>
+      <span :if="activeFilterCount() === 0 && !search()">Seed some with <code>./buddy seed</code>.</span>
+    </p>
+  </div>
+
+  <!-- Before the first answer: one quiet card where the table will be. No
+      column is known yet, so no table is drawn, and it says it is loading
+      only if that takes long enough to notice. -->
+  <QuietLoader :if="!loaded()" :slow="slow()" :label="loadingLabel()" />
+
+  <div :if="loaded() && !error() && migrated() && rows().length > 0" class="overflow-hidden bg-white dark:bg-neutral-900 border border-black/8 rounded-xl dark:border-white/10">
+    <div class="overflow-x-auto">
+      <table class="min-w-full">
+        <thead class="bg-neutral-50 dark:bg-white/5">
+          <tr>
+            <th :if="selectable()" scope="col" class="pl-3 pr-1 py-2 w-8">
+              <input
+                type="checkbox"
+                aria-label="Select every row on this page"
+                :checked="allSelected()"
+                :disabled="loading() || bulkBusy() || rows().length === 0"
+                class="block h-4 w-4 text-blue-600 border-neutral-300 rounded"
+                @change="toggleAllSelected()"
+              />
+            </th>
+            <th :for="column in columnMeta()" scope="col" class="px-3 py-2 whitespace-nowrap group" :aria-sort="sort() === column.name ? (dir() === 'asc' ? 'ascending' : 'descending') : null">
+              <button :if="canSort(column)" type="button" @click="toggleSort(column)" :class="headerClass(column)">
+                <span>{{ column.label }}</span>
+                <span :class="sortIconClass(column)"></span>
+              </button>
+              <!-- Prose, a structure, or another record's name: nothing a list is ordered by. -->
+              <span :if="!canSort(column)" :class="plainHeaderClass(column)">{{ column.label }}</span>
+            </th>
+            <th scope="col" class="right-0 sticky z-20 px-3 py-2 w-28 font-medium text-[11px] text-neutral-500 text-right tracking-wide uppercase dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800 border-black/5 border-l dark:border-white/10">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody :class="bodyClass()" :aria-busy="loading() ? 'true' : null">
+          <tr :for="row in rows()" class="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors group">
+            <td :if="selectable()" class="pl-3 pr-1 py-2 w-8">
+              <input
+                type="checkbox"
+                :aria-label="'Select ' + modelName() + ' ' + row.id"
+                :checked="isSelected(row)"
+                :disabled="bulkBusy()"
+                class="block h-4 w-4 text-blue-600 border-neutral-300 rounded"
+                @change="toggleSelected(row)"
+              />
+            </td>
+            <td :for="column in columnMeta()" :class="cellClass(column)" :title="cellValue(row, column)">
+              <StxLink :if="relationHref(row, column)" :to="relationHref(row, column)" class="font-medium text-blue-600 dark:text-blue-400 hover:underline">{{ cellValue(row, column) }}</StxLink>
+              <span :if="cellKind(row, column) === 'text'">{{ cellValue(row, column) }}</span>
+              <ModelBadge :if="cellKind(row, column) === 'badge'" :text="cellValue(row, column)" :tone="cellTone(row, column)" />
+              <span :if="cellKind(row, column) === 'removed'" class="italic text-neutral-500 dark:text-neutral-400">{{ cellValue(row, column) }}</span>
+              <a :if="cellKind(row, column) === 'link'" :href="cellHref(row, column)" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">{{ cellValue(row, column) }}</a>
+              <img :if="cellKind(row, column) === 'image'" :src="cellHref(row, column)" alt="" loading="lazy" class="inline-block object-cover h-7 w-7 bg-neutral-100 dark:bg-neutral-800 rounded" />
+              <code :if="cellKind(row, column) === 'code'" class="font-mono text-[12px]">{{ cellValue(row, column) }}</code>
+            </td>
+            <td class="right-0 sticky z-10 px-3 py-2 text-right bg-white dark:bg-neutral-900 group-hover:bg-neutral-50 dark:group-hover:bg-white/5 border-black/5 border-l dark:border-white/10 transition-colors">
+              <ModelRecordActions
+                :record="row"
+                :modelName="modelName()"
+                :canUpdate="writeCapabilities().update && !isAnonymized(row)"
+                :canDestroy="writeCapabilities().destroy && !isAnonymized(row)"
+                :actions="actionsFor(row)"
+                :running="runningOn(row)"
+                @action="startAction"
+                @view="startView"
+                @edit="startEdit"
+                @delete="confirmingDelete.set($event)"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-wrap gap-3 items-center justify-between px-3 py-2 bg-neutral-50 dark:bg-white/5 border-black/5 border-t dark:border-white/10">
+      <p class="flex gap-2 items-center text-[12px] text-neutral-500 dark:text-neutral-400">
+        <span :text="rangeLabel()"></span>
+        <span :if="slow()" role="status" aria-label="Loading" class="h-3.5 w-3.5 animate-spin i-hugeicons-loading-03"></span>
+      </p>
+      <div class="flex gap-1 items-center">
+        <Button variant="secondary" size="xs" :disabled="page() === 1" @click="goToPage(1)">First</Button>
+        <Button variant="secondary" size="xs" :disabled="page() === 1" @click="goToPage(page() - 1)">Previous</Button>
+        <span class="px-2 tabular-nums text-[12px] text-neutral-500 dark:text-neutral-400">{{ page() }} / {{ lastPage() }}</span>
+        <Button variant="secondary" size="xs" :disabled="page() >= lastPage()" @click="goToPage(page() + 1)">Next</Button>
+        <Button variant="secondary" size="xs" :disabled="page() >= lastPage()" @click="goToPage(lastPage())">Last</Button>
+      </div>
+    </div>
+  </div>
+
+  <!-- What the model places under its list: `dashboard.regions.listBottom`. -->
+  <ModelRegion place="listBottom" />
+
+  <ConfirmDialog
+    :isOpen="Boolean(confirmingDelete())"
+    :title="'Delete this ' + modelName() + '?'"
+    :description="deleteDescription()"
+    :busy="saving()"
+    :confirmLabel="saving() ? 'Deleting' : 'Delete'"
+    @close="confirmingDelete.set(null)"
+    @confirm="confirmDelete"
+  />
+
+  <ConfirmDialog
+    :isOpen="Boolean(confirmingAction())"
+    :title="(confirmingAction()?.action.label || 'Run this action') + '?'"
+    :description="confirmingAction()?.action.confirm || ''"
+    :variant="confirmingAction()?.action.destructive ? 'danger' : 'warning'"
+    :busy="Boolean(runningAction())"
+    :confirmLabel="confirmingAction()?.action.label || 'Run'"
+    @close="confirmingAction.set(null)"
+    @confirm="confirmAction"
+  />
+
+  <ConfirmDialog
+    :isOpen="Boolean(confirmingBulk())"
+    :title="bulkConfirm().title"
+    :description="bulkConfirm().description"
+    :variant="bulkConfirm().destructive ? 'danger' : 'warning'"
+    :busy="bulkBusy()"
+    :confirmLabel="bulkBusy() ? bulkProgressLabel() : bulkConfirm().label"
+    @close="confirmingBulk.set(null)"
+    @confirm="runBulk()"
+  />
+
+  <ModelActionForm
+    :action="askingAction()?.action ?? null"
+    :note="actionFormNote()"
+    :busy="Boolean(runningAction()) || bulkBusy()"
+    :busyLabel="bulkProgressLabel()"
+    :error="actionError()"
+    :errors="actionErrors()"
+    @close="askingAction.set(null)"
+    @submit="submitAction"
+  />
+</div>
+</template>
+
+<style>
+.overflow-x-auto { -webkit-overflow-scrolling: touch; }
+</style>

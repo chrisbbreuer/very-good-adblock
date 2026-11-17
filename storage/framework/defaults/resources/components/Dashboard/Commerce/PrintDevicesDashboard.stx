@@ -1,0 +1,263 @@
+<script client>
+import type {
+  PrintDeviceRecord,
+  PrintDeviceSummary,
+  PrintDeviceStatus,
+} from '../../../../app/Actions/Dashboard/Commerce/print-device-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { pushToast } from '../../../../functions/toasts'
+
+interface PrintDevicesResponse {
+  records: PrintDeviceRecord[]
+  summary: PrintDeviceSummary
+}
+
+interface PrintDeviceWritePayload {
+  name: string
+  macAddress: string
+  location: string
+  terminal: string
+  status: PrintDeviceStatus
+}
+
+const emptySummary: PrintDeviceSummary = {
+  total: 0,
+  online: 0,
+  offline: 0,
+  warning: 0,
+  locations: 0,
+  totalPrints: 0,
+}
+const records = state<PrintDeviceRecord[]>([])
+const summary = state<PrintDeviceSummary>({ ...emptySummary })
+const search = state('')
+const statusFilter = state('all')
+const locationFilter = state('all')
+const sort = state('name')
+const loading = state(true)
+const loadError = state('')
+const dialogOpen = state(false)
+const dialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<PrintDeviceRecord | null>(null)
+const detailsRecord = state<PrintDeviceRecord | null>(null)
+const deletingRecord = state<PrintDeviceRecord | null>(null)
+const saving = state(false)
+const deleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+
+function locations(): string[] {
+  return [...new Set(records().map(record => record.location).filter(Boolean))].sort()
+}
+
+function filteredRecords(): PrintDeviceRecord[] {
+  const query = search().trim().toLowerCase()
+  const selectedStatus = statusFilter()
+  const selectedLocation = locationFilter()
+  return [...records()]
+    .filter((record) => {
+      if (selectedStatus !== 'all' && record.status !== selectedStatus)
+        return false
+      if (selectedLocation !== 'all' && record.location !== selectedLocation)
+        return false
+      return !query || [record.name, record.macAddress, record.location, record.terminal]
+        .some(value => value.toLowerCase().includes(query))
+    })
+    .sort((left, right) => {
+      if (sort() === 'prints')
+        return right.printCount - left.printCount || left.name.localeCompare(right.name)
+      if (sort() === 'heartbeat')
+        return right.lastPing - left.lastPing || left.name.localeCompare(right.name)
+      if (sort() === 'status')
+        return left.status.localeCompare(right.status) || left.name.localeCompare(right.name)
+      return left.name.localeCompare(right.name)
+    })
+}
+
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  const health = current.total ? Math.round((current.online / current.total) * 100) : 0
+  return [
+    { label: 'Print devices', value: String(current.total), detail: `${current.locations} active locations` },
+    { label: 'Online', value: String(current.online), detail: `${health}% of registered devices` },
+    { label: 'Needs attention', value: String(current.warning + current.offline), detail: `${current.warning} warning, ${current.offline} offline` },
+    { label: 'Recorded prints', value: current.totalPrints.toLocaleString(), detail: 'Across registered devices' },
+  ]
+}
+
+function exportHref(): string {
+  const rows = filteredRecords().map(record => [
+    record.name,
+    record.macAddress,
+    record.location,
+    record.terminal,
+    record.status,
+    new Date(record.lastPing).toISOString(),
+    String(record.printCount),
+  ])
+  const escape = (value: string): string => `"${value.replaceAll('"', '""')}"`
+  const csv = [
+    ['Name', 'MAC address', 'Location', 'Terminal', 'Status', 'Last heartbeat', 'Print count'],
+    ...rows,
+  ].map(row => row.map(escape).join(',')).join('\n')
+  return `data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${csv}`)}`
+}
+
+function exportFilename(): string {
+  return `print-devices-${new Date().toISOString().slice(0, 10)}.csv`
+}
+
+/**
+ * What the table is showing: a change returns it to the first page, as this
+ * page's own pager did before the table took over paging.
+ */
+function viewKey(): string {
+  return JSON.stringify([search(), statusFilter(), locationFilter(), sort()])
+}
+
+async function loadPrintDevices(): Promise<void> {
+  loading.set(true)
+  loadError.set('')
+  try {
+    const data = await dashboardApi<PrintDevicesResponse>('/api/dashboard/commerce/print-devices')
+    records.set(Array.isArray(data.records) ? data.records : [])
+    summary.set(data.summary ?? { ...emptySummary })
+  }
+  catch (error) {
+    loadError.set('Print devices could not be loaded.')
+    pushToast('error', 'Could not load print devices', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+function openAdd(): void {
+  dialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function openEdit(record: PrintDeviceRecord): void {
+  dialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  dialogOpen.set(true)
+}
+
+function closeDialog(): void {
+  if (saving())
+    return
+  dialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+async function savePrintDevice(payload: PrintDeviceWritePayload): Promise<void> {
+  const current = editingRecord()
+  const editing = dialogMode() === 'edit' && current !== null
+  const path = editing ? `/api/dashboard/commerce/print-devices/${current.id}` : '/api/dashboard/commerce/print-devices'
+  saving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(path, {
+      method: editing ? 'PATCH' : 'POST',
+      body: payload,
+    })
+    dialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', editing ? 'Print device updated' : 'Print device added')
+    await loadPrintDevices()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save print device', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    saving.set(false)
+  }
+}
+
+function openDetails(record: PrintDeviceRecord): void {
+  detailsRecord.set(record)
+}
+
+function closeDetails(): void {
+  detailsRecord.set(null)
+}
+
+function openDelete(record: PrintDeviceRecord): void {
+  deletingRecord.set(record)
+}
+
+function closeDelete(): void {
+  if (!deleting())
+    deletingRecord.set(null)
+}
+
+async function deletePrintDevice(): Promise<void> {
+  const current = deletingRecord()
+  if (!current)
+    return
+  deleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/print-devices/${current.id}`, { method: 'DELETE' })
+    deletingRecord.set(null)
+    detailsRecord.set(null)
+    pushToast('success', 'Print device deleted', { detail: current.name })
+    await loadPrintDevices()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete print device', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    deleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadPrintDevices()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Receipt printers" description="Manage native PrintDevice records and inspect their persisted operational state.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadPrintDevices"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" variant="secondary" :href="exportHref()" :download="exportFilename()"><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add printer</Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+
+  <MetricCards label="Print device metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
+
+  <PrintDeviceBreakdown :records="records()" />
+
+  <section class="flex flex-col gap-3">
+    <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search printers, locations, or terminals" ariaLabel="Search print devices" /></div>
+      <Select v-model:value="statusFilter" ariaLabel="Printer status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'online', label: 'Online' }, { value: 'warning', label: 'Warning' }, { value: 'offline', label: 'Offline' }]" />
+      <Select v-model:value="locationFilter" ariaLabel="Printer location" placeholder="" :options="[{ value: 'all', label: 'All locations' }, ...locations().map(location => ({ value: location, label: location }))]" />
+      <Select v-model:value="sort" ariaLabel="Sort print devices" placeholder="" :options="[{ value: 'name', label: 'Name' }, { value: 'prints', label: 'Most prints' }, { value: 'heartbeat', label: 'Recent heartbeat' }, { value: 'status', label: 'Status' }]" />
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ filteredRecords().length }} matching print devices</p>
+    </div>
+
+    <PrintDevicesTable :sort-reset-key="sort()" :page-reset-key="viewKey()" :records="filteredRecords()" :loading="loading()" @view="openDetails" @edit="openEdit" @delete="openDelete" />
+  </section>
+</div>
+
+<PrintDeviceDialog :open="dialogOpen()" :mode="dialogMode()" :record="editingRecord()" :busy="saving()" :errors="validationErrors()" @submit="savePrintDevice" @close="closeDialog()" />
+<PrintDeviceDetailsDialog :open="Boolean(detailsRecord())" :record="detailsRecord()" @edit="openEdit" @delete="openDelete" @close="closeDetails()" />
+<PrintDeviceDeleteDialog :open="Boolean(deletingRecord())" :record="deletingRecord()" :busy="deleting()" @confirm="deletePrintDevice()" @close="closeDelete()" />

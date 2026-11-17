@@ -1,0 +1,122 @@
+import { resolveApiBaseUrl } from '../../api-url'
+import type { Manufacturers } from '../../../types/defaults'
+import { withCsrfHeader } from '@stacksjs/browser/composables/csrf'
+import { useStorage } from '@stacksjs/browser/composables/useStorage'
+import { pushToast } from '../../toasts'
+
+// Create a persistent manufacturers array using STX useStorage
+const manufacturers = useStorage<Manufacturers[]>('manufacturers', [])
+
+const baseURL = resolveApiBaseUrl()
+
+// Basic fetch function to get all manufacturers
+async function fetchManufacturers(): Promise<Manufacturers[]> {
+  try {
+    const response = await fetch(`${baseURL}/commerce/product-manufacturers`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const { data } = await response.json() as { data: Manufacturers[] }
+
+    if (Array.isArray(data)) {
+      manufacturers.value = data
+      return data
+    }
+    else {
+      pushToast('error', 'Couldn\'t load manufacturers', { detail: 'Server returned a non-array response' })
+      return []
+    }
+  }
+  catch (error) {
+    pushToast('error', 'Error fetching manufacturers', { detail: String(error) })
+    return []
+  }
+}
+
+async function createManufacturer(manufacturer: Manufacturers): Promise<Manufacturers | null> {
+  try {
+    const response = await fetch(`${baseURL}/commerce/product-manufacturers`, {
+      method: 'POST',
+      headers: withCsrfHeader({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(manufacturer),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const { data } = await response.json() as { data: Manufacturers }
+    if (data) {
+      manufacturers.value.push(data)
+      return data
+    }
+    return null
+  }
+  catch (error) {
+    pushToast('error', 'Error creating manufacturer', { detail: String(error) })
+    return null
+  }
+}
+
+async function updateManufacturer(manufacturer: Manufacturers): Promise<Manufacturers | null> {
+  try {
+    const response = await fetch(`${baseURL}/commerce/product-manufacturers/${manufacturer.id}`, {
+      method: 'PATCH',
+      headers: withCsrfHeader({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(manufacturer),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const { data } = await response.json() as { data: Manufacturers }
+    if (data) {
+      const index = manufacturers.value.findIndex(m => m.id === manufacturer.id)
+      if (index !== -1) {
+        manufacturers.value[index] = data
+      }
+      return data
+    }
+    return null
+  }
+  catch (error) {
+    pushToast('error', 'Error updating manufacturer', { detail: String(error) })
+    return null
+  }
+}
+
+async function deleteManufacturer(id: number): Promise<boolean> {
+  try {
+    const response = await fetch(`${baseURL}/commerce/product-manufacturers/${id}`, {
+      method: 'DELETE',
+      headers: withCsrfHeader(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const index = manufacturers.value.findIndex(m => m.id === id)
+    if (index !== -1) {
+      manufacturers.value.splice(index, 1)
+    }
+
+    return true
+  }
+  catch (error) {
+    pushToast('error', 'Error deleting manufacturer', { detail: String(error) })
+    return false
+  }
+}
+
+// Export the composable
+export function useManufacturers() {
+  return {
+    manufacturers,
+    fetchManufacturers,
+    createManufacturer,
+    updateManufacturer,
+    deleteManufacturer,
+  }
+}

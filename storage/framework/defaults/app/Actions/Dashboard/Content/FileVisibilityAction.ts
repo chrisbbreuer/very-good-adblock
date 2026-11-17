@@ -1,0 +1,24 @@
+import type { RequestInstance } from '@stacksjs/types'
+import { Action } from '@stacksjs/actions/runtime'
+import { response } from '@stacksjs/router'
+import { setDashboardFileVisibility } from './file-manager'
+import { dashboardFileFailure } from './file-response'
+
+export default new Action({
+  name: 'FileVisibilityAction',
+  description: 'Sets a file or directory public or private on a configured storage disk.',
+  method: 'PUT',
+  async handle(request: RequestInstance) {
+    try {
+      const updated = await setDashboardFileVisibility({
+        disk: String(request.get('disk', 'public')),
+        path: request.get('path'),
+        visibility: request.get('visibility'),
+      })
+      return response.json(updated)
+    }
+    catch (error) {
+      return dashboardFileFailure(error, 'The visibility could not be changed.', 'FileVisibilityAction')
+    }
+  },
+})

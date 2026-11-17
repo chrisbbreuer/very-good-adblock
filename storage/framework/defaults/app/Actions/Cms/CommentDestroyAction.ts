@@ -1,0 +1,16 @@
+import { Action } from '@stacksjs/actions/runtime'
+import { comments } from '@stacksjs/cms'
+import { response } from '@stacksjs/router'
+
+export default new Action({
+  name: 'Comment Destroy',
+  description: 'Comment Destroy ORM Action',
+  method: 'DELETE',
+  async handle(request: RequestInstance) {
+    const id = Number(request.getParam('id'))
+
+    await comments.destroy(id)
+
+    return response.json({ message: 'Model deleted!' })
+  },
+})

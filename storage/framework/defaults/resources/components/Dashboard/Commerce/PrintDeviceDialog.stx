@@ -1,0 +1,84 @@
+<script client>
+import { formErrorMessages } from '../../../../functions/dashboard-form'
+import type {
+  PrintDeviceRecord,
+  PrintDeviceStatus,
+} from '../../../../app/Actions/Dashboard/Commerce/print-device-records'
+
+const open = useReactiveProp('open', false)
+const mode = useReactiveProp('mode', 'add')
+const record = useReactiveProp('record', null as PrintDeviceRecord | null)
+const busy = useReactiveProp('busy', false)
+const errors = useReactiveProp('errors', {} as Record<string, string>)
+const emit = defineEmits(['submit', 'close'])
+const name = state('')
+const macAddress = state('')
+const location = state('')
+const terminal = state('')
+const status = state<PrintDeviceStatus>('offline')
+let hydrationKey = ''
+
+effect(() => {
+  if (!open()) {
+    hydrationKey = ''
+    return
+  }
+  const current = record()
+  const key = `${mode()}:${current?.id || 'new'}`
+  if (hydrationKey === key)
+    return
+  hydrationKey = key
+  name.set(current?.name || '')
+  macAddress.set(current?.macAddress || '')
+  location.set(current?.location || '')
+  terminal.set(current?.terminal || '')
+  status.set(current?.status || 'offline')
+})
+
+function valid(): boolean {
+  return Boolean(name().trim() && macAddress().trim() && location().trim() && terminal().trim())
+}
+
+function submit(): void {
+  if (!valid())
+    return
+  emit('submit', {
+    name: name().trim(),
+    macAddress: macAddress().trim(),
+    location: location().trim(),
+    terminal: terminal().trim(),
+    status: status(),
+  })
+}
+
+function errorMessages(): string[] {
+  return formErrorMessages(errors())
+}
+</script>
+
+<Modal
+  :isOpen="open()"
+  :title="mode() === 'edit' ? 'Edit print device' : 'Add print device'"
+  description="Store fields declared by the PrintDevice model."
+  size="md"
+  @close="emit('close')"
+>
+    <form id="print-device-form" @submit.prevent="submit">
+        <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
+        </ul>
+        <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <div class="sm:col-span-2"><Input v-model:value="name" label="Name" :maxLength="100" :required="true" /></div>
+          <div class="sm:col-span-2"><Input v-model:value="macAddress" label="MAC address" :maxLength="50" :required="true" :spellcheck="false" :monospace="true" /></div>
+          <Input v-model:value="location" label="Location" :maxLength="100" :required="true" />
+          <Input v-model:value="terminal" label="Terminal" :maxLength="50" :required="true" :spellcheck="false" :monospace="true" />
+          <div class="sm:col-span-2"><Select v-model:value="status" label="Operational status" placeholder="" :options="[{ value: 'online', label: 'Online' }, { value: 'warning', label: 'Warning' }, { value: 'offline', label: 'Offline' }]" /></div>
+        </div>
+    </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+        <Button variant="secondary" :disabled="busy()" @click="emit('close')">Cancel</Button>
+        <Button type="submit" form="print-device-form" :loading="busy()" :disabled="!valid()">{{ mode() === 'edit' ? 'Save printer' : 'Add printer' }}</Button>
+    </div>
+  </template>
+</Modal>

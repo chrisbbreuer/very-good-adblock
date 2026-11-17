@@ -1,0 +1,81 @@
+<script server>
+interface DashboardLayoutProps {
+  currentPath?: string
+  fullWidth?: boolean
+  pageTitle?: string
+  pageDescription?: string
+  noPadding?: boolean
+  showSidebar?: boolean
+  showNavbar?: boolean
+}
+
+const {
+  currentPath = '/',
+  fullWidth = false,
+  pageTitle = '',
+  pageDescription = '',
+  noPadding = false,
+  showSidebar = true,
+  showNavbar = true,
+} = defineProps<DashboardLayoutProps>()
+</script>
+
+<script client>
+import { ensureCraftNativeSidebarMarker } from '../../../functions/craft'
+
+ensureCraftNativeSidebarMarker()
+useEventListener('craft:ready', ensureCraftNativeSidebarMarker)
+</script>
+
+<div class="min-h-screen bg-white dark:bg-neutral-950">
+  @if(showSidebar)
+    <MobileSidebar>
+      <Sidebar placement="static" width="320" className="h-full max-w-full" />
+    </MobileSidebar>
+    <div class="hidden lg:block">
+      <Sidebar />
+    </div>
+  @endif
+
+  <div class="flex flex-col min-h-screen {{ showSidebar ? 'lg:pl-64' : '' }}">
+    @if(showNavbar)
+      <Navbar currentPath="{{ currentPath }}" />
+    @endif
+
+    @if($slots.header || pageTitle)
+      <div class="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+        <div class="px-4 lg:px-6 py-4 {{ fullWidth ? '' : 'max-w-7xl mx-auto' }}">
+          @if($slots.header)
+            <slot name="header" />
+          @else
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 class="font-bold text-2xl text-neutral-900 dark:text-white">{{ pageTitle }}</h1>
+                @if(pageDescription)
+                  <p class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">{{ pageDescription }}</p>
+                @endif
+              </div>
+              <slot name="header-actions" />
+            </div>
+          @endif
+        </div>
+      </div>
+    @endif
+
+    <main class="{{ noPadding ? '' : 'px-4 lg:px-6 py-6' }} flex-1">
+      <div class="{{ fullWidth ? '' : 'max-w-7xl mx-auto' }}">
+        <slot />
+      </div>
+    </main>
+
+    @if($slots.footer)
+      <footer class="bg-white dark:bg-neutral-900 border-neutral-200 border-t dark:border-neutral-800">
+        <div class="px-4 lg:px-6 py-4 {{ fullWidth ? '' : 'max-w-7xl mx-auto' }}">
+          <slot name="footer" />
+        </div>
+      </footer>
+    @endif
+
+    <slot name="overlays" />
+  </div>
+</div>

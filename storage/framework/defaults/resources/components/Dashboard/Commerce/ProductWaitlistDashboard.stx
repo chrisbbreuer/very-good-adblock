@@ -1,0 +1,237 @@
+<script client>
+import type { ProductWaitlistRecord, ProductWaitlistSummary, ProductWaitlistWritePayload } from '../../../../app/Actions/Dashboard/Commerce/product-waitlist-records'
+import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { pushToast } from '../../../../functions/toasts'
+
+interface ProductWaitlistResponse {
+  records: ProductWaitlistRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: ProductWaitlistSummary
+}
+
+const summary = state<ProductWaitlistSummary>({ total: 0, waiting: 0, notified: 0, purchased: 0, conversionRate: 0 })
+/** Whether any product exists, so an entry can be added at all. */
+const hasProducts = state(true)
+const status = state('all')
+const entryDialogOpen = state(false)
+const entryDialogMode = state<'add' | 'edit'>('add')
+const editingRecord = state<ProductWaitlistRecord | null>(null)
+const deleteRecord = state<ProductWaitlistRecord | null>(null)
+const isSaving = state(false)
+const isDeleting = state(false)
+const validationErrors = state<Record<string, string>>({})
+const metrics = derived(() => [
+  { label: 'Recorded', value: summary().total },
+  { label: 'Waiting', value: summary().waiting },
+  { label: 'Notified', value: summary().notified },
+  { label: 'Purchased', value: summary().purchased },
+  { label: 'Conversion', value: `${summary().conversionRate}%` },
+])
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  name: 'name',
+  productName: 'product',
+  quantity: 'quantity',
+  status: 'status',
+  notificationPreference: 'preference',
+  createdAt: 'created',
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading: isLoading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<ProductWaitlistRecord>({
+  fetch: query => dashboardApi<ProductWaitlistResponse>(`/api/dashboard/commerce/waitlist-products?${query}`),
+  defaultSort: { sort: 'created', direction: 'desc' },
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ status: status() }),
+  onLoad: (result) => {
+    summary.set((result as ProductWaitlistResponse).summary ?? { total: 0, waiting: 0, notified: 0, purchased: 0, conversionRate: 0 })
+  },
+  onError: error => pushToast('error', 'Could not load product waitlist', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'entry' : 'entries'}`
+}
+
+function openAddDialog(): void {
+  entryDialogMode.set('add')
+  editingRecord.set(null)
+  validationErrors.set({})
+  entryDialogOpen.set(true)
+}
+
+function openEditDialog(record: ProductWaitlistRecord): void {
+  entryDialogMode.set('edit')
+  editingRecord.set(record)
+  validationErrors.set({})
+  entryDialogOpen.set(true)
+}
+
+function closeEntryDialog(): void {
+  if (isSaving())
+    return
+  entryDialogOpen.set(false)
+  editingRecord.set(null)
+  validationErrors.set({})
+}
+
+function openDeleteDialog(record: ProductWaitlistRecord): void {
+  deleteRecord.set(record)
+}
+
+function closeDeleteDialog(): void {
+  if (!isDeleting())
+    deleteRecord.set(null)
+}
+
+function loadRecords(): Promise<void> {
+  return load()
+}
+
+/** Whether there is any product to make an entry for: one choice is enough to know. */
+async function loadHasProducts(): Promise<void> {
+  try {
+    const result = await dashboardApi<{ total?: number }>('/api/dashboard/commerce/product-choices?limit=1')
+    hasProducts.set(Number(result.total) > 0)
+  }
+  catch {
+    // Unknown: leave Add enabled, and the dialog says when nothing matches.
+    hasProducts.set(true)
+  }
+}
+
+async function saveRecord(payload: ProductWaitlistWritePayload): Promise<void> {
+  const current = editingRecord()
+  const isEditing = entryDialogMode() === 'edit' && current !== null
+  const path = isEditing
+    ? `/api/dashboard/commerce/waitlist-products/${current.id}`
+    : '/api/dashboard/commerce/waitlist-products'
+  const method = isEditing ? 'PATCH' : 'POST'
+
+  isSaving.set(true)
+  validationErrors.set({})
+  try {
+    await dashboardApi(path, { method, body: payload })
+    entryDialogOpen.set(false)
+    editingRecord.set(null)
+    pushToast('success', isEditing ? 'Waitlist entry updated' : 'Waitlist entry added')
+    await loadRecords()
+  }
+  catch (error) {
+    if (error instanceof DashboardApiError)
+      validationErrors.set(error.fields ?? {})
+    pushToast('error', 'Could not save waitlist entry', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    isSaving.set(false)
+  }
+}
+
+async function deleteSelectedRecord(): Promise<void> {
+  const current = deleteRecord()
+  if (!current)
+    return
+
+  isDeleting.set(true)
+  try {
+    await dashboardApi(`/api/dashboard/commerce/waitlist-products/${current.id}`, { method: 'DELETE' })
+    deleteRecord.set(null)
+    pushToast('success', 'Waitlist entry deleted')
+    await loadRecords()
+  }
+  catch (error) {
+    pushToast('error', 'Could not delete waitlist entry', {
+      detail: error instanceof Error ? error.message : String(error),
+    })
+  }
+  finally {
+    isDeleting.set(false)
+  }
+}
+
+onMount(() => {
+  void loadRecords()
+  void loadHasProducts()
+})
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageHeader title="Product Waitlist" description="Native WaitlistProduct records without simulated customers or activity.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="isLoading()" @click="loadRecords">
+      <span :if="!isLoading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button :disabled="isLoading() || !hasProducts()" @click="openAddDialog()">
+      <span class="h-4 w-4 i-hugeicons-add-01"></span>
+      Add entry
+    </Button>
+  </div>
+  </PageHeader>
+
+  <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
+  <div :if="!isLoading() && !hasProducts()" class="p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+    Add a product before creating a product waitlist entry.
+  </div>
+
+  <section class="grid gap-3 grid-cols-2 lg:grid-cols-5">
+    <div :for="item in metrics()" class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">{{ item.label }}</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 class="font-semibold text-gray-900 dark:text-white">Waitlist entries</h2>
+        <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
+      </div>
+      <div class="flex gap-2">
+        <Select v-model:value="status" id="waitlist-status" ariaLabel="Status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, { value: 'waiting', label: 'Waiting' }, { value: 'notified', label: 'Notified' }, { value: 'purchased', label: 'Purchased' }, { value: 'cancelled', label: 'Cancelled' }]" />
+        <SearchFilter v-model:searchValue="search" placeholder="Search waitlist" ariaLabel="Search waitlist" class="w-56" />
+      </div>
+    </div>
+
+    <ProductWaitlistTable :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="isLoading()" @edit="openEditDialog" @delete="openDeleteDialog" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
+  </section>
+</div>
+
+<ProductWaitlistEntryDialog
+  :open="entryDialogOpen()"
+  :mode="entryDialogMode()"
+  :record="editingRecord()"
+  :busy="isSaving()"
+  :errors="validationErrors()"
+  @submit="saveRecord"
+  @close="closeEntryDialog()"
+/>
+
+<ProductWaitlistDeleteDialog
+  :open="Boolean(deleteRecord())"
+  :record="deleteRecord()"
+  :busy="isDeleting()"
+  @confirm="deleteSelectedRecord()"
+  @close="closeDeleteDialog()"
+/>

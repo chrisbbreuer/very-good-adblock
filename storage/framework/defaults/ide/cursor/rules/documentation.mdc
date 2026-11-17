@@ -1,0 +1,9 @@
+---
+description: Documentation specific rules
+globs: docs/**/*.md
+---
+## Documentation
+
+- Write documentation for all functions, types, interfaces, and ensure examples are accurate
+- The `./docs` directory contains the BunPress Markdown documentation
+- Make sure to update the docs markdown files

@@ -1,0 +1,55 @@
+<script client>
+import type { RegisterCredentials } from '../../../../types/dashboard'
+import { describeAuthError, safeAuthRedirect, useAuth } from '../../../../functions/auth'
+// Branding passes through to the card: an Iconify class for the mark and a short line above the title (stacksjs/stacks#3086).
+const icon = useReactiveProp<string>('icon', 'i-hugeicons-cube')
+const eyebrow = useReactiveProp<string>('eyebrow', '')
+
+const { register } = useAuth()
+const route = useRoute()
+
+const isLoading = state(false)
+const error = state('')
+
+function safeRedirect(): string {
+  // Same destinations as sign-in: `?redirect=` from links, `?next=` from the page gate.
+  return safeAuthRedirect(route.query.redirect ?? route.query.next)
+}
+
+async function handleRegister(credentials: RegisterCredentials): Promise<void> {
+  isLoading.set(true)
+  error.set('')
+
+  try {
+    const result = await register(credentials)
+
+    if (!result || !('token' in result)) {
+      error.set(describeAuthError(result, 'Registration failed'))
+      return
+    }
+
+    navigate(safeRedirect())
+  }
+  catch (err) {
+    error.set(err instanceof Error ? err.message : 'An error occurred during registration')
+  }
+  finally {
+    isLoading.set(false)
+  }
+}
+</script>
+
+<template>
+  <Register
+    :icon="icon()"
+    :eyebrow="eyebrow()"
+    @submit="handleRegister"
+    :isLoading="isLoading()"
+    :error="error()"
+    :data-auth-status="isLoading() ? 'loading' : 'ready'"
+  >
+    <!-- Forwarded so the page mounting this container can put social
+         sign-in inside the card. -->
+    <template #social><slot name="social" /></template>
+  </Register>
+</template>

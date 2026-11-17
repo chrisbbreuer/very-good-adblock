@@ -1,0 +1,30 @@
+import { Action } from '@stacksjs/actions/runtime'
+import { generateTwoFactorSetup, stashPendingTwoFactorSecret } from '@stacksjs/auth'
+import { config } from '@stacksjs/config'
+import { response } from '@stacksjs/router'
+
+export default new Action({
+  name: 'GenerateTwoFactorSecretAction',
+  description: 'Generate a new TOTP secret, otpauth URI and scannable QR code for the authenticated user',
+  method: 'POST',
+  async handle(request: RequestInstance) {
+    const user = await request.user()
+    if (!user)
+      return response.unauthorized('Unauthorized')
+
+    const appName = config.app?.name || 'Stacks'
+
+    // `qr` is an SVG string of `uri`, rendered by @stacksjs/auth so an app that
+    // overrides this action still gets one. Clients that render their own QR
+    // code have `uri`; clients that offer manual entry have `secret`.
+    const { secret, uri, qr } = generateTwoFactorSetup(user.email ?? '', appName)
+
+    // Not persisted to users.two_factor_secret until EnableTwoFactorAction
+    // verifies a code produced from it — but stashed server-side now so
+    // that step never has to trust a client-supplied secret. See
+    // two-factor.ts's doc comment for why.
+    await stashPendingTwoFactorSecret(user.id as number, secret)
+
+    return response.json({ secret, uri, qr })
+  },
+})

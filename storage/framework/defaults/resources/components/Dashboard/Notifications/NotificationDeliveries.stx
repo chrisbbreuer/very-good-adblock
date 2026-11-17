@@ -1,0 +1,163 @@
+<script client>
+import type {
+  DashboardDeliveryChannel,
+  NotificationDelivery,
+} from '../../../../functions/notifications/deliveries'
+import {
+  fetchNotificationDeliveries,
+  retryNotificationDelivery,
+} from '../../../../functions/notifications/deliveries'
+
+const channel = useReactiveProp('channel', 'email' as DashboardDeliveryChannel)
+const title = useReactiveProp('title', 'Notification Deliveries')
+const description = useReactiveProp('description', 'Monitor notification transport attempts.')
+
+const deliveries = state<NotificationDelivery[]>([])
+const isLoading = state(true)
+const searchQuery = state('')
+const selectedStatus = state('all')
+const showFilters = state(false)
+const sortDirection = state<'asc' | 'desc'>('desc')
+const selectedDelivery = state<NotificationDelivery | null>(null)
+const showDetails = state(false)
+const retryingId = state<number | null>(null)
+
+const filteredDeliveries = derived(() => {
+  const query = searchQuery().trim().toLowerCase()
+  const status = selectedStatus()
+
+  return deliveries().filter((delivery) => {
+    if (status !== 'all' && delivery.status !== status)
+      return false
+    if (!query)
+      return true
+
+    return delivery.recipient.toLowerCase().includes(query)
+      || delivery.subject.toLowerCase().includes(query)
+      || delivery.body.toLowerCase().includes(query)
+      || delivery.error.toLowerCase().includes(query)
+  })
+})
+
+const sortedDeliveries = derived(() => [...filteredDeliveries()].sort((a, b) => {
+  const comparison = new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
+  return sortDirection() === 'asc' ? comparison : -comparison
+}))
+
+const sentCount = derived(() => deliveries().filter(delivery => delivery.status === 'sent' || delivery.status === 'delivered').length)
+const failedCount = derived(() => deliveries().filter(delivery => delivery.status === 'failed').length)
+const pendingCount = derived(() => deliveries().filter(delivery => delivery.status === 'pending').length)
+
+/**
+ * What the table is showing: a change returns it to the first page, as this
+ * page's own pager did before the table took over paging.
+ */
+const viewKey = derived(() => JSON.stringify([searchQuery().trim(), selectedStatus(), sortDirection()]))
+
+/**
+ * A component event reaches this handler as the emitted value, not as a
+ * CustomEvent, so reading `.detail` gave undefined: View opened an empty
+ * dialog and Retry did nothing (stacksjs/stacks#2977). Accept either.
+ */
+function eventValue<T>(value: T | CustomEvent<T>): T {
+  return value instanceof CustomEvent ? value.detail : value
+}
+
+function openDelivery(event: NotificationDelivery | CustomEvent<NotificationDelivery>): void {
+  selectedDelivery.set(eventValue(event))
+  showDetails.set(true)
+}
+
+function closeDelivery(): void {
+  showDetails.set(false)
+  selectedDelivery.set(null)
+}
+
+async function loadDeliveries(): Promise<void> {
+  isLoading.set(true)
+  deliveries.set(await fetchNotificationDeliveries(channel()))
+  isLoading.set(false)
+}
+
+async function retryDelivery(event: NotificationDelivery | CustomEvent<NotificationDelivery>): Promise<void> {
+  const delivery = eventValue(event)
+  retryingId.set(delivery.id)
+  const retried = await retryNotificationDelivery(delivery)
+  if (retried)
+    await loadDeliveries()
+  retryingId.set(null)
+}
+
+function resetFilters(): void {
+  searchQuery.set('')
+  selectedStatus.set('all')
+  sortDirection.set('desc')
+}
+
+onMount(loadDeliveries)
+</script>
+
+<section class="py-4 lg:py-8 min-h-screen dark:bg-neutral-800">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="mb-6">
+      <NotificationNavigation :active="channel" />
+    </div>
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h1 class="font-bold text-2xl text-gray-900 dark:text-neutral-100">{{ title }}</h1>
+        <p class="mt-2 text-gray-700 text-sm dark:text-neutral-300">{{ description }}</p>
+      </div>
+      <div class="sm:flex-none mt-4 sm:ml-16 sm:mt-0">
+        <Button variant="secondary" @click="showFilters.update(value => !value)">
+          <span class="h-5 w-5 i-hugeicons-filter"></span>
+          {{ showFilters ? 'Hide Filters' : 'Show Filters' }}
+        </Button>
+      </div>
+    </div>
+
+    <dl class="grid gap-3 grid-cols-2 lg:grid-cols-4 mt-6">
+      <div class="px-4 py-3 bg-white dark:bg-neutral-700 ring-1 ring-gray-200 rounded-lg dark:ring-neutral-600">
+        <dt class="text-gray-500 text-xs dark:text-neutral-400">Attempts</dt>
+        <dd class="mt-1 font-semibold text-gray-900 text-xl dark:text-white">{{ deliveries.length }}</dd>
+      </div>
+      <div class="px-4 py-3 bg-white dark:bg-neutral-700 ring-1 ring-gray-200 rounded-lg dark:ring-neutral-600">
+        <dt class="text-gray-500 text-xs dark:text-neutral-400">Sent</dt>
+        <dd class="mt-1 font-semibold text-green-700 text-xl dark:text-green-300">{{ sentCount }}</dd>
+      </div>
+      <div class="px-4 py-3 bg-white dark:bg-neutral-700 ring-1 ring-gray-200 rounded-lg dark:ring-neutral-600">
+        <dt class="text-gray-500 text-xs dark:text-neutral-400">Failed</dt>
+        <dd class="mt-1 font-semibold text-red-700 text-xl dark:text-red-300">{{ failedCount }}</dd>
+      </div>
+      <div class="px-4 py-3 bg-white dark:bg-neutral-700 ring-1 ring-gray-200 rounded-lg dark:ring-neutral-600">
+        <dt class="text-gray-500 text-xs dark:text-neutral-400">Pending</dt>
+        <dd class="mt-1 font-semibold text-amber-700 text-xl dark:text-amber-300">{{ pendingCount }}</dd>
+      </div>
+    </dl>
+
+    <div :show="showFilters" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+      <SearchFilter v-model:searchValue="searchQuery" placeholder="Search recipient or content..." ariaLabel="Search notification deliveries" />
+      <Select v-model:value="selectedStatus" ariaLabel="Delivery status" placeholder="" :options="[{ value: 'all', label: 'All Statuses' }, { value: 'sent', label: 'Sent' }, { value: 'delivered', label: 'Delivered' }, { value: 'failed', label: 'Failed' }, { value: 'pending', label: 'Pending' }]" />
+      <Select v-model:value="sortDirection" ariaLabel="Attempt order" placeholder="" :options="[{ value: 'desc', label: 'Newest First' }, { value: 'asc', label: 'Oldest First' }]" />
+      <div>
+        <Button variant="secondary" @click="resetFilters()">Reset Filters</Button>
+      </div>
+    </div>
+
+    <div class="mt-8">
+      <NotificationDeliveryTable
+        :deliveries="sortedDeliveries"
+        :paginated="true"
+        :sort-reset-key="sortDirection"
+        :page-reset-key="viewKey"
+        :loading="isLoading"
+        :actions="true"
+        :retryingId="retryingId"
+        :emptyMessage="'No ' + (channel === 'email' ? 'email' : 'SMS') + ' delivery attempts have been recorded.'"
+        @view="openDelivery($event)"
+        @retry="retryDelivery($event)"
+      />
+    </div>
+  </div>
+
+  <NotificationDeliveryDialog :open="showDetails" :delivery="selectedDelivery" @close="closeDelivery()" />
+</section>

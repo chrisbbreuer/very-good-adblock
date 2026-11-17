@@ -1,0 +1,14 @@
+@extends('layouts/default')
+
+@section('content')
+@title('Dashboard - Content Categories')
+
+<div class="p-4 lg:p-8 min-h-[100dvh] dark:bg-neutral-900">
+  <ContentTaxonomyDashboard
+    resource="categories"
+    title="Categories"
+    description="Group posts and products into categories. One set of categories serves both."
+  />
+</div>
+
+@endsection

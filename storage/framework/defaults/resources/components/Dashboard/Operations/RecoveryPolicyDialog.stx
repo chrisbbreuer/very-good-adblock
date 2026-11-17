@@ -1,0 +1,103 @@
+<script client>
+import type { BackupResourceKind, RecoveryDataService, RecoveryDestination, RecoveryPolicyInput, RecoveryResource } from '../../../../functions/operations'
+
+const open = useReactiveProp('isOpen', false)
+const busy = useReactiveProp('busy', false)
+const destinationItems = useReactiveProp('destinations', [])
+const resourceItems = useReactiveProp('resources', [])
+const serviceItems = useReactiveProp('dataServices', [])
+const emit = defineEmits(['close', 'save'])
+
+const name = state('')
+const destinationId = state('')
+const resourceKind = state<BackupResourceKind>('control_plane')
+const resourceId = state('')
+const dataServiceId = state('')
+const includePatterns = state('')
+const excludePatterns = state('storage/framework/runtime,storage/framework/stx')
+const schedule = state('daily')
+const timezone = state('UTC')
+// Text, as the shared input reports it; a number where it is sent.
+const keepLast = state('7')
+const expireAfterDays = state('30')
+const expectedRpoMinutes = state('1440')
+const expectedRtoMinutes = state('120')
+const compression = state<RecoveryPolicyInput['compression']>('gzip')
+const enabled = state(true)
+
+function destinations(): RecoveryDestination[] { return destinationItems() as RecoveryDestination[] }
+function resources(): RecoveryResource[] { return resourceItems() as RecoveryResource[] }
+function dataServices(): RecoveryDataService[] { return serviceItems() as RecoveryDataService[] }
+
+function close(): void {
+  if (!busy()) emit('close')
+}
+
+function split(value: string): string[] {
+  return value.split(',').map(entry => entry.trim()).filter(Boolean)
+}
+
+function submit(): void {
+  emit('save', {
+    name: name().trim(),
+    destinationId: destinationId(),
+    resourceKind: resourceKind(),
+    resourceId: resourceId() || undefined,
+    dataServiceId: dataServiceId() || undefined,
+    includePatterns: split(includePatterns()),
+    excludePatterns: split(excludePatterns()),
+    schedule: schedule().trim(),
+    timezone: timezone().trim(),
+    keepLast: Number(keepLast()),
+    expireAfterDays: Number(expireAfterDays()),
+    compression: compression(),
+    expectedRpoMinutes: Number(expectedRpoMinutes()),
+    expectedRtoMinutes: Number(expectedRtoMinutes()),
+    enabled: enabled(),
+  } satisfies RecoveryPolicyInput)
+}
+</script>
+
+<Modal :isOpen="open()" title="Create recovery policy" description="Define the source once. The native recovery queue handles scheduled and on-demand runs." size="lg" :closable="!busy()" @close="close">
+  <form id="recovery-policy-form" class="grid gap-4" @submit.prevent="submit">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Input v-model:value="name" id="recovery-policy-name" label="Policy name" :required="true" placeholder="Daily control plane" />
+      <Select v-model:value="destinationId" id="recovery-policy-destination" label="Destination" :required="true" placeholder="Choose destination" :options="destinations().map(destination => ({ value: destination.id, label: destination.name + ' (' + destination.status + ')' }))" />
+      <Select v-model:value="resourceKind" id="recovery-policy-kind" label="Source type" placeholder="" :options="[{ value: 'control_plane', label: 'Control plane' }, { value: 'files', label: 'Project files' }, { value: 'logical_database', label: 'Logical database' }, { value: 'managed_database', label: 'Managed database' }, { value: 'volume', label: 'Docker volume' }, { value: 'infrastructure', label: 'AWS infrastructure' }]" />
+      <div :if="resourceKind() === 'files' || resourceKind() === 'volume'">
+        <Select v-model:value="resourceId" id="recovery-policy-resource" label="Resource" :required="true" placeholder="Choose resource" :options="resources().map(resource => ({ value: resource.id, label: resource.name + ' (' + resource.kind + ')' }))" />
+      </div>
+      <div :if="resourceKind() === 'logical_database' || resourceKind() === 'managed_database'">
+        <Select v-model:value="dataServiceId" id="recovery-policy-service" label="Data service" :required="true" placeholder="Choose data service" :options="dataServices().map(service => ({ value: service.id, label: service.name + ' (' + service.engine + ')' }))" />
+      </div>
+    </div>
+
+    <div :if="resourceKind() === 'files' || resourceKind() === 'volume' || resourceKind() === 'infrastructure'">
+      <Input v-model:value="includePatterns" id="recovery-policy-includes" label="Include entries" :required="true" placeholder="storage/app,public/uploads" :spellcheck="false" hint="Comma separated. Volumes use a volume name. Infrastructure uses resource:arn: and role:arn: entries." />
+    </div>
+    <div :if="resourceKind() === 'files'">
+      <Input v-model:value="excludePatterns" id="recovery-policy-excludes" label="Exclude patterns" :spellcheck="false" />
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Input v-model:value="schedule" id="recovery-policy-schedule" label="Schedule" :required="true" placeholder="daily" :spellcheck="false" />
+      <Input v-model:value="timezone" id="recovery-policy-timezone" label="Timezone" :required="true" :spellcheck="false" />
+      <Input v-model:value="expectedRpoMinutes" id="recovery-policy-rpo" label="RPO minutes" type="number" min="1" step="1" inputmode="numeric" :required="true" />
+      <Input v-model:value="expectedRtoMinutes" id="recovery-policy-rto" label="RTO minutes" type="number" min="1" step="1" inputmode="numeric" :required="true" />
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <Input v-model:value="keepLast" id="recovery-policy-keep" label="Keep latest" type="number" min="1" step="1" inputmode="numeric" :required="true" />
+      <Input v-model:value="expireAfterDays" id="recovery-policy-expire" label="Expire after days" type="number" min="1" step="1" inputmode="numeric" :required="true" />
+      <Select v-model:value="compression" id="recovery-policy-compression" label="Compression" placeholder="" :options="[{ value: 'gzip', label: 'Gzip' }, { value: 'zstd', label: 'Zstandard' }, { value: 'none', label: 'None' }]" />
+    </div>
+    <div>
+      <Toggle v-model:checked="enabled" label="Enable scheduled runs" />
+    </div>
+  </form>
+  <template #footer>
+    <div class="flex gap-2 justify-end w-full">
+      <Button variant="secondary" :disabled="busy()" @click="close">Cancel</Button>
+      <Button type="submit" form="recovery-policy-form" :loading="busy()" :disabled="destinations().length === 0">Create policy</Button>
+    </div>
+  </template>
+</Modal>

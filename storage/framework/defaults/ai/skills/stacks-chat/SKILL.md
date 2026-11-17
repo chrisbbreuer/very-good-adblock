@@ -1,0 +1,584 @@
+---
+name: stacks-chat
+description: Use when implementing chat messaging in Stacks - sending messages to Slack (webhooks, bot tokens, block kit), Discord (webhooks, bot tokens, embeds), Microsoft Teams (adaptive cards, webhooks), the BaseChatDriver abstraction, retry logic, multi-channel chat routing, or READING a person's conversations from iMessage, WhatsApp, Slack and Discord and archiving them there (the inbox drivers). Covers @stacksjs/chat.
+license: MIT
+compatibility: Bun >= 1.3.0, TypeScript
+allowed-tools: Read Edit Write Bash Grep Glob
+---
+
+# Stacks Chat
+
+Native direct messaging accepts an optional `onMessageSent` callback in its
+messenger options. It receives `{ message, actorId, recipientId, scope,
+participantType }` once for each newly saved message, after an enclosing
+transaction commits. Duplicate send retries and rolled-back messages do not
+run it. Connect notification jobs there; a callback failure is logged without
+turning a saved message into a failed send.
+
+Multi-driver chat messaging with Slack, Discord, and Microsoft Teams support. Each driver supports both webhook and bot token modes, with retry logic and structured message formats.
+
+## Key Paths
+- Core package: `storage/framework/core/chat/src/`
+- Types: `storage/framework/core/types/src/chat.ts`
+
+## Source Files
+```
+chat/src/
+├── index.ts              # router, configure functions, type re-exports
+└── drivers/
+    ├── base.ts           # BaseChatDriver abstract class
+    ├── slack.ts          # SlackDriver + sendWebhook()
+    ├── discord.ts        # DiscordDriver + sendWebhook() + sendEmbed()
+    └── teams.ts          # TeamsDriver + sendWebhook() + sendCard()
+```
+
+## Router (index.ts)
+
+The main `send()` function routes to the specified driver. Default driver is `'slack'`:
+
+```typescript
+import { send, sendToSlack, sendToDiscord, sendToTeams } from '@stacksjs/chat'
+
+// Route to driver (default: 'slack')
+await send(message, { driver: 'slack' })
+await send(message, { driver: 'discord' })
+await send(message, { driver: 'teams' })
+
+// Direct webhook helpers
+await sendToSlack(webhookUrl, text, options?)
+await sendToDiscord(webhookUrl, content, options?)
+await sendToTeams(webhookUrl, text)
+```
+
+Settings come from `config/services.ts` by default, read on each send after the
+app's config has loaded: `SLACK_WEBHOOK_URL` / `SLACK_BOT_TOKEN`,
+`DISCORD_WEBHOOK_URL` / `DISCORD_BOT_TOKEN`, `TEAMS_WEBHOOK_URL`, and each
+driver's `*_MAX_RETRIES` / `*_RETRY_TIMEOUT`. A webhook URL from config passes
+the same HTTPS and host checks as one given to `configure*()`.
+
+The configure functions override config, for an app that keeps these elsewhere:
+```typescript
+import { configureSlack, configureDiscord, configureTeams } from '@stacksjs/chat'
+configureSlack({ webhookUrl: '...', botToken: '...' })
+configureDiscord({ webhookUrl: '...', botToken: '...' })
+configureTeams({ webhookUrl: '...' })
+```
+
+Exported types: `ChatDriver` (union), `SendOptions`, `SlackConfig`, `SlackMessage`, `SlackBlock`, `SlackAttachment`, `DiscordConfig`, `DiscordMessage`, `DiscordEmbed`, `TeamsConfig`, `TeamsMessage`, `TeamsAdaptiveCard`, `TeamsCardElement`, `TeamsCardAction`
+
+## BaseChatDriver (base.ts)
+
+Abstract base class all drivers extend. Implements `ChatDriver` interface from `@stacksjs/types`:
+
+```typescript
+abstract class BaseChatDriver implements ChatDriver {
+  public abstract name: string
+  protected config: Required<ChatDriverConfig>
+
+  constructor(config?: ChatDriverConfig)  // defaults: maxRetries=3, retryTimeout=1000
+
+  configure(config: ChatDriverConfig): void
+  abstract send(message: ChatMessage, options?: RenderOptions): Promise<ChatResult>
+
+  // Protected helpers
+  protected validateMessage(message: ChatMessage): boolean  // throws if no `to` or no `content`/`template`
+  protected async handleError(error: unknown, message: ChatMessage): Promise<ChatResult>
+  protected async handleSuccess(message: ChatMessage, messageId?: string): Promise<ChatResult>
+}
+```
+
+- `handleError()` logs the error, then calls `message.onError()` if defined, returns `ChatResult` with `success: false`
+- `handleSuccess()` calls `message.handle()` first, then `message.onSuccess()` if defined, returns `ChatResult` with `success: true`
+- Both handlers merge any partial result from callbacks into the final `ChatResult`
+
+## ChatMessage Interface (from @stacksjs/types)
+
+```typescript
+interface ChatMessage {
+  to?: string | string[]               // a bot token's channel or user ID; omit for a webhook
+  from?: { id?: string, name?: string, avatar?: string }
+  subject?: string                      // title for rich messages
+  content?: string                      // plain text content
+  template?: string                     // template for rich message rendering
+  data?: Record<string, any>           // template data
+  attachments?: ChatAttachment[]
+  onSuccess?: () => void | Promise<void> | Partial<ChatResult>
+  onError?: (error: Error) => void | Promise<void> | Partial<ChatResult>
+  handle?: () => void | Promise<void> | Partial<ChatResult>
+  [key: string]: any                    // custom platform-specific fields
+}
+```
+
+## ChatResult Interface (from @stacksjs/types)
+
+```typescript
+interface ChatResult {
+  success: boolean
+  message: string
+  provider: string                      // 'slack' | 'discord' | 'teams'
+  messageId?: string
+  data?: Record<string, any>
+}
+```
+
+## Slack Driver
+
+### SlackConfig
+```typescript
+interface SlackConfig {
+  webhookUrl?: string
+  botToken?: string
+  maxRetries?: number       // default: 3
+  retryTimeout?: number     // default: 1000ms
+}
+```
+
+### SlackMessage (for webhook payloads)
+```typescript
+interface SlackMessage {
+  channel?: string
+  text?: string
+  blocks?: SlackBlock[]
+  attachments?: SlackAttachment[]
+  username?: string
+  iconEmoji?: string
+  iconUrl?: string
+  threadTs?: string
+  mrkdwn?: boolean
+}
+```
+
+### SlackBlock
+```typescript
+interface SlackBlock {
+  type: 'section' | 'divider' | 'header' | 'context' | 'actions' | 'image'
+  text?: { type: 'plain_text' | 'mrkdwn', text: string, emoji?: boolean }
+  accessory?: any
+  elements?: any[]
+  block_id?: string
+}
+```
+
+### SlackAttachment
+```typescript
+interface SlackAttachment {
+  color?: string
+  pretext?: string
+  author_name?: string
+  author_link?: string
+  author_icon?: string
+  title?: string
+  title_link?: string
+  text?: string
+  fields?: Array<{ title: string, value: string, short?: boolean }>
+  image_url?: string
+  thumb_url?: string
+  footer?: string
+  footer_icon?: string
+  ts?: number
+}
+```
+
+### Slack Sending Modes
+
+1. **Webhook mode**: If `config.webhookUrl` is set, sends via `POST` to webhook URL. Payload includes `text`, `username`, `mrkdwn: true`. If `message.template` exists, builds Block Kit blocks. Needs no `message.to`.
+2. **Bot token mode**: If `config.botToken` is set, sends via Slack API `https://slack.com/api/chat.postMessage` with `Authorization: Bearer <token>`, to the channel in `message.to` (required). Returns `ts` (timestamp) as message ID.
+
+`send()` treats `content` as the plain text `ChatMessage` says it is: `&`, `<`
+and `>` are escaped (`escapeSlackText`), so `<!channel>` or a disguised
+`<url|label>` in user text arrives as literal text instead of pinging the
+channel or hiding a link. Plain URLs still link. `sendWebhook(url, text)` is
+raw, for Slack markup written on purpose.
+3. Throws `Error('Slack not configured: provide webhookUrl or botToken')` if neither is set.
+
+### Direct Webhook Function
+```typescript
+async function sendWebhook(webhookUrl: string, text: string, options?: Partial<SlackMessage>): Promise<ChatResult>
+```
+Merges `options` into payload, sends POST to the provided webhook URL.
+
+### Block Building
+When `message.template` is set, `buildBlocks()` creates:
+- A `header` block from `message.subject` (if present)
+- A `section` block from `message.content` with `mrkdwn` type
+
+### Exports
+- `SlackDriver` class (also as `Driver`)
+- `driver` -- pre-instantiated `SlackDriver` singleton
+- `send()`, `sendWebhook()`, `configure()` functions
+
+## Discord Driver
+
+### DiscordConfig
+```typescript
+interface DiscordConfig {
+  webhookUrl?: string
+  botToken?: string
+  maxRetries?: number       // default: 3
+  retryTimeout?: number     // default: 1000ms
+}
+```
+
+### DiscordEmbed
+```typescript
+interface DiscordEmbed {
+  title?: string
+  description?: string
+  url?: string
+  color?: number              // integer color value (e.g. 0x5865F2)
+  timestamp?: string          // ISO 8601
+  footer?: { text: string, icon_url?: string }
+  image?: { url: string }
+  thumbnail?: { url: string }
+  author?: { name: string, url?: string, icon_url?: string }
+  fields?: Array<{ name: string, value: string, inline?: boolean }>
+}
+```
+
+### DiscordMessage
+```typescript
+interface DiscordMessage {
+  content?: string
+  username?: string
+  avatarUrl?: string
+  tts?: boolean
+  embeds?: DiscordEmbed[]
+  allowedMentions?: {
+    parse?: Array<'roles' | 'users' | 'everyone'>
+    roles?: string[]
+    users?: string[]
+  }
+}
+```
+
+### Discord Sending Modes
+
+1. **Webhook mode**: POST to `config.webhookUrl`. Handles `204` (empty success) responses. Returns `id` from response. Needs no `message.to`.
+2. **Bot token mode**: POST to `https://discord.com/api/v10/channels/{channelId}/messages` with `Authorization: Bot <token>`. Uses `message.to` as the channel ID (required).
+
+Every payload carries `allowed_mentions`, by default `{ parse: ['users', 'roles'] }`
+(`DEFAULT_ALLOWED_MENTIONS`): people and roles named by ID ping, `@everyone`
+and `@here` in content never do. `sendWebhook()`'s `allowedMentions` replaces
+the default, and its camelCase options are sent under Discord's names
+(`avatar_url`, `allowed_mentions`) by `discordPayload()`. With a subject or
+template the body goes in the embed only, not also as `content`.
+
+### Embed Building
+When `message.subject` or `message.template` is set, `buildEmbed()` creates an embed with:
+- `title` from `message.subject`
+- `description` from `message.content`
+- Default color: `0x5865F2` (Discord blurple)
+- `timestamp`: current ISO date
+
+### Extra Functions
+```typescript
+async function sendWebhook(webhookUrl: string, content: string, options?: Partial<DiscordMessage>): Promise<ChatResult>
+async function sendEmbed(webhookUrl: string, embed: DiscordEmbed, options?: Partial<DiscordMessage>): Promise<ChatResult>
+```
+`sendEmbed()` wraps the embed inside `sendWebhook()` with empty content.
+
+### Exports
+- `DiscordDriver` class (also as `Driver`)
+- `driver` -- pre-instantiated singleton
+- `send()`, `sendWebhook()`, `sendEmbed()`, `configure()` functions
+
+## Teams Driver
+
+### TeamsConfig
+```typescript
+interface TeamsConfig {
+  webhookUrl?: string
+  maxRetries?: number       // default: 3
+  retryTimeout?: number     // default: 1000ms
+}
+```
+
+### TeamsAdaptiveCard
+```typescript
+interface TeamsAdaptiveCard {
+  type: 'AdaptiveCard'
+  version: string           // '1.4'
+  body: TeamsCardElement[]
+  actions?: TeamsCardAction[]
+  $schema?: string          // 'http://adaptivecards.io/schemas/adaptive-card.json'
+}
+```
+
+### TeamsCardElement
+```typescript
+interface TeamsCardElement {
+  type: 'TextBlock' | 'Image' | 'Container' | 'ColumnSet' | 'Column' | 'FactSet' | 'ImageSet'
+  text?: string
+  size?: 'Small' | 'Default' | 'Medium' | 'Large' | 'ExtraLarge'
+  weight?: 'Lighter' | 'Default' | 'Bolder'
+  color?: 'Default' | 'Dark' | 'Light' | 'Accent' | 'Good' | 'Warning' | 'Attention'
+  wrap?: boolean
+  url?: string
+  altText?: string
+  items?: TeamsCardElement[]
+  columns?: TeamsCardElement[]
+  width?: string
+  facts?: Array<{ title: string, value: string }>
+  images?: Array<{ type: 'Image', url: string, size?: string }>
+}
+```
+
+### TeamsCardAction
+```typescript
+interface TeamsCardAction {
+  type: 'Action.OpenUrl' | 'Action.Submit' | 'Action.ShowCard'
+  title: string
+  url?: string
+  data?: Record<string, any>
+  card?: TeamsAdaptiveCard
+}
+```
+
+### TeamsMessage
+```typescript
+interface TeamsMessage {
+  type?: 'message'
+  summary?: string
+  text?: string
+  attachments?: Array<{
+    contentType: 'application/vnd.microsoft.card.adaptive'
+    content: TeamsAdaptiveCard
+  }>
+}
+```
+
+### Teams Sending
+
+- Uses `config.webhookUrl` or falls back to `message.to` as the webhook URL
+- Validates the URL as a Teams Workflows (Power Automate) webhook on https: `*.environment.api.powerplatform.com`, `*.api.powerautomate.com`, `flow.microsoft.com` or `*.logic.azure.com` (`.us` / `.cn` too). An Office 365 connector URL (`*.webhook.office.com`) is refused with a migration message - Microsoft retired those connectors in May 2026
+- Every message is an Adaptive Card in `attachments`, which the Workflows webhook template requires; a plain message is a card holding its text
+- Rich messages (with subject or template): the Adaptive Card v1.4 has:
+  - Title as `TextBlock` (size: Large, weight: Bolder)
+  - Content as `TextBlock` (wrap: true)
+  - Timestamp as `TextBlock` (size: Small, color: Dark)
+
+### Extra Functions
+```typescript
+async function sendWebhook(webhookUrl: string, text: string): Promise<ChatResult>
+async function sendCard(webhookUrl: string, card: TeamsAdaptiveCard, summary?: string): Promise<ChatResult>
+```
+
+### Exports
+- `TeamsDriver` class (also as `Driver`)
+- `driver` -- pre-instantiated singleton
+- `send()`, `sendWebhook()`, `sendCard()`, `configure()` functions
+
+## Inbox drivers (reading and archiving)
+
+`send()` pushes messages out. The inbox drivers go the other way: they list a
+person's conversations, read messages, notice new ones (a per-conversation
+`cursor`), and archive a conversation *in the real app* as far as the provider
+allows. Source: `chat/src/inbox/`. One interface, `InboxDriver`:
+
+```typescript
+import { inbox } from '@stacksjs/chat'
+
+const drivers = [
+  inbox.createInboxDriver('imessage', {}),                                 // chat.db, needs Full Disk Access
+  inbox.createInboxDriver('whatsapp', {}),                                 // WhatsApp for Mac's ChatStorage.sqlite, same
+  inbox.createInboxDriver('slack', { token: env.SLACK_USER_TOKEN }),       // xoxp user token
+  inbox.createInboxDriver('discord', { token: env.DISCORD_BOT_TOKEN, userId }), // bot token
+]
+for (const driver of drivers) {
+  if (!(await driver.status()).connected) continue
+  for (const c of await driver.conversations()) {
+    const fresh = await driver.messages(c.id, { after: lastCursor[c.id] })  // oldest first
+    if (wantArchived) await driver.archive(c.id)
+  }
+}
+```
+
+What archiving does is part of every conversation (`conversation.archive`):
+
+| Provider | `mode` | Effect in the real app |
+|---|---|---|
+| iMessage | `confirm` | With a `controller`, Messages' own Delete on the row found by name; without one, opens the conversation for the person to delete. Apple has no API, and editing chat.db is ignored or synced everywhere. |
+| WhatsApp | `native` | With a `controller`, WhatsApp's own Archive on the row found by name, reported `removed` only once WhatsApp records it (`ZARCHIVED`); `unarchive` unarchives. Without one, `confirm`: opens the chat (`whatsapp://send?phone=`) for the person, or `unsupported` for a group, which has no link. |
+| Slack DM / group DM | `native` | `conversations.close`; Slack reopens it when someone writes. `unarchive` reopens. |
+| Slack public channel | `native` | `conversations.leave`; `unarchive` rejoins. |
+| Slack private channel | `unsupported` | Untouched: leaving would need a re-invite. |
+| Discord thread | `native` | Archived in Discord (reopens on a new post). |
+| Discord channel | `unsupported` | Discord cannot hide a channel for one person. |
+
+For iMessage, pass a `controller` (`{ remove(names, url, confirm), recover(names) }`)
+whenever the app can drive Messages by accessibility: it receives every label
+Messages might give the row (contact name, formatted number, handle) and should
+act on the row found by name, never on the current selection. Without a
+controller the driver only opens the conversation in Messages for the person to delete. With a controller, `unarchive` recovers
+from Recently Deleted, and `confirmDeletes: true` accepts Messages' alert too.
+Attic (`~/Code/Apps/attic`, `app/Desktop/messages-control.swift`) is the reference.
+
+WhatsApp is read from WhatsApp for Mac's `ChatStorage.sqlite` (a Core Data
+store in its group container, so Full Disk Access again), never written. Its
+`controller` is `{ archive(names), unarchive(names) }`, given the chat's name
+and formatted number. Message types map onto the inbox shape: captions come
+from the media item's title, contact cards and locations become text, deleted
+messages are `unsent`, group events and calls are `kind: 'event'`. Reactions
+come out of the receipts protobuf (field 7) as `kind: 'reaction'` messages, and
+a reply's `replyToId` is field 5 of the media item's metadata - both read with
+the schema-less `formats/protobuf` reader. Status updates and broadcast lists
+are not listed.
+
+Profile pictures: a person (and a group or server conversation) may carry an
+`avatar` reference; pass it to the optional `driver.avatar(ref)` for the image
+as a `Response`. iMessage reads the contact's photo from Contacts (inline, or
+the store's `_EXTERNAL_DATA` file for larger iCloud photos) and a group's own
+photo from `chat.properties` (a binary plist, read by `formats/bplist`), WhatsApp the
+pictures it has cached on this Mac (only some - it keeps the ones it showed
+recently), Slack `profile.image_72`, Discord user avatars and server icons.
+The remote ones are fetched only from the provider's own image hosts.
+
+A conversation deleted in Messages sits in Recently Deleted for 30 days:
+`conversation.visible` is false and `conversation.deleted` counts what is still
+recoverable. `messages(id, { includeDeleted: true })` reads those messages, so an
+app can keep a deleted conversation without recovering it in Messages.
+
+Discord personal DMs are deliberately absent: only a user token reads them, and
+automating a user account breaks Discord's terms. Reactions are separate
+`kind: 'reaction'` messages with `targetId` and an emoji `reaction`; Slack and
+Discord attachments carry a remote `url` that `driver.attachment()` fetches with
+the right credentials. The HTTP drivers take an injectable `fetch`, which is how
+`tests/inbox.test.ts` exercises them against API-shaped fixtures.
+
+## Retry Logic
+
+All three drivers implement `sendWithRetry()`:
+- Retries up to `config.maxRetries` times (default 3)
+- Waits `config.retryTimeout` ms between attempts (default 1000ms)
+- On final failure, throws the error (caught by the outer `send()` which calls `handleError()`)
+
+## Dependencies
+- `@stacksjs/types` -- `ChatMessage`, `ChatResult`, `RenderOptions`, `ChatDriver`, `ChatDriverConfig`
+- `@stacksjs/logging` -- `log` for info/warn/error logging
+
+## Gotchas
+- The default driver for `send()` is `'slack'`, not auto-detected
+- Slack and Discord support webhook or bot-token sends; Teams uses its Workflows webhook
+- Slack bot token mode uses `https://slack.com/api/chat.postMessage`, not a webhook
+- Discord webhook returns `204` on success with no body -- this is handled as success
+- Discord bot token mode uses `message.to` as the channel ID
+- Teams accepts only Workflows webhook URLs; the retired `webhook.office.com` connectors are refused
+- Teams uses `message.to` as fallback webhook URL if `config.webhookUrl` is not set
+- Slack supports mrkdwn; Discord embeds and Teams Adaptive Cards use their own provider payloads
+
+## Results and native notification integration
+
+Direct send returns ChatResult, with success false for a handled provider failure;
+inspect it before persisting sent state. Awaiting a send only proves the promise
+settled. A webhook send needs no `to`; a bot-token send needs the channel in
+`to`. notify()'s chat channel sends the body as `content` and `chatRecipient`
+as `to`, through `recipient.chatDriver` or `config.notification.chat.default`,
+and a failed send is a failed NotifyResult.
+
+Settings resolve per send after app config readiness, with explicit configure
+overrides taking precedence. Retained request/config coverage lives under
+`storage/framework/core/chat/tests/`; it is distinct from live workspace
+delivery evidence. Inbox reads/archive operations use separate provider grants
+and optional native controllers; sending credentials do not automatically grant
+those operations.
+- Block Kit blocks are only built when `message.template` is set (Slack) or when `message.subject`/`message.template` is set (Discord/Teams)
+- `validateMessage()` requires both `to` and either `content` or `template`
+- The `handle()` callback runs before `onSuccess()` -- both results are merged
+- `ChatMessage` supports `onSuccess`, `onError`, and `handle` callbacks that can return partial `ChatResult` objects
+- Each driver module exports a pre-instantiated `driver` singleton and both class-based and function-based APIs
+- Discord embed default color is `0x5865F2` (Discord blurple), not customizable via the auto-build path
+- Teams Adaptive Cards use version `1.4` with the official JSON schema URL
+
+
+## Persistent direct messaging
+
+`@stacksjs/orm` and `@stacksjs/chat` export `createMessenger`. Enable
+`traits: { useMessaging: true }` to bind `record.messenger(options)` to a
+hydrated model's identity. Trait migrations create `chat_conversations` and
+`chat_messages` with a cascading conversation foreign key and a unique send key.
+
+```ts
+import { createMessenger } from '@stacksjs/chat'
+
+const messenger = createMessenger({
+  actorId: authenticatedUser.id,
+  scope: `gym:${authorizedGym.id}`,
+  authorize: (actorId, recipientId) => canMessage(actorId, recipientId),
+  maxLength: 4000,
+  pageSize: 50,
+  enabled: true,
+})
+const thread = await messenger.direct(recipient.id)
+await messenger.send(thread.id, 'How did the session feel?', retryKey)
+const page = await messenger.messages(thread.id)
+await messenger.markRead(thread.id, page.messages.at(-1)!.id)
+```
+
+Select actor and scope on the server. Authorization is required and is checked
+for every inbox, history, send and read receipt operation. Use a stable retry
+key for one attempted message; a different body with the same key returns 409.
+History is chronological, with `has_more` and a `before` message-id cursor.
+Receipts acknowledge only messages through the id actually displayed.
+`MessagingError.status` provides safe HTTP statuses for application handlers.
+
+### Attachments
+
+`send(id, body, retryKey, attachments?)` records files the application has
+already stored. The trait keeps a reference, never bytes: `file` is the
+application's own name for the upload (a disk path, a bucket key, an id), and
+`type`, `name`, `size`, `width` and `height` are optional. `name` is what the
+sender called the file (`Week 42 plan.pdf`): `file` is an unguessable stored
+name, so for a document `name` is the only thing that tells the recipient what
+they were sent. Resolving and authorizing the file stays with the application,
+so a disk, a bucket and a CDN look the same from here.
+
+```ts
+import type { DirectMessageAttachment } from '@stacksjs/chat'
+
+const photo: DirectMessageAttachment = { file: upload.key, type: 'image/jpeg', size: upload.size, width: 1200, height: 900 }
+await messenger.send(thread.id, '', retryKey, [photo])
+
+const plan: DirectMessageAttachment = { file: upload.key, type: 'application/pdf', name: upload.originalName, size: upload.size }
+await messenger.send(thread.id, '', retryKey, [plan])
+```
+
+- A photo with no caption is a message: `body` may be empty when there is at
+  least one attachment, and only then.
+- `message.attachments` is always an array, `[]` for text. Rows written before
+  the column existed read as `[]`.
+- A retry key covers the attachments too. The same key with a different file
+  is a different message and returns 409, rather than silently keeping the
+  first photo.
+- At most 10 attachments, 4000 characters once serialised. `type` and `name`
+  are 1 to 255 characters. A key the trait does not know is refused with a 422
+  that names it, rather than dropped, so the column cannot become a second
+  message body and nothing a caller sent goes missing silently.
+- The column is `chat_messages.attachments`, added by `buddy migrate` to a
+  database created before it. A database that has not migrated yet still sends
+  text.
+- Notification previews are the application's to word: `onMessageSent`
+  receives the message with its attachments, so a photo with no caption can
+  read as "Sent a photo" rather than as an empty line.
+
+For the UI, STX ships `ChatInbox`, `ChatMessage`, and `ChatUnreadBadge` in
+`@stacksjs/components`. Browser stores import `createChat` from
+`@stacksjs/components/chat` and inject their authenticated HTTP transport.
+
+### Native broadcasting
+
+`createMessenger` emits `messaging.sent` after a new persisted message and
+`messaging.read` when acknowledged messages first become read. Retried sends and
+unchanged receipts emit nothing. Set `broadcast: false` to disable. Initialize
+Stacks realtime before delivery, using `createServer` for WebSockets or
+`createBroadcastHub` for authenticated HTTP streams.
+
+`messagingChannel(participantType, userId)` selects that person's private inbox.
+Authorize subscription using the authenticated person's server-owned ID. Events
+carry only `conversation_id`; always re-read message text through current
+relationship and tenant policy. This prevents a revoked relationship's old socket
+from receiving private message contents.
+
+The native STX controller accepts `broadcastEndpoint`. `chat.observe(active)`
+shares one stream across inboxes, launchers and unread badges, returns a cleanup,
+and reconciles after reconnect. Only an active visible inbox acknowledges reads.
+It clears account/tenant state and reconnects when the scope changes.

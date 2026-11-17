@@ -1,0 +1,122 @@
+@import('../../UI/Table')
+
+<script client>
+type SerializedList = string | string[] | null | undefined
+
+interface ShippingZoneRow {
+  id: number
+  name: string
+  countries?: SerializedList
+  regions?: SerializedList
+  postal_codes?: SerializedList
+  shipping_method_id: number
+  shipping_method?: { id: number, name: string }
+  status: string
+}
+
+const zones = useReactiveProp('zones', [] as ShippingZoneRow[])
+const loading = useReactiveProp('loading', false)
+/** The parent's search: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+function parseList(value: SerializedList): string[] {
+  if (Array.isArray(value))
+    return value
+  if (!value)
+    return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed))
+      return parsed.map(item => String(item))
+  }
+  catch {
+    return value.split(',').map(item => item.trim()).filter(Boolean)
+  }
+
+  return []
+}
+
+/** Countries and regions are slotted for their chips: the first three, then a count. */
+const COLUMNS = [
+  { key: 'name', label: 'Zone', sortable: true, class: 'font-medium text-stone-800 whitespace-nowrap dark:text-white' },
+  { key: 'methodLabel', label: 'Method', sortable: true, class: 'whitespace-nowrap' },
+  { key: 'countriesText', label: 'Countries', slotted: true },
+  { key: 'regionsText', label: 'Regions', slotted: true },
+  { key: 'postalLabel', label: 'Postal codes', class: 'max-w-xs truncate' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300',
+      draft: 'bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300',
+    },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => zones().map((zone) => {
+  const countries = parseList(zone.countries)
+  const regions = parseList(zone.regions)
+  const postal = parseList(zone.postal_codes)
+  return {
+    ...zone,
+    methodLabel: zone.shipping_method?.name || `Method #${zone.shipping_method_id}`,
+    countryChips: countries.slice(0, 3),
+    countriesMore: countries.length > 3 ? `+${countries.length - 3}` : '',
+    countriesText: countries.join(', '),
+    regionChips: regions.slice(0, 3),
+    regionsMore: regions.length > 3 ? `+${regions.length - 3}` : '',
+    regionsText: regions.join(', '),
+    postalLabel: postal.length ? postal.join(', ') : 'All postal codes',
+    actionName: `${zone.name}, record ${zone.id}`,
+  }
+}))
+
+function handleRowAction(payload: { action: string, row: ShippingZoneRow }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box.
+  Table pages the whole filtered list the parent passes, and stays mounted
+  while it loads.
+--}}
+<Table
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="actionName"
+  paginated
+  :page-size="10"
+  empty-title="No shipping zones found"
+  empty-description="Add a zone, or adjust the search."
+  @row-action="handleRowAction"
+>
+  <template #cell="{ row, column }">
+    <template :if="column.key === 'countriesText'">
+      <div class="flex flex-wrap gap-1">
+        <span :for="country in row.countryChips" class="inline-flex px-2 py-1 font-medium text-blue-700 text-xs dark:text-blue-300 bg-blue-50 dark:bg-blue-400/10 rounded-full" x-text="country"></span>
+        <span :if="row.countriesMore" class="inline-flex px-2 py-1 font-medium text-stone-600 text-xs dark:text-neutral-300 bg-stone-100 dark:bg-white/5 rounded-full" x-text="row.countriesMore"></span>
+        <span :if="row.countryChips.length === 0">All countries</span>
+      </div>
+    </template>
+    <template :if="column.key === 'regionsText'">
+      <div class="flex flex-wrap gap-1">
+        <span :for="region in row.regionChips" class="inline-flex px-2 py-1 font-medium text-emerald-700 text-xs dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-400/10 rounded-full" x-text="region"></span>
+        <span :if="row.regionsMore" class="inline-flex px-2 py-1 font-medium text-stone-600 text-xs dark:text-neutral-300 bg-stone-100 dark:bg-white/5 rounded-full" x-text="row.regionsMore"></span>
+        <span :if="row.regionChips.length === 0">All regions</span>
+      </div>
+    </template>
+  </template>
+</Table>

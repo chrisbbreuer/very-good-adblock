@@ -1,0 +1,77 @@
+@import('../UI/Table')
+
+<script client>
+import type { MarketingListRecord } from '../../../../app/Actions/Dashboard/Marketing/marketing-list-records'
+
+const records = useReactiveProp('records', [] as MarketingListRecord[])
+const loading = useReactiveProp('loading', false)
+/** The parent's sort select: a change hands the order back from a header sort. */
+const sortResetKey = useReactiveProp<unknown>('sortResetKey', '')
+/** The parent's search and filters: a change returns to the first page. */
+const pageResetKey = useReactiveProp<unknown>('pageResetKey', '')
+const emit = defineEmits(['edit', 'delete'])
+
+/** The list cell is slotted for the drift warning beside the name. */
+const COLUMNS = [
+  { key: 'name', label: 'List', sortable: true, slotted: true },
+  { key: 'subscriberCount', label: 'Members', type: 'number' as const, sortable: true, subtitleKey: 'membersLabel', class: 'font-medium tabular-nums text-gray-900 dark:text-white' },
+  { key: 'campaignCount', label: 'Campaigns', type: 'number' as const, sortable: true, class: 'font-medium tabular-nums' },
+  { key: 'visibilityLabel', label: 'Signup', sortable: true, subtitleKey: 'optInLabel' },
+  { key: 'lastSentAt', label: 'Last sent', type: 'date' as const, sortable: true, emptyText: 'Never', class: 'whitespace-nowrap' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'badge' as const,
+    sortable: true,
+    badgeClasses: {
+      active: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+      archived: 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300',
+      inactive: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+    },
+  },
+]
+
+const ROW_ACTIONS = [
+  { action: 'edit', label: 'Edit' },
+  { action: 'delete', label: 'Delete' },
+]
+
+const rows = derived(() => records().map(record => ({
+  ...record,
+  membersLabel: `${record.activeCount} active, ${record.unsubscribedCount} unsubscribed`,
+  visibilityLabel: record.isPublic ? 'Public' : 'Private',
+  optInLabel: record.doubleOptIn ? 'Double opt-in' : 'Single opt-in',
+})))
+
+function handleRowAction(payload: { action: string, row: MarketingListRecord }): void {
+  emit(payload.action, payload.row)
+}
+</script>
+
+{{--
+  No `searchable` or `filterable`: the parent dashboard owns the search box
+  and the filter selects. Table pages the whole filtered list the parent passes.
+--}}
+<Table
+  :sort-reset-key="sortResetKey()"
+  :page-reset-key="pageResetKey()"
+  :columns="COLUMNS"
+  :data="rows()"
+  :loading="loading()"
+  :row-actions="ROW_ACTIONS"
+  action-label-key="name"
+  paginated
+  :page-size="10"
+  empty-title="No email lists found"
+  empty-description="Adjust the filters or add an EmailList record."
+  @row-action="handleRowAction"
+>
+  <template #cell="{ row }">
+    <div class="flex gap-2 items-center">
+      <p class="font-medium text-gray-900 text-sm dark:text-white" x-text="row.name"></p>
+      <span :if="row.countDrift" x-tooltip="Stored counters differ from membership rows" title="Stored counters differ from membership rows" class="h-4 w-4 text-amber-500 i-hugeicons-alert-02"></span>
+    </div>
+    <p class="mt-1 font-mono text-gray-500 text-xs dark:text-neutral-400" x-text="row.slug"></p>
+    <p :if="row.description" class="mt-1 max-w-sm text-gray-500 text-xs dark:text-neutral-400" x-text="row.description"></p>
+  </template>
+</Table>

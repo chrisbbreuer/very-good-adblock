@@ -1,0 +1,193 @@
+name: Deploy
+
+# Push to deploy.
+#
+# Gated on CI rather than firing on the push itself: `buddy deploy` activates a
+# release atomically, so the failure mode of deploying an untested commit is a
+# live site running it, not a red check somebody notices later.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+  # Ship a specific commit without pushing, and reach environments that no
+  # branch maps to.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment to deploy
+        type: choice
+        options: [production, staging, development]
+        default: production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'production' }}
+  # Never cancel a deploy in flight. Half of one is a release uploaded but not
+  # activated, or services restarted against the previous release's env.
+  cancel-in-progress: false
+
+jobs:
+  # Is the commit CI passed still the tip of main?
+  #
+  # Deploys queue one at a time, and each checks out the commit its CI run
+  # was for. CI runs are not ordered: when two pushes land close together the
+  # older one can finish CI last, and its deploy then replaces the newer
+  # release with both deploys green. Checked here, when the deploy's turn
+  # comes: if main has moved on, the newer commit's own CI run deploys it.
+  current:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      latest: ${{ steps.tip.outputs.latest }}
+    steps:
+      - id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tip=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$tip" = "$SHA" ]; then
+            echo "latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping ${SHA:0:8}: main is at ${tip:0:8}, whose CI run deploys it."
+          fi
+
+  deploy:
+    needs: current
+    # `workflow_run` fires for failed runs too — that is the point of the
+    # gate, so check the conclusion.
+    #
+    # And check what CI ran on. CI also runs for pull requests, and
+    # `branches: [main]` matches the head branch name, so a fork's PR from a
+    # branch called `main` that passed CI would deploy the fork's commit with
+    # the production secrets. Only a push to this repository ships.
+    #
+    # `always()` because `current` is skipped for a manual dispatch, which
+    # ships whatever it was pointed at.
+    if: >-
+      always() && (
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      needs.current.outputs.latest == 'true'))
+    runs-on: ubuntu-latest
+    # Attach a GitHub Environment to get required reviewers and to scope these
+    # secrets to it.
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      # A fresh app has nowhere to deploy to, and a red X on day one is worse
+      # than no deploy, so every step below is gated on the two secrets that
+      # cannot be defaulted. Without them this finishes green with a notice
+      # saying exactly what to add.
+      #
+      # Checked here rather than in `if:` on the job, because a job-level
+      # condition cannot read `secrets`.
+      - name: Is deployment configured?
+        id: check
+        env:
+          DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -n "$DOTENV_PRIVATE_KEY_PRODUCTION" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Deployment is not configured, so this run did nothing. Add DEPLOY_SSH_KEY (a private key the target server trusts) and DOTENV_PRIVATE_KEY_PRODUCTION (from .env.keys) to deploy on every green push to main.'
+          fi
+
+      - name: Checkout
+        if: steps.check.outputs.configured == 'true'
+        uses: actions/checkout@v6
+        with:
+          # The exact commit CI approved, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Setup Bun
+        if: steps.check.outputs.configured == 'true'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Pantry
+        if: steps.check.outputs.configured == 'true'
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+        # The CLI only, as in ci.yml. Installing the app's system packages here
+        # pulls in the local mail catcher too, which has no Linux download, and
+        # a deploy needs none of them: Bun comes from the step above.
+        with:
+          install: 'false'
+
+      - name: Install dependencies
+        if: steps.check.outputs.configured == 'true'
+        run: bun install --frozen-lockfile
+
+      # The deploy talks to the server as root over SSH with BatchMode on, so
+      # the key has to be in an agent before it runs — there is no prompt to
+      # fall back to.
+      - name: Load the deploy key
+        if: steps.check.outputs.configured == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      # An agent is not enough on its own. ts-cloud reads the PUBLIC key off
+      # disk to register it on the server, and an agent holds keys in memory
+      # and exposes no path, so the deploy died on "SSH public key not found
+      # at ~/.ssh/id_ed25519.pub" with the agent perfectly loaded. The public
+      # half is derived from the private one rather than carried as a second
+      # secret, so the two can never disagree.
+      - name: Write the deploy key to disk
+        if: steps.check.outputs.configured == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub
+          chmod 644 ~/.ssh/id_ed25519.pub
+
+      - name: Deploy
+        id: deploy
+        if: steps.check.outputs.configured == 'true'
+        run: ./buddy deploy --${{ github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'development' && 'dev' || 'prod' }} --yes
+        env:
+          # Decrypts .env.production. Without it the encrypted values silently
+          # fall back to defaults, which is how an app deploys with the wrong
+          # APP_KEY and invalidates every session it had.
+          DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}
+          # DNS records are written through the registrar that administers the
+          # zone, declared in config/cloud.ts. Keep these in the environment
+          # even when they are also in .env.production — a missing one now
+          # fails loudly instead of reaching for another provider's keys.
+          PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
+          PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # macOS resource forks in a tarball built on a developer machine make
+          # the extraction on the server noisy and occasionally fatal.
+          COPYFILE_DISABLE: '1'
+
+      # A deploy that failed half way must not leave the half it finished live.
+      #
+      # Each site's own cutover already refuses a release that crashes, never
+      # takes its port or fails its health path, and puts the previous release
+      # back. What it cannot undo is the site deployed before the one that
+      # failed, left on a different commit from the rest. This rolls back every
+      # site whose live release is this commit, and only those, then fails the
+      # job. Add a smoke check after Deploy (give it `id: smoke`) and include it
+      # in the condition to roll back releases that are up but wrong as well.
+      #
+      # Needs @stacksjs/ts-cloud 0.16.34 or newer for --all and --only-if-live.
+      - name: Roll back what this deploy made live
+        if: failure() && steps.deploy.outcome == 'failure'
+        run: |
+          ./buddy deploy:rollback --env ${{ github.event.inputs.environment || 'production' }} --all --only-if-live "$GITHUB_SHA" || echo "::error::The rollback did not complete; check which release each site serves."
+          echo "::error::Deploy of ${GITHUB_SHA::7} failed; sites it had switched were rolled back."
+          exit 1
+        env:
+          DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}

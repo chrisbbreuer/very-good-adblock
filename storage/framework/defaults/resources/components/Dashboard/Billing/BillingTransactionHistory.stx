@@ -1,0 +1,44 @@
+@import('../UI/Table')
+
+<script client>
+import type { BillingTransaction } from '../../../../functions/billing/dashboard'
+
+const transactions = useReactiveProp('transactions', [] as BillingTransaction[])
+
+const COLUMNS = [
+  { key: 'name', label: 'Transaction', sortable: true, emptyText: 'Unnamed transaction', subtitleKey: 'description', class: 'font-medium text-gray-900 max-w-lg dark:text-white' },
+  {
+    key: 'typeLabel',
+    label: 'Type',
+    type: 'badge' as const,
+    sortable: true,
+  },
+  { key: 'amountLabel', label: 'Amount', class: 'whitespace-nowrap', searchable: false },
+  { key: 'providerId', label: 'Provider reference', emptyText: 'Not reported', class: 'font-mono text-xs' },
+]
+
+const rows = derived(() => transactions().map(transaction => ({
+  ...transaction,
+  typeLabel: (transaction.type || 'unknown').replace(/\b\w/g, letter => letter.toUpperCase()),
+  amountLabel: transaction.amount === null ? 'Not reported' : `${new Intl.NumberFormat().format(transaction.amount)} minor units`,
+})))
+</script>
+
+<section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+  <header class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-neutral-700">
+    <div>
+      <h2 class="font-semibold text-base text-gray-900 dark:text-white">Transaction history</h2>
+      <p class="mt-1 text-gray-500 text-xs dark:text-neutral-400">Persisted PaymentTransaction model records for this user.</p>
+    </div>
+    <span class="h-5 w-5 text-gray-400 i-hugeicons-transaction-history"></span>
+  </header>
+
+  <Table
+    :columns="COLUMNS"
+    :data="rows()"
+    paginated
+    :page-size="25"
+    empty-title="No transactions recorded"
+    empty-description="Successful persisted billing transactions will appear here."
+  />
+</section>
