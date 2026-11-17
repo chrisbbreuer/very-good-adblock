@@ -74,6 +74,35 @@ describe('cookie-consent content filtering', () => {
 })
 
 
+describe('settings from an older host', () => {
+  it('falls back to get-dashboard when get-settings gets no answer', async () => {
+    // A WebKit app built against the original bridge contract answers only
+    // get-dashboard. Cookie-banner hiding is off by default, so a hidden banner
+    // proves the app's settings arrived through the fallback.
+    const page = wrapFixture(consentFixture(), await buildContentScript(), ['get-dashboard'])
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      },
+    })
+    const view = await openChromeView({
+      width: 900,
+      height: 700,
+      backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*'] },
+    })
+
+    try {
+      await view.navigate(`http://127.0.0.1:${server.port}/`)
+      await waitFor(view, `getComputedStyle(document.querySelector('#onetrust-consent-sdk')).display === 'none'`, 'consent banner hidden via get-dashboard')
+    }
+    finally {
+      view.close()
+      server.stop(true)
+    }
+  }, 30_000)
+})
+
 describe('cosmetic placement counting', () => {
   it('counts one nested ad slot once, however many selectors match its layers', async () => {
     const contentScript = await buildContentScript()
@@ -134,13 +163,13 @@ function consentFixture(): string {
 </html>`
 }
 
-function wrapFixture(fixture: string, contentScript: string): string {
+function wrapFixture(fixture: string, contentScript: string, settingsMessages: string[] = ['get-dashboard', 'get-settings']): string {
   return fixture.replace('</head>', `<script>
     window.__adblockEvents = [];
     window.chrome = {
       runtime: {
         sendMessage: async message => {
-          if (message.type === 'get-dashboard' || message.type === 'get-settings') {
+          if (${JSON.stringify(settingsMessages)}.includes(message.type)) {
             return { ok: true, data: { settings: {
               enabled: true,
               badgeEnabled: true,

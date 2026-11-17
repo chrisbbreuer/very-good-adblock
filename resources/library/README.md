@@ -47,12 +47,21 @@ The isolated-world `content` script calls `chrome.runtime.sendMessage`, which ar
 
 | `message.type` | Reply |
 |---|---|
+| `get-settings` | `{ ok: true, data: { settings } }`. Asked first; with no reply the script asks `get-dashboard` |
 | `get-dashboard` | `{ ok: true, data: { settings } }`, or nothing to use the default settings |
 | `record-blocks` | nothing (block events for statistics) |
 | `record-cosmetic` | nothing (hidden-element counts for statistics) |
 
 Without a handler the script runs with the default settings. The full contract is in the Stacks
 `stacks-browser-extension` skill (`WEBKIT.md`).
+
+The `yt-embed` script runs in YouTube players embedded in pages (youtube.com and youtube-nocookie.com
+`/embed/` frames, never the top frame) and sends:
+
+| `message.type` | Reply |
+|---|---|
+| `get-embed-config` | `{ ok: true, data: { enabled } }` for the page around the player, or nothing to leave it on |
+| `record-blocks` | nothing. Its events carry an empty `hostname`: they belong to the page the player is embedded in |
 
 The rules are generated from the extension's source in
 [chrisbbreuer/very-good-adblock](https://github.com/chrisbbreuer/very-good-adblock), and versions

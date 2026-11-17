@@ -94,8 +94,10 @@ describe('the WebKit target and library', () => {
 
   it('ships the content scripts as standalone user scripts', () => {
     const scripts = Object.fromEntries(webkitUserScripts({ dir }).map(script => [script.id, script]))
-    expect(Object.keys(scripts)).toEqual(['content', 'x-inpage', 'yt-inpage', 'popup-guard'])
-    expect(scripts['yt-inpage']).toMatchObject({ world: 'page', runAt: 'document-start', bridged: false })
+    expect(Object.keys(scripts)).toEqual(['content', 'x-inpage', 'yt-inpage', 'yt-embed', 'popup-guard'])
+    expect(scripts['yt-inpage']).toMatchObject({ world: 'page', runAt: 'document-start', bridged: false, allFrames: true })
+    // Embedded players: isolated, in subframes, and bridged for its config and counts.
+    expect(scripts['yt-embed']).toMatchObject({ world: 'isolated', allFrames: true, bridged: true })
     expect(scripts['popup-guard']).toMatchObject({ world: 'page', allFrames: true, matchAboutBlank: true })
     // The content script asks the background for settings; in WebKit it asks the app.
     expect(scripts.content).toMatchObject({ world: 'isolated', bridged: true })

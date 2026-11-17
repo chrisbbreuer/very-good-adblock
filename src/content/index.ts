@@ -223,14 +223,24 @@ function provisionalGroups(): ActiveCosmeticGroup[] {
   })
 }
 
+/**
+ * Settings from whoever answers the message: the extension's worker, or the
+ * app embedding this script through the WebKit library. `get-settings` is the
+ * lean request (no dashboard work behind it); `get-dashboard` is the original
+ * one, which WebKit apps built against the published contract answer, so it
+ * is asked second when the first gets no answer.
+ */
 async function loadSettings(): Promise<ExtensionSettings> {
-  try {
-    const response = await chrome.runtime.sendMessage({ type: 'get-settings' }) as RuntimeResponse<{ settings: ExtensionSettings }>
-    return response.ok && response.data ? { ...defaultSettings, ...response.data.settings } : defaultSettings
+  for (const type of ['get-settings', 'get-dashboard'] as const) {
+    try {
+      const response = await chrome.runtime.sendMessage({ type }) as RuntimeResponse<{ settings: ExtensionSettings }> | undefined
+      if (response?.ok && response.data?.settings) return { ...defaultSettings, ...response.data.settings }
+    }
+    catch {
+      // No handler for this one; try the next, then fall back to the defaults.
+    }
   }
-  catch {
-    return defaultSettings
-  }
+  return defaultSettings
 }
 
 function cosmeticContext(settings: ExtensionSettings): CosmeticContext {
