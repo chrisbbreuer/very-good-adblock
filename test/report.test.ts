@@ -19,7 +19,7 @@ function dashboardState(overrides: Partial<DashboardState> = {}): DashboardState
     },
     lifetime: { adsBlocked: 4210, bytesSaved: 1024 * 1024, videoSecondsSaved: 600, since: '', lastUpdated: '' },
     local: { hourly: [], daily: [], sites: {}, recentEvents: [] },
-    cloudSync: { available: false, dailyBuckets: 0, siteRollups: 0 },
+    cloudSync: { available: false, dailyBuckets: 0, siteRollups: 0, devices: 1 },
     activeTab: { tabId: 7, hostname: 'youtube.com', url: 'https://youtube.com/watch?v=secret&t=42#frag', allowed: false, blocked: false },
     activePage: { blocked: 3, network: 2, content: 1 },
     activePageBlocks: [],

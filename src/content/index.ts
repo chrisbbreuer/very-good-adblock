@@ -7,6 +7,7 @@ import { estimateBytesSaved, estimateVideoAdBytes, estimateVideoSecondsSaved } f
 import { defaultSettings } from '../shared/storage'
 import type { BlockEvent, BlockSource, ExtensionSettings, ResourceCategory, RuntimeResponse } from '../shared/types'
 import { createTwitchAdSuppressor } from './twitch-ads'
+import { createYouTubePlayerDefense } from './youtube-player'
 
 const hostname = hostnameFromUrl(location.href)
 const seen = new WeakSet<Element>()
@@ -24,21 +25,14 @@ const mutationSweepDelayMs = 150
 const eventFlushDelayMs = 1_000
 const maxPruneEventCount = 200
 const maxPendingRoots = 80
-const adFastForwardRate = 16
 const youtubeAdPollMs = 300
 const twitchAdPollMs = 500
-const youtubeSkipSelectors = '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-container button, button[class*="ytp-ad-skip"]'
 let cosmeticGroups: ActiveCosmeticGroup[] = []
 let observer: MutationObserver | undefined
 let sweepTimer: number | undefined
 let eventFlushTimer: number | undefined
 let youtubeAdTimer: number | undefined
 let twitchAdTimer: number | undefined
-let adRestoreRate: number | undefined
-let adRestoreMuted: boolean | undefined
-// One video-ad credit per ad period, shared by the skip click and the
-// fast-forward so a single ad is never counted twice.
-let youTubeAdCredited = false
 let scanDocumentOnNextSweep = false
 let xPruneActive = false
 let ytPruneActive = false
@@ -85,14 +79,19 @@ function onPruneMessage(event: MessageEvent): void {
   // player iframe, which posts up to this top window — so they are not required
   // to be same-window/same-origin. (Capped stats only.)
   if (data.source === popupBlockMessageSource) {
+    // Any frame can post this, ad iframes included, so the count is a claim,
+    // not a fact. Beyond the per-message cap, a page gets a small budget per
+    // second; a real pop-up storm is a handful of windows, not hundreds.
+    const allowed = takePopupReportBudget(count)
+    if (allowed <= 0) return
     if (popupBlockActive) {
-      queueEvent('popup', 'other', count)
+      queueEvent('popup', 'other', allowed)
       scheduleEventFlush()
     }
     else if (!settingsResolved) {
       // Guard already blocked it but the toggle state is still loading — hold
       // the count and flush it in start() if pop-up blocking ends up enabled.
-      earlyPopupBlocks = Math.min(earlyPopupBlocks + count, maxPruneEventCount)
+      earlyPopupBlocks = Math.min(earlyPopupBlocks + allowed, maxPruneEventCount)
     }
     return
   }
@@ -110,6 +109,22 @@ function onPruneMessage(event: MessageEvent): void {
     queueEvent('youtube', 'other', count)
     scheduleEventFlush()
   }
+}
+
+const popupReportBudgetPerSecond = 10
+let popupReportWindowStart = 0
+let popupReportsInWindow = 0
+
+/** How much of a reported count fits this second's budget (0 when spent). */
+function takePopupReportBudget(count: number): number {
+  const now = Date.now()
+  if (now - popupReportWindowStart >= 1_000) {
+    popupReportWindowStart = now
+    popupReportsInWindow = 0
+  }
+  const allowed = Math.max(0, Math.min(count, popupReportBudgetPerSecond - popupReportsInWindow))
+  popupReportsInWindow += allowed
+  return allowed
 }
 
 async function start(): Promise<void> {
@@ -151,6 +166,21 @@ async function start(): Promise<void> {
   if (!settings.enabled || allowed) return
 
   sweep(settings, [document])
+  armPageWatchers(settings)
+
+  window.addEventListener('pagehide', disarmPageWatchers)
+  // A page restored from the back/forward cache keeps this script alive, but
+  // pagehide tore its watchers down: without re-arming, cosmetic counting and
+  // YouTube auto-skip silently stopped on every back-navigation.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return
+    sweep(settings, [document])
+    armPageWatchers(settings)
+  })
+}
+
+function armPageWatchers(settings: ExtensionSettings): void {
+  disarmPageWatchers()
   observer = new MutationObserver(mutations => scheduleSweep(settings, mutations))
   observer.observe(document.documentElement, { childList: true, subtree: true })
 
@@ -167,14 +197,17 @@ async function start(): Promise<void> {
   if (settings.twitchEnhancements && isTwitch()) {
     twitchAdTimer = window.setInterval(() => twitchAds.update(), twitchAdPollMs)
   }
+}
 
-  window.addEventListener('pagehide', () => {
-    observer?.disconnect()
-    if (youtubeAdTimer) window.clearInterval(youtubeAdTimer)
-    if (twitchAdTimer) window.clearInterval(twitchAdTimer)
-    twitchAds.restore()
-    flushEvents()
-  }, { once: true })
+function disarmPageWatchers(): void {
+  observer?.disconnect()
+  observer = undefined
+  if (youtubeAdTimer) window.clearInterval(youtubeAdTimer)
+  if (twitchAdTimer) window.clearInterval(twitchAdTimer)
+  youtubeAdTimer = undefined
+  twitchAdTimer = undefined
+  twitchAds.restore()
+  flushEvents()
 }
 
 /** Default-tier groups assuming enhancements on, for the pre-settings inject. */
@@ -192,7 +225,7 @@ function provisionalGroups(): ActiveCosmeticGroup[] {
 
 async function loadSettings(): Promise<ExtensionSettings> {
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'get-dashboard' }) as RuntimeResponse<{ settings: ExtensionSettings }>
+    const response = await chrome.runtime.sendMessage({ type: 'get-settings' }) as RuntimeResponse<{ settings: ExtensionSettings }>
     return response.ok && response.data ? { ...defaultSettings, ...response.data.settings } : defaultSettings
   }
   catch {
@@ -342,92 +375,16 @@ function watchClickCatcher(element: Element): void {
 
 /** Runs every poll tick and on each sweep: click Skip, close overlays, speed ads. */
 function handleYouTubeAds(): void {
-  clickYouTubeSkip()
-  closeYouTubeOverlayAd()
-  fastForwardYouTubeAd()
+  youtubePlayer.tick()
   dismissYouTubeAntiAdblock()
 }
 
-/**
- * Ads that survive the source pruning (server-decided pods, stitched streams)
- * are ended instantly: seek the ad video to its end, which completes the ad
- * and advances the pod — verified against live ad pods, where fast-forwarding
- * alone crawls because the stream cannot buffer at 16x for a 90s+ ad. Until
- * the ad's duration is known (metadata still loading) the video is muted and
- * sped to 16x so not even a moment of the ad is heard. The viewer's rate and
- * mute state are captured and restored once the ad ends, and playback is
- * resumed: ending an abnormally (seek-to-end, programmatic skip click) can
- * leave YouTube's player parked on pause where a normal ad completion would
- * have rolled straight into the video. Runs on every poll tick, so each new ad
- * in a pod is seeked as soon as it becomes seekable.
- */
-function fastForwardYouTubeAd(): void {
-  const player = document.querySelector('.html5-video-player')
-  const video = player?.querySelector('video')
-  if (!(video instanceof HTMLVideoElement)) return
-
-  // Same states the skip click accepts: YouTube marks some ad periods with
-  // `ad-interrupting` alone, and the fast-forward must engage for those too.
-  const adShowing = (player?.classList.contains('ad-showing') ?? false)
-    || (player?.classList.contains('ad-interrupting') ?? false)
-
-  if (adShowing) {
-    if (adRestoreRate === undefined) {
-      adRestoreRate = video.playbackRate
-      adRestoreMuted = video.muted
-    }
-    creditVideoAd()
-    try {
-      video.muted = true
-      if (video.playbackRate < adFastForwardRate) video.playbackRate = adFastForwardRate
-      if (Number.isFinite(video.duration) && video.duration > 0 && video.duration - video.currentTime > 0.3) {
-        video.currentTime = video.duration
-      }
-    }
-    catch {
-      // Player rejected the change; leave the ad to the Skip button.
-    }
-  }
-  else {
-    // Out of the ad state: re-arm the per-ad credit and hand the player back.
-    youTubeAdCredited = false
-
-    if (adRestoreRate !== undefined) {
-      // Ad ended — restore the viewer's chosen speed and sound for the real video.
-      try {
-        video.playbackRate = adRestoreRate
-        if (adRestoreMuted !== undefined) video.muted = adRestoreMuted
-      }
-      catch {
-        // Ignore; YouTube manages the player state from here.
-      }
-      resumeVideo(video)
-      adRestoreRate = undefined
-      adRestoreMuted = undefined
-    }
-  }
-}
-
-/**
- * Resume playback once, right as the ad period ends — this is what makes the
- * video start on its own after a skipped pre-roll instead of sitting paused.
- */
-function resumeVideo(video: HTMLVideoElement): void {
-  if (!video.paused) return
-  void video.play().catch(() => {})
-}
-
-/**
- * Credit one video-ad block per ad period. Both defenses fire for the same ad
- * (the poll fast-forwards it AND clicks its Skip button), so without this gate
- * a single ad is counted twice in the stats. The flag resets when the player
- * leaves the ad state, so each new ad in a pod is credited again.
- */
-function creditVideoAd(): void {
-  if (youTubeAdCredited) return
-  youTubeAdCredited = true
-  queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
-}
+// Skip, overlay close and fast-forward are the player's, shared with players
+// embedded in other sites (see youtube-player.ts and yt-embed.ts).
+const youtubePlayer = createYouTubePlayerDefense({
+  videoAd: () => queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved()),
+  overlay: () => queueEvent('youtube', 'other'),
+})
 
 /**
  * When YouTube shows its "ad blockers violate Terms" enforcement modal it also
@@ -447,9 +404,14 @@ function dismissYouTubeAntiAdblock(): void {
   const message = document.querySelector('ytd-enforcement-message-view-model, ytd-enforcement-message-renderer')
   if (!message) return
 
+  // Count the modal once: when the cosmetic pass already hid (and counted) it,
+  // dismissing it is the same block, not a second one.
   if (!antiAdblockSeen.has(message)) {
     antiAdblockSeen.add(message)
-    queueEvent('youtube', 'other')
+    if (!message.closest('[data-adblock-hidden]') && !message.querySelector('[data-adblock-hidden]')) {
+      message.setAttribute('data-adblock-hidden', 'true')
+      queueEvent('youtube', 'other')
+    }
   }
 
   const dialog = message.closest('tp-yt-paper-dialog')
@@ -493,7 +455,15 @@ function countHiddenPlacements(roots: readonly SelectorRoot[]): void {
         for (const element of queryAllSafe(root, selector)) {
           if (seen.has(element)) continue
           seen.add(element)
+          // One ad, one count. Ad markup nests (a GPT slot wraps a container
+          // wrapping an iframe; an AdSense <ins> wraps its iframe; a YouTube
+          // feed cell wraps its ad renderer), and several selectors match the
+          // layers, so each layer used to count as another ad. Whichever layer
+          // is reached first counts; the others are tagged and skipped,
+          // whatever order the selectors run in.
+          const nested = isInsideHiddenPlacement(element)
           element.setAttribute('data-adblock-hidden', 'true')
+          if (nested) continue
           selectorHits.set(selector, (selectorHits.get(selector) ?? 0) + 1)
           queueEvent(group.source, group.category)
           if (group.source === 'consent') hidConsent = true
@@ -507,6 +477,11 @@ function countHiddenPlacements(roots: readonly SelectorRoot[]): void {
   if (hidConsent) restoreConsentScroll()
 }
 
+/** Whether an ancestor or descendant was already counted as a hidden placement. */
+function isInsideHiddenPlacement(element: Element): boolean {
+  return Boolean(element.parentElement?.closest('[data-adblock-hidden]') || element.querySelector('[data-adblock-hidden]'))
+}
+
 const consentScrollLockClasses = ['ot-lock', 'modal-open', 'didomi-popup-open', 'cmplz-blocked', 'sp-message-open', 'no-scroll', 'cky-consent', 'cookiebot-scroll-lock']
 
 function restoreConsentScroll(): void {
@@ -516,44 +491,6 @@ function restoreConsentScroll(): void {
     document.documentElement.classList.remove(className)
     document.body?.classList.remove(className)
   }
-}
-
-/**
- * Click the Skip button whenever it is visible in the player. We click on every
- * poll tick it is present so a click that lands before YouTube wires the
- * handler still gets retried, and count each button once. Scans the whole
- * document, not just mutation roots, since the button often becomes visible
- * without a childList mutation. Only while a player is actually in an ad:
- * YouTube keeps skip buttons in the DOM after the ad ends, and a leftover that
- * still passes the visibility check would otherwise be re-clicked forever,
- * poking the player every poll tick.
- */
-function clickYouTubeSkip(): void {
-  if (!document.querySelector('.html5-video-player.ad-showing, .html5-video-player.ad-interrupting')) return
-
-  for (const button of document.querySelectorAll(youtubeSkipSelectors)) {
-    if (!(button instanceof HTMLElement) || !isVisible(button)) continue
-    button.click()
-    if (!seen.has(button)) {
-      seen.add(button)
-      creditVideoAd()
-    }
-  }
-}
-
-/** Dismiss the small banner ad overlaid on the video. */
-function closeYouTubeOverlayAd(): void {
-  for (const button of document.querySelectorAll('.ytp-ad-overlay-close-button, .ytp-ad-overlay-close-container button')) {
-    if (button instanceof HTMLElement && isVisible(button) && !seen.has(button)) {
-      seen.add(button)
-      button.click()
-      queueEvent('youtube', 'other')
-    }
-  }
-}
-
-function isVisible(element: HTMLElement): boolean {
-  return element.offsetParent !== null || element.getClientRects().length > 0
 }
 
 /**
@@ -632,10 +569,14 @@ function handleTwitchVideoAds(roots: readonly SelectorRoot[]): void {
     }
   }
 
+  // Counted, but credited nothing. Twitch stitches the ad into the stream
+  // itself, so muting and covering it saves no bandwidth and no time (the
+  // break still runs its length; see twitch-ads.ts). It used to claim 2.5 MB
+  // and 15 s of "video time saved" per window, under "Video skips".
   const now = Date.now()
   if (freshMarker && now - lastTwitchVideoCreditAt >= twitchVideoCreditWindowMs) {
     lastTwitchVideoCreditAt = now
-    queueEvent('video', 'media', 1, estimateVideoAdBytes(), estimateVideoSecondsSaved())
+    queueEvent('twitch', 'media', 1, 0, 0)
   }
 }
 

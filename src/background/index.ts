@@ -5,9 +5,10 @@ import { blockedPageFile, blockedPageQuery } from '../shared/blocked-page'
 import type { BlockedReason } from '../shared/blocked-page'
 import { grantBypass, pruneBypasses } from './bypass'
 import { curatedRuleSeeds, redirectRuleSeeds } from '../rules/static-rules'
-import { isNavigationAllowRule, navigationHosts } from '../rules/navigation'
+import { navigationHosts } from '../rules/navigation'
 import { buildHostRefreshRules, syncDynamicRules } from '../rules/dynamic-rules'
 import { addBlockedHosts, isBlockedHost, isBlockedRequest } from '../rules/blocked-hosts'
+import { attributeBlockRule, hostOfUrlFilter } from '../rules/rule-attribution'
 import { hostnameFromUrl, siteMatches } from '../shared/domain'
 import { categoryForRequestType, estimateBytesSaved, formatBytes } from '../shared/metrics'
 import { isSearchResultsUrl } from '../shared/search-navigation'
@@ -17,11 +18,12 @@ import { isNewBlockedHost, isNewBlockedRequest } from './page-block-tally'
 import {
   defaultSettings,
   getActiveTabState,
-  getCloudStatsSnapshot,
+  applySyncedStatsChange,
+  getCloudSyncState,
   getLifetimeStats,
   getLocalStats,
   getSettings,
-  hydrateSyncedStats,
+  isSyncedStatsChange,
   initializeStorage,
   migrateStatsSchema,
   recordBlockEvents,
@@ -128,9 +130,55 @@ let badgePollTicksLeft = 0
 // storage.onChanged listener below; undefined until setup() loads them.
 let cachedSettings: ExtensionSettings | undefined
 
+// Tabs that navigated or closed after this worker woke. The navigation that
+// wakes an idle worker is dispatched before the session restore below
+// resolves, so the restore must not merge the previous visit's counters, hosts
+// and log back into the fresh state that navigation just created (the badge
+// read visit 1 plus visit 2, and trackers shared by both never counted).
+const tabsResetSinceWake = new Set<number>()
+let pageStatsHydrated = false
+
 // Kick off the restore immediately so counts from before a worker restart are
 // back before the first events land. Listeners merge rather than overwrite.
-const pageStatsHydration = hydratePageBadgeStats()
+const pageStatsHydration = hydratePageBadgeStats().finally(() => {
+  pageStatsHydrated = true
+  tabsResetSinceWake.clear()
+})
+
+// Refreshed host rules by id, for attributing getMatchedRules entries and for
+// the blocked-host lookup the webRequest listener consults.
+const refreshHostsByRuleId = new Map<number, string>()
+
+// setup() only runs on install and browser start, not when an idle worker is
+// woken by an event — which is most of the time. Without this, every wake ran
+// on defaultSettings (no user block list, pop-up blocking on) and forgot the
+// hosts the last filter refresh added, so those blocks went uncounted.
+void getSettings().then((settings) => {
+  cachedSettings ??= settings
+}).catch(() => {})
+void seedRefreshedHosts()
+
+async function seedRefreshedHosts(): Promise<void> {
+  try {
+    const rules = await chrome.declarativeNetRequest.getDynamicRules()
+    rememberRefreshRules(rules)
+  }
+  catch {
+    // No dynamic rules readable; the next refresh repopulates the lookup.
+  }
+}
+
+function rememberRefreshRules(rules: chrome.declarativeNetRequest.Rule[]): void {
+  const hosts: string[] = []
+  for (const rule of rules) {
+    if (rule.id < refreshRuleStartId || rule.id > refreshRuleEndId) continue
+    const host = hostOfUrlFilter(rule.condition.urlFilter ?? '')
+    if (!host) continue
+    refreshHostsByRuleId.set(rule.id, host)
+    hosts.push(host)
+  }
+  addBlockedHosts(hosts)
+}
 
 async function hydratePageBadgeStats(): Promise<void> {
   const session = chrome.storage.session as chrome.storage.StorageArea | undefined
@@ -145,6 +193,7 @@ async function hydratePageBadgeStats(): Promise<void> {
     for (const [key, state] of Object.entries(entries ?? {})) {
       const tabId = Number(key)
       if (!Number.isInteger(tabId) || !state || typeof state !== 'object') continue
+      if (tabsResetSinceWake.has(tabId)) continue
 
       // Live events can land before hydration finishes; keep whichever side is
       // ahead per field rather than letting the older snapshot erase them.
@@ -162,6 +211,7 @@ async function hydratePageBadgeStats(): Promise<void> {
     for (const [key, hosts] of Object.entries(storedHosts ?? {})) {
       const tabId = Number(key)
       if (!Number.isInteger(tabId) || !Array.isArray(hosts)) continue
+      if (tabsResetSinceWake.has(tabId)) continue
 
       // Union, not replace: a host counted since the worker came back is as
       // real as one from the snapshot, and either way it must not count twice.
@@ -173,6 +223,7 @@ async function hydratePageBadgeStats(): Promise<void> {
     for (const [key, log] of Object.entries(storedLogs ?? {})) {
       const tabId = Number(key)
       if (!Number.isInteger(tabId) || !Array.isArray(log)) continue
+      if (tabsResetSinceWake.has(tabId)) continue
 
       // Same merge rule as the counters: live entries that already landed win,
       // stored ones (older) slot in before them, capped to the newest.
@@ -307,15 +358,50 @@ function addNetworkBlocks(tabId: number, count: number, category: ResourceCatego
 
 async function flushNetworkStats(): Promise<void> {
   if (!pendingNetworkStats.size) return
-  // Match the content-side rule: no stats accrue while protection is off.
-  if (!(await getSettings()).enabled) {
+  // Match the content-side rule: no stats accrue while protection is off, or
+  // for pages on the allowlist (every source feeds this funnel, not only the
+  // webRequest listener that already checked).
+  const settings = await getSettings()
+  if (!settings.enabled) {
     pendingNetworkStats.clear()
     return
   }
 
-  const events = [...pendingNetworkStats.values()]
+  const events = [...pendingNetworkStats.values()].filter(event => !siteMatches(event.hostname, settings.allowedSites))
   pendingNetworkStats.clear()
-  await recordBlockEvents(events)
+  if (events.length) await recordBlockEvents(events)
+}
+
+/**
+ * The page state a network block is credited to, created on demand.
+ *
+ * A tab can be mid-visit with no state at all: session storage is cleared on
+ * extension update, and tabs that were already open get neither an onUpdated
+ * nor a fresh content script. Dropping their blocks meant every open tab
+ * counted nothing after an auto-update until it navigated.
+ */
+function ensurePageState(tabId: number, pageUrl?: string): PageVisitState | undefined {
+  const existing = pageBadgeStats.get(tabId)
+  if (existing) return existing
+  if (!pageUrl || !hostnameFromUrl(pageUrl)) return undefined
+  const state: PageVisitState = { content: 0, network: 0, networkRaw: 0, url: pageUrl, loadedAt: Date.now(), networkCheckedAt: 0 }
+  pageBadgeStats.set(tabId, state)
+  return state
+}
+
+/** Same document, different fragment: an in-page anchor, not a new visit. */
+function isFragmentOnlyChange(previous: string | undefined, next: string): boolean {
+  if (!previous) return false
+  try {
+    const a = new URL(previous)
+    const b = new URL(next)
+    a.hash = ''
+    b.hash = ''
+    return a.href === b.href && previous !== next
+  }
+  catch {
+    return false
+  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -348,7 +434,15 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const popupCandidate = popupCandidates.get(tabId)
   if (popupCandidate) rememberInitialPopupUrl(popupCandidate, changeInfo.url ?? tab.pendingUrl ?? tab.url)
 
-  if (changeInfo.status === 'loading' || changeInfo.url) {
+  const current = pageBadgeStats.get(tabId)
+  if (changeInfo.url && changeInfo.status !== 'loading' && current && isFragmentOnlyChange(current.url, changeInfo.url)) {
+    // Clicking an in-page anchor keeps the visit: zeroing it would also re-count
+    // every still-retrying tracker into lifetime.
+    current.url = changeInfo.url
+    schedulePageStatsPersist()
+  }
+  else if (changeInfo.status === 'loading' || changeInfo.url) {
+    if (!pageStatsHydrated) tabsResetSinceWake.add(tabId)
     pageBadgeStats.set(tabId, { content: 0, network: 0, networkRaw: 0, url: changeInfo.url ?? tab.url, loadedAt: Date.now(), networkCheckedAt: 0 })
     cosmeticActivity.delete(tabId)
     pageBlockLog.delete(tabId)
@@ -368,6 +462,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 })
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  if (!pageStatsHydrated) tabsResetSinceWake.add(tabId)
   pageBadgeStats.delete(tabId)
   cosmeticActivity.delete(tabId)
   pageBlockLog.delete(tabId)
@@ -404,10 +499,14 @@ chrome.webRequest?.onBeforeRequest.addListener((details) => {
 // their matching webRequest error is counted below. Request-id deduplication
 // lets both listeners remain installed without inflating development counts.
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
-  if (isNavigationAllowRule(info.rule.ruleId)) return
-  const tabId = info.request.tabId
+  const settings = cachedSettings ?? defaultSettings
+  if (!attributeBlockRule(info.rule.ruleId, info.rule.rulesetId, { blockedSites: settings.blockedSites, refreshHosts: refreshHostsByRuleId })) return
+  const request = info.request as typeof info.request & { documentLifecycle?: string, initiator?: string }
+  if (request.documentLifecycle === 'prerender') return
+  const tabId = request.tabId
   if (tabId < 0) return
-  recordLiveNetworkBlock(tabId, info.request.requestId, info.request.type, info.request.url)
+  if (!ensurePageState(tabId, request.type === 'main_frame' ? request.url : request.initiator)) return
+  recordLiveNetworkBlock(tabId, request.requestId, request.type, request.url)
 })
 
 /**
@@ -452,7 +551,14 @@ function onRequestError(details: chrome.webRequest.OnErrorOccurredDetails): void
   const settings = cachedSettings ?? defaultSettings
   if (!settings.enabled) return
 
-  const page = pageBadgeStats.get(details.tabId)
+  // A prerendered page's trackers belong to a page nobody is looking at yet;
+  // crediting them to the visible tab inflated its badge, and the tally reset
+  // on activation then under-reported the real page.
+  const lifecycle = (details as { documentLifecycle?: string }).documentLifecycle
+  if (lifecycle === 'prerender') return
+
+  const documentUrl = (details as { documentUrl?: string }).documentUrl
+  const page = ensurePageState(details.tabId, details.frameId === 0 ? documentUrl ?? details.initiator : details.initiator)
   if (!page) return
 
   const pageHostname = (page.url ? hostnameFromUrl(page.url) : '') || hostnameFromUrl(details.initiator ?? '')
@@ -576,9 +682,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     void updateBadge()
   }
 
-  if (changes.cloudStats?.newValue) {
-    void hydrateSyncedStats(changes.cloudStats.newValue)
-    void updateBadge()
+  // Another device published its share or reset the stats. Totals are summed
+  // on read, so only a reset needs work here; the badge picks up the rest.
+  if (isSyncedStatsChange(changes)) {
+    void applySyncedStatsChange(changes).then(() => updateBadge())
   }
 })
 
@@ -666,6 +773,8 @@ async function refreshFilters(force = false): Promise<void> {
     const shipped = new Set(generatedNetworkHosts.hosts)
     const addRules = buildHostRefreshRules(hosts, { exclude: shipped })
     addBlockedHosts(hosts)
+    refreshHostsByRuleId.clear()
+    rememberRefreshRules(addRules)
 
     const existing = await chrome.declarativeNetRequest.getDynamicRules()
     const removeRuleIds = existing
@@ -684,6 +793,16 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
   switch (message.type) {
     case 'get-dashboard':
       return getDashboard()
+    case 'get-settings':
+      return { settings: await getSettings() }
+    case 'get-embed-config': {
+      // An embedded player follows the page the user is on: the global switch,
+      // that page's allowlist entry, and the YouTube toggle.
+      const settings = await getSettings()
+      const pageHostname = hostnameFromUrl(sender.tab?.url ?? '')
+      const allowed = Boolean(pageHostname) && siteMatches(pageHostname, settings.allowedSites)
+      return { enabled: settings.enabled && settings.youtubeEnhancements && !allowed }
+    }
     case 'set-settings': {
       let settings = await setSettings(message.settings)
       // Manually turning protection back on cancels any active pause.
@@ -713,10 +832,15 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       if (!settings.enabled) return true
       const senderHostname = hostnameFromUrl(sender.tab?.url ?? '')
       if (senderHostname && siteMatches(senderHostname, settings.allowedSites)) return true
-      await recordBlockEvents(message.events)
+      // Blocks from a subframe (an embedded YouTube player) belong to the page
+      // around it: that is the site whose badge and per-site stats they join.
+      const events = sender.frameId && senderHostname
+        ? message.events.map(event => ({ ...event, hostname: senderHostname }))
+        : message.events
+      await recordBlockEvents(events)
       if (sender.tab?.id !== undefined) {
-        incrementPageContent(sender.tab.id, message.events.reduce((total, event) => total + event.count, 0), sender.tab.url)
-        for (const event of message.events) {
+        incrementPageContent(sender.tab.id, events.reduce((total, event) => total + event.count, 0), sender.tab.url)
+        for (const event of events) {
           const row = pageBlockRowForSource(event.source)
           if (row && event.count > 0) {
             logPageBlock(sender.tab.id, { ...row, count: event.count, at: event.occurredAt })
@@ -760,7 +884,6 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
 async function getDashboard(): Promise<DashboardState> {
   const settings = await getSettings()
   const activeTab = await getActiveTabState(settings)
-  const cloudStats = await getCloudStatsSnapshot()
 
   if (activeTab?.tabId !== undefined) await refreshTabNetworkCount(activeTab.tabId)
 
@@ -768,12 +891,7 @@ async function getDashboard(): Promise<DashboardState> {
     settings,
     lifetime: await getLifetimeStats(),
     local: await getLocalStats(),
-    cloudSync: {
-      available: Boolean(cloudStats),
-      syncedAt: cloudStats?.syncedAt,
-      dailyBuckets: cloudStats?.daily.length ?? 0,
-      siteRollups: cloudStats?.sites.length ?? 0,
-    },
+    cloudSync: await getCloudSyncState(),
     activeTab,
     activePage: pageVisitStats(activeTab?.tabId),
     activePageBlocks: pageBlocksForTab(activeTab?.tabId),
@@ -788,7 +906,23 @@ async function getDashboard(): Promise<DashboardState> {
   }
 }
 
+// getMatchedRules shares one small quota (about 20 calls per 10 minutes) with
+// the badge reconciliation. Telemetry is diagnostics: the popup polls the
+// dashboard every 2s and the options page on demand, and computing it on each
+// call spent the whole quota within seconds, after which reconciliation never
+// ran again. One fresh reading a minute is plenty for a diagnostics row.
+const dnrTelemetryMaxAgeMs = 60_000
+let dnrTelemetryCache: { tabId?: number, at: number, value: DnrTelemetry } | undefined
+
 async function getDnrTelemetry(activeTabId?: number): Promise<DnrTelemetry> {
+  if (dnrTelemetryCache && dnrTelemetryCache.tabId === activeTabId && Date.now() - dnrTelemetryCache.at < dnrTelemetryMaxAgeMs)
+    return dnrTelemetryCache.value
+  const value = await readDnrTelemetry(activeTabId)
+  dnrTelemetryCache = { tabId: activeTabId, at: Date.now(), value }
+  return value
+}
+
+async function readDnrTelemetry(activeTabId?: number): Promise<DnrTelemetry> {
   const checkedAt = new Date().toISOString()
 
   try {
@@ -938,24 +1072,26 @@ async function refreshTabNetworkCount(tabId: number): Promise<void> {
 
   try {
     const matched = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: details.loadedAt })
-    // A successful SMS redirect can match our document allow rule. Neither
-    // live feedback nor this reconciliation may count that as a blocked ad.
-    const blockedMatches = matched.rulesMatchedInfo.filter(match => !isNavigationAllowRule(match.rule.ruleId))
+    // Only block rules count. Allow-all (allowlist, pause), document allows,
+    // SMS navigation allows, bypasses and script redirects all show up here
+    // too, and none of them is an ad that was blocked.
+    const settings = cachedSettings ?? defaultSettings
+    const context = { blockedSites: settings.blockedSites, refreshHosts: refreshHostsByRuleId }
+    const blocked = matched.rulesMatchedInfo
+      .map(match => attributeBlockRule(match.rule.ruleId, match.rule.rulesetId, context))
+      .filter((match): match is { host?: string } => match !== undefined)
     // Against the RAW count: getMatchedRules reports requests, and the headline
     // counter no longer does. Comparing it to the deduplicated number would
     // read every retry the listeners already saw as a block they had missed.
-    const delta = Math.max(0, blockedMatches.length - details.networkRaw)
+    const delta = Math.max(0, blocked.length - details.networkRaw)
     if (delta > 0) {
-      // Matches the live listeners missed (e.g. while the worker was down):
-      // fold them through the same funnel so lifetime stats stay in lockstep.
-      // The newest entries sit at the tail — categorize the delta from their
-      // request types, falling back to 'other' when the list is truncated.
-      const entries = blockedMatches.slice(-delta)
-      for (const entry of entries) {
-        const request = (entry as { request?: { type?: string, url?: string } }).request
-        addNetworkBlocks(tabId, 1, categoryForRequestType(request?.type ?? 'other'), request?.url ? hostnameFromUrl(request.url) : undefined)
-      }
-      if (entries.length < delta) addNetworkBlocks(tabId, delta - entries.length, 'other')
+      // Matches the live listeners missed (e.g. while the worker was down, or
+      // on Safari, where this is the only network signal): fold them through
+      // the same funnel so lifetime stats stay in lockstep. The entry has no
+      // request URL, so the host comes from the rule that matched; that is
+      // what lets these move the headline (distinct hosts) and not only raw.
+      for (const entry of blocked.slice(-delta))
+        addNetworkBlocks(tabId, 1, 'other', entry.host)
     }
   }
   catch {

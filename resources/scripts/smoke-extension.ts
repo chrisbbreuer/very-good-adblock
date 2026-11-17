@@ -98,7 +98,8 @@ try {
   assert(twitchHidden >= 1, `Expected Twitch cosmetic filtering to hide the display banner, saw ${twitchHidden} hidden nodes`)
   assert(twitchMarkerVisible, 'Expected Twitch video-ad markers to stay visible for detection')
   assert(twitchEvents >= 2, `Expected Twitch video detection to report video events, saw ${twitchEvents}`)
-  assert(twitchVideoSeconds >= 15, `Expected Twitch video detection to estimate saved video time, saw ${twitchVideoSeconds}`)
+  // A stitched Twitch break is counted but saves no time: it still plays out.
+  assert(twitchVideoSeconds === 0, `Expected Twitch breaks to credit no saved video time, saw ${twitchVideoSeconds}`)
   closeView(twitch)
 
   const popup = await openView(390, 620)
@@ -138,8 +139,12 @@ try {
   await options.type('ads.blocked.test')
   await options.click('#block-form button')
   await waitFor(options, `document.querySelector('#blocked-count')?.textContent === '1'`, 'blocked-site add')
+  // The dashboard is taller than the window; bring each target into view
+  // first, since the click helper does not scroll.
+  await options.evaluate(`document.querySelector('#blocked-sites .pill')?.scrollIntoView({ block: 'center' })`)
   await options.click('#blocked-sites .pill')
   await waitFor(options, `document.querySelector('#blocked-count')?.textContent === '0'`, 'blocked-site remove')
+  await options.evaluate(`window.scrollTo(0, 0)`)
   await options.click('#export-data')
   await waitFor(options, `Boolean(window.__adblockSmokeExported?.lifetime)`, 'dashboard export')
   await options.click('#reset-stats')
@@ -268,7 +273,7 @@ function uiShimScript(): string {
           window.__adblockOptionsOpened = true;
         },
         sendMessage: async message => {
-          if (message.type === 'get-dashboard') return { ok: true, data: clone(state) };
+          if (message.type === 'get-dashboard' || message.type === 'get-settings') return { ok: true, data: clone(state) };
           if (message.type === 'set-settings') {
             state.settings = { ...state.settings, ...message.settings };
             state.settings.allowedSites = uniqueSites(state.settings.allowedSites);
@@ -323,7 +328,7 @@ function contentFixture(body: string): string {
       window.chrome = {
         runtime: {
           sendMessage: async message => {
-            if (message.type === 'get-dashboard') {
+            if (message.type === 'get-dashboard' || message.type === 'get-settings') {
               return { ok: true, data: { settings: ${JSON.stringify(defaultSmokeSettings())} } };
             }
             if (message.type === 'record-blocks') {
@@ -459,6 +464,7 @@ function makeDashboardState(): DashboardState {
       syncedAt: now.toISOString(),
       dailyBuckets: daily.length,
       siteRollups: Object.keys(local.sites).length,
+      devices: 1,
     },
     activeTab: {
       hostname: 'example.test',

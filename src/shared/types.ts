@@ -60,19 +60,14 @@ export interface LocalStats {
   recentEvents: BlockEvent[]
 }
 
-export interface CloudStatsSnapshot {
-  schemaVersion: 1
-  lifetime: LifetimeStats
-  daily: StatBucket[]
-  sites: SiteStats[]
-  syncedAt: string
-}
-
 export interface CloudSyncState {
   available: boolean
   syncedAt?: string
+  /** Days and sites in this device's published share. */
   dailyBuckets: number
   siteRollups: number
+  /** Devices whose shares count toward the totals, this one included. */
+  devices: number
 }
 
 export interface DashboardState {
@@ -162,6 +157,10 @@ export interface PageBlockEntry {
 
 export type RuntimeMessage =
   | { type: 'get-dashboard' }
+  /** Settings only: what a content script needs at load, without the dashboard's DNR reads. */
+  | { type: 'get-settings' }
+  /** Whether an embedded YouTube player should act, judged against the page around it. */
+  | { type: 'get-embed-config' }
   | { type: 'set-settings', settings: Partial<ExtensionSettings> }
   | { type: 'toggle-site', hostname: string, allowed: boolean }
   | { type: 'record-blocks', events: BlockEvent[] }

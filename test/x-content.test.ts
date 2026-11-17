@@ -125,7 +125,7 @@ function wrapFixture(fixture: string, contentScript: string): string {
     window.chrome = {
       runtime: {
         sendMessage: async message => {
-          if (message.type === 'get-dashboard') {
+          if (message.type === 'get-dashboard' || message.type === 'get-settings') {
             return {
               ok: true,
               data: {

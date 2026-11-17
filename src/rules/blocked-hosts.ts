@@ -3,6 +3,7 @@ import { normalizeHostname } from '../shared/domain'
 import { isProtectedSearchHost } from '../shared/search-navigation'
 import { curatedRuleSeeds } from './static-rules'
 import { isNavigationHost } from './navigation'
+import { hostOfUrlFilter } from './rule-attribution'
 
 /**
  * Lookup set of every host our network rules block, used where rule matches are
@@ -34,14 +35,6 @@ for (const host of generatedNetworkHosts.hosts) {
 for (const seed of curatedRuleSeeds) {
   const host = hostOfUrlFilter(seed.urlFilter)
   if (host) blockedHosts.add(host)
-}
-
-/** Extract the host from a `||host^` filter; path/URL filters yield ''. */
-function hostOfUrlFilter(urlFilter: string): string {
-  if (!urlFilter.startsWith('||')) return ''
-  const caret = urlFilter.indexOf('^')
-  const value = urlFilter.slice(2, caret < 0 ? undefined : caret).toLowerCase()
-  return value.includes('/') ? '' : value
 }
 
 /** Whether our network rules block this hostname (or one of its parents). */

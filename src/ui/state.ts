@@ -40,6 +40,7 @@ export function normalizeDashboardState(state: DashboardState): DashboardState {
       syncedAt: state.cloudSync?.syncedAt,
       dailyBuckets: state.cloudSync?.dailyBuckets ?? 0,
       siteRollups: state.cloudSync?.siteRollups ?? 0,
+      devices: state.cloudSync?.devices ?? 1,
     },
     activePage: state.activePage ?? { blocked: 0, network: 0, content: 0 },
     activePageBlocks: state.activePageBlocks ?? [],

@@ -343,6 +343,7 @@ function renderDiagnostics(next: DashboardState): void {
     ['Tracked sites', Object.keys(next.local.sites).length],
     ['Recent events', next.local.recentEvents.length],
     ['Cloud sync', next.cloudSync.available ? cloudSyncLabel(next.cloudSync.syncedAt) : 'Pending'],
+    ['Synced devices', next.cloudSync.devices],
     ['Cloud daily history', next.cloudSync.dailyBuckets],
     ['Cloud site rollups', next.cloudSync.siteRollups],
     ['Static rules', next.filters.staticRuleCount],

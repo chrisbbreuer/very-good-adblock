@@ -80,9 +80,12 @@ describe('cached Twitch content script fixture', () => {
 
       expect(errors).toEqual([])
       expect(hiddenCount).toBeGreaterThanOrEqual(1)
-      expect(eventSources.has('video')).toBe(true)
       expect(eventSources.has('twitch')).toBe(true)
-      expect(videoSecondsSaved).toBeGreaterThanOrEqual(15)
+      // The break is counted (a Twitch ad event in the media category) but
+      // credits no saved time or video: the stitched ad still plays its length.
+      expect(events.some(event => event.source === 'twitch' && event.category === 'media')).toBe(true)
+      expect(eventSources.has('video')).toBe(false)
+      expect(videoSecondsSaved).toBe(0)
     }
     finally {
       view.close()
@@ -129,7 +132,7 @@ function wrapFixture(fixture: string, contentScript: string): string {
     window.chrome = {
       runtime: {
         sendMessage: async message => {
-          if (message.type === 'get-dashboard') {
+          if (message.type === 'get-dashboard' || message.type === 'get-settings') {
             return {
               ok: true,
               data: {

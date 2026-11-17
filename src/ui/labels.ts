@@ -2,7 +2,7 @@
 export function sourceLabel(source: string): string | undefined {
   if (source === 'dnr') return 'Network rules'
   if (source === 'video') return 'Video skips'
-  if (source === 'twitch') return 'Twitch banners'
+  if (source === 'twitch') return 'Twitch ads'
   if (source === 'youtube') return 'YouTube placements'
   if (source === 'cosmetic') return 'Hidden placements'
   if (source === 'consent') return 'Cookie banners'

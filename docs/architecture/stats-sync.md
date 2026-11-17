@@ -1,11 +1,11 @@
 ---
 title: Stats and Cloud Sync
-description: Local-first tracking with compact Chrome sync restore for modern cross-install stats.
+description: Local-first tracking, with each install's totals synced as its own share and added up for display.
 ---
 
 # Stats and Cloud Sync
 
-Very Good AdBlock tracks stats locally first, then syncs a compact snapshot through Chrome so a fresh install can restore the important totals.
+Very Good AdBlock tracks stats locally first. Each install publishes a compact summary of what it blocked, and every dashboard shows the sum across your installs.
 
 ## Lifetime Totals
 
@@ -19,21 +19,28 @@ Lifetime totals include:
 
 ## Local Storage
 
-High-churn data stays in `chrome.storage.local`:
+This install's own data stays in `chrome.storage.local`:
 
-- Hourly history.
-- Full site rollups.
-- Recent events.
+- Its lifetime totals, written on every block so nothing is lost if the service worker stops between syncs.
+- Hourly history and recent events (never synced).
+- Daily history and full per-site rollups (capped at 500 sites).
+- A random install id, generated once.
 
 ## Chrome Sync
 
-Compact cloud data is stored in `chrome.storage.sync`:
+`chrome.storage.sync` holds:
 
 - Settings.
-- Lifetime totals.
-- Last 30 daily buckets.
-- Top 15 site rollups.
+- One share per install, under `statsDevice:<install id>`: that install's lifetime totals, its last 30 daily buckets and its top 15 sites. Each share is kept under the 8 KB per-item quota by dropping the oldest days first, then the smallest sites.
+- `statsResetAt`, the reset epoch.
+- `statsBaseline`, totals carried over from before shares existed (see below).
 
-These limits keep the snapshot under `chrome.storage.sync`'s 8 KB per-item quota; if it still runs over, the oldest daily buckets are dropped first, then trailing site rollups, until it fits.
+An install only ever writes its own share. Totals are the sum of all shares, so two installs blocking at the same moment cannot overwrite each other, and an idle install never repeats someone else's numbers. Per-site and daily figures are summed by key the same way.
 
-On startup or install, Very Good AdBlock hydrates local dashboard data from the cloud snapshot. Merge logic uses the highest observed values for counters so the same synced stats do not get counted twice.
+## Reset
+
+Resetting writes a new `statsResetAt` epoch and clears the local share. Every install compares the epoch with the one it last applied (on change, and at startup if it was off) and clears its own share when the epoch is newer. Shares and the baseline stamped with an older epoch are left out of the sum, so a reset sticks even before every install has caught up.
+
+## Migrating From the Shared Snapshot
+
+Earlier versions kept one shared lifetime total and merged copies by taking the larger value, so every install held roughly the same numbers. On upgrade those totals cannot become any one install's share without being counted once per install. They become the baseline instead: the larger of each figure across what this install and any install that migrated first had seen. The synced baseline is a single 8 KB item, so each install also keeps its full copy locally and combines it with the synced one by maximum, never by sum. The install's own share then starts from zero. After a reset the baseline is dropped with everything else.

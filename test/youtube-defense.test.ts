@@ -345,7 +345,7 @@ function wrapFixture(body: string, scripts: string): string {
       window.chrome = {
         runtime: {
           sendMessage: async (message) => {
-            if (message.type === 'get-dashboard') {
+            if (message.type === 'get-dashboard' || message.type === 'get-settings') {
               return { ok: true, data: { settings: {
                 enabled: true,
                 badgeEnabled: true,

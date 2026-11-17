@@ -74,6 +74,53 @@ describe('cookie-consent content filtering', () => {
 })
 
 
+describe('cosmetic placement counting', () => {
+  it('counts one nested ad slot once, however many selectors match its layers', async () => {
+    const contentScript = await buildContentScript()
+    const page = wrapFixture(`<!doctype html>
+<html>
+  <head><title>Ad slot fixture</title></head>
+  <body>
+    <main><h1>Article</h1></main>
+    <div id="div-gpt-ad-top">
+      <div id="google_ads_iframe_/123/top_0__container__">
+        <iframe id="google_ads_iframe_/123/top_0" title="ad"></iframe>
+      </div>
+    </div>
+    <ins class="adsbygoogle"><iframe id="google_ads_iframe_/123/side_0" title="ad"></iframe></ins>
+  </body>
+</html>`, contentScript)
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      },
+    })
+    const view = await openChromeView({
+      width: 900,
+      height: 700,
+      backend: { type: 'chrome', url: false, argv: ['--proxy-server=direct://', '--proxy-bypass-list=*'] },
+    })
+
+    try {
+      await view.navigate(`http://127.0.0.1:${server.port}/`)
+      await waitFor(view, `(window.__adblockEvents ?? []).some(event => event.source === 'cosmetic')`, 'cosmetic event flush')
+      await Bun.sleep(1_500)
+      const events = await view.evaluate<BlockEvent[]>(`window.__adblockEvents ?? []`)
+      const hidden = events.filter(event => event.source === 'cosmetic').reduce((total, event) => total + event.count, 0)
+      // Two ads on the page: the GPT slot (three matching layers) and the
+      // AdSense unit (two). Before, this counted five.
+      expect(hidden).toBe(2)
+      // Every layer is still tagged, so nothing is counted again later.
+      expect(await view.evaluate<number>(`document.querySelectorAll('[data-adblock-hidden]').length`)).toBe(5)
+    }
+    finally {
+      view.close()
+      server.stop(true)
+    }
+  }, 30_000)
+})
+
 function consentFixture(): string {
   return `<!doctype html>
 <html>
@@ -93,7 +140,7 @@ function wrapFixture(fixture: string, contentScript: string): string {
     window.chrome = {
       runtime: {
         sendMessage: async message => {
-          if (message.type === 'get-dashboard') {
+          if (message.type === 'get-dashboard' || message.type === 'get-settings') {
             return { ok: true, data: { settings: {
               enabled: true,
               badgeEnabled: true,

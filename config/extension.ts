@@ -140,10 +140,14 @@ Install the app, then enable Very Good AdBlock in Settings > Apps > Safari > Ext
   content: [
     { entry: 'src/content/index.ts', out: 'content.js', matches: ['http://*/*', 'https://*/*'], runAt: 'document_start' },
     { entry: 'src/content/x-inpage.ts', matches: ['*://x.com/*', '*://*.x.com/*', '*://twitter.com/*', '*://*.twitter.com/*'], runAt: 'document_start', world: 'MAIN' },
-    // `youtube-nocookie.com` is the privacy-enhanced embed host: sites that
-    // embed players through it get the same source-level pruning, which the
-    // plain youtube.com patterns never reached.
-    { entry: 'src/content/yt-inpage.ts', matches: ['*://*.youtube.com/*', '*://youtube-nocookie.com/*', '*://*.youtube-nocookie.com/*'], runAt: 'document_start', world: 'MAIN' },
+    // All frames: YouTube players embedded in other sites are youtube.com or
+    // youtube-nocookie.com (the privacy-enhanced host) iframes, and their ads
+    // arrive in the same player responses this prunes.
+    { entry: 'src/content/yt-inpage.ts', matches: ['*://*.youtube.com/*', '*://youtube-nocookie.com/*', '*://*.youtube-nocookie.com/*'], runAt: 'document_start', world: 'MAIN', allFrames: true },
+    // The embed's side of that: enables the pruner for the page around it, runs
+    // the player safety net and reports the counts. Embed frames only; the top
+    // frame belongs to content.js (yt-embed.ts exits there).
+    { entry: 'src/content/yt-embed.ts', matches: ['*://*.youtube.com/embed/*', '*://youtube-nocookie.com/embed/*', '*://*.youtube-nocookie.com/embed/*'], runAt: 'document_start', allFrames: true },
     { entry: 'src/content/popup-guard.ts', matches: ['http://*/*', 'https://*/*'], runAt: 'document_start', world: 'MAIN', allFrames: true, matchAboutBlank: true },
   ],
 

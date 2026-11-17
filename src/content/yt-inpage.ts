@@ -251,6 +251,7 @@ function installXhrPruner(target: Realm): void {
 
   class PatchedXMLHttpRequest extends Original {
     override send(body?: Document | XMLHttpRequestBodyInit | null): void {
+      cleanedXhrText.delete(this)
       armXhrPruner(this, nativeResponseText, nativeResponse)
       super.send(body ?? null)
     }
@@ -317,8 +318,25 @@ function armXhrPruner(
   }
 }
 
+/**
+ * Cleaned bodies of completed requests. Consumers read `response` and then
+ * `responseText`, or read in both `readystatechange` and `load`, and every read
+ * re-parsed the untouched native text, pruned it again and reported the same
+ * placements again. A finished response is cleaned once; send() clears it, so
+ * a reused XHR is cleaned afresh.
+ */
+const cleanedXhrText = new WeakMap<XMLHttpRequest, string>()
+
 /** The pruned text form of a completed response, or its untouched text. */
 function cleanXhrText(xhr: XMLHttpRequest, nativeResponseText: NativeGetter<string> | undefined): string {
+  const cached = cleanedXhrText.get(xhr)
+  if (cached !== undefined) return cached
+  const cleaned = pruneXhrText(xhr, nativeResponseText)
+  if (xhr.readyState === XMLHttpRequest.DONE) cleanedXhrText.set(xhr, cleaned)
+  return cleaned
+}
+
+function pruneXhrText(xhr: XMLHttpRequest, nativeResponseText: NativeGetter<string> | undefined): string {
   const text = nativeResponseText ? nativeResponseText.call(xhr) : ''
   try {
     if (!bridge.isEnabled()) return text

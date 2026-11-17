@@ -252,7 +252,7 @@ function renderLive(next: DashboardState): void {
   renderPageBlocks(next)
   elements.dataSaved.textContent = formatBytes(next.lifetime.bytesSaved)
   elements.videoTime.textContent = formatMinutes(next.lifetime.videoSecondsSaved)
-  elements.lifetimeBlocked.textContent = `${next.lifetime.adsBlocked.toLocaleString()} lifetime`
+  elements.lifetimeBlocked.textContent = next.lifetime.adsBlocked.toLocaleString()
   // Peak of the same 24-hour window the chart renders (see renderBars).
   const peak = Math.max(0, ...hourlyValues)
   // An all-zero window is now a row of baseline dashes; "peak 0/hr" reads like a
@@ -416,10 +416,14 @@ function renderTopCategories(next: DashboardState): void {
     return
   }
 
+  // Each row carries its share of the leader so the list reads as a ranking
+  // at a glance; the stylesheet draws it as a bar behind the label.
+  const leader = Math.max(1, ...categories.map(([, count]) => count))
   elements.topCategories.replaceChildren(
     ...categories.map(([category, count]) => {
       const row = document.createElement('div')
       row.className = 'site-row'
+      row.style.setProperty('--share', (count / leader).toFixed(3))
       row.replaceChildren(label(category), strong(count.toLocaleString()))
       return row
     }),
