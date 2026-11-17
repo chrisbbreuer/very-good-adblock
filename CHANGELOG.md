@@ -1,5 +1,25 @@
 # Changelog
 
+[Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.7...v0.4.0)
+
+## ✨ Features
+
+- **ui**: rebrand the site and redesign the popup and dashboard ([79b63bf](https://github.com/chrisbbreuer/very-good-adblock/commit/79b63bf)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **webkit**: keep the get-dashboard settings fallback and document yt-embed ([9bde032](https://github.com/chrisbbreuer/very-good-adblock/commit/9bde032)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **stats**: count every block once, sync per device, cover youtube embeds ([9ad3d3f](https://github.com/chrisbbreuer/very-good-adblock/commit/9ad3d3f)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🔧 Chores
+
+- **store**: regenerate screenshots, promo tiles and social cards ([6d5db60](https://github.com/chrisbbreuer/very-good-adblock/commit/6d5db60)) _(by Chris <chrisbreuer93@gmail.com>)_
+- upgrade stacks to 0.75.616 and refresh ai skills ([7517099](https://github.com/chrisbbreuer/very-good-adblock/commit/7517099)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/chrisbbreuer/very-good-adblock/compare/v0.3.6...v0.3.7)
 
 ## ✨ Features
