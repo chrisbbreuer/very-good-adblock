@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Very Good AdBlock privacy policy: no telemetry, no tracking, no ads, and no selling of user data. Stats stay on your device.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/privacy/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -38,7 +38,7 @@
   <body class="marketing-shell">
     @include('nav')
 
-    <main id="top">
+    <main id="main">
       <article class="legal">
         <p class="eyebrow">Privacy</p>
         <h1>Privacy Policy</h1>
@@ -60,7 +60,7 @@
           <li><strong>Blocking stats:</strong> counts of blocked requests, plus estimated data and video time saved. Detailed history stays in local storage on the device.</li>
           <li><strong>Your settings and site choices:</strong> pause timers, allowlist and blocklist entries, and toggles such as cookie-banner hiding.</li>
         </ul>
-        <p>A compact lifetime total and your settings may sync between your own devices via <code>chrome.storage.sync</code>. That data travels through <strong>your browser vendor's sync service using your own account</strong> (for example, Chrome Sync). It is never sent to Very Good AdBlock, and we have no server that receives it.</p>
+        <p>Your settings and a compact summary of each install's blocking totals may sync between your own devices via <code>chrome.storage.sync</code>, so the dashboard can add them up. Each summary is filed under a random identifier generated on that install; it is not derived from you, your device or your browsing. That data travels through <strong>your browser vendor's sync service using your own account</strong> (for example, Chrome Sync). It is never sent to Very Good AdBlock, and we have no server that receives it.</p>
 
         <h2>Network requests the extension makes</h2>
         <ul>

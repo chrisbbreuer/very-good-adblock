@@ -51,10 +51,29 @@ export async function openBrowserView(options: Bun.WebView.ConstructorOptions): 
   try {
     await view.navigate('about:blank')
     await view.resize(options.width, options.height)
+    // The resize override pins the device scale factor to 1, which silently
+    // drops a requested `--force-device-scale-factor` and hands the capture
+    // scripts half-resolution shots. Restate it when the caller asked for one.
+    const scale = deviceScaleFactor(options.backend)
+    if (scale && scale !== 1) {
+      await view.cdp('Emulation.setDeviceMetricsOverride', {
+        width: options.width,
+        height: options.height,
+        deviceScaleFactor: scale,
+        mobile: false,
+      })
+    }
   }
   catch {
     // A backend that refuses the override keeps whatever size it launched with.
   }
 
   return view
+}
+
+function deviceScaleFactor(backend: Bun.WebView.ConstructorOptions['backend']): number | undefined {
+  if (!backend || typeof backend === 'string' || !('argv' in backend) || !backend.argv) return undefined
+  const flag = backend.argv.find(arg => arg.startsWith('--force-device-scale-factor='))
+
+  return flag ? Number(flag.split('=')[1]) || undefined : undefined
 }

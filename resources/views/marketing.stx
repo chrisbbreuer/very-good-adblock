@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Very Good AdBlock is a fast, private ad blocker for Chrome, Firefox, and Safari on Mac, iPhone, and iPad. No account, telemetry, or bloat.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -47,7 +47,7 @@
   <body class="marketing-shell">
     @include('nav')
 
-    <main id="top">
+    <main id="main">
       <section class="marketing-hero">
         <div class="hero-copy">
           <p class="eyebrow">Chrome, Firefox, and Safari for Mac, iPhone and iPad</p>
@@ -58,6 +58,10 @@
           </p>
           <div class="hero-actions">
             <a class="primary-link" href="#get" data-browser-install>Choose your browser</a>
+            <a class="hero-how" href="#how">How it works →</a>
+          </div>
+          <div class="hero-stores" aria-label="Other ways to install">
+            <span class="hero-stores-label">Also on</span>
             <a class="download-pill" href="https://chromewebstore.google.com/detail/very-good-adblock/ondclgjpkclbchfbbjdikdpdnopbachc" aria-label="Install Very Good AdBlock from the Chrome Web Store" data-browser-store="chrome">
               <img class="download-logo" src="https://cdn.simpleicons.org/googlechrome" alt="" width="20" height="20" loading="lazy">
               <span>Chrome</span>
@@ -74,7 +78,6 @@
               <img class="download-logo" src="https://cdn.simpleicons.org/github" alt="" width="20" height="20" loading="lazy">
               <span>Manual download</span>
             </a>
-            <a class="hero-how" href="#how">How it works →</a>
           </div>
         </div>
 
@@ -96,7 +99,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
             </span>
             <h3>Network blocking</h3>
-            <p>Manifest V3 declarative rules stop 14,000+ ad, tracker, and annoyance hosts before the request completes.</p>
+            <p>Manifest V3 declarative rules stop ad, tracker, and annoyance hosts before the request completes. The page never downloads them.</p>
+            <span class="request-log" aria-hidden="true">
+              <span><code>securepubads.doubleclick.net</code><b>blocked</b></span>
+              <span><code>pagead2.googlesyndication.com</code><b>blocked</b></span>
+              <span><code>c.amazon-adsystem.com</code><b>blocked</b></span>
+              <span><code>cdn.taboola.com</code><b>blocked</b></span>
+            </span>
+            <span class="feature-figure"><strong>14,000+</strong><small>hosts blocked at the request</small></span>
             <span class="feature-more">Learn more →</span>
           </a>
           <a class="feature-card" href="/features/youtube-twitch/">
@@ -132,17 +142,17 @@
         <h2>Running in about a minute.</h2>
         <ol class="how-steps">
           <li>
-            <span class="how-num">1</span>
+            <span class="how-num" aria-hidden="true">01</span>
             <h3>Install</h3>
             <p>Use the Chrome Web Store, Firefox Add-ons, or the App Store for Safari on Mac, iPhone, and iPad.</p>
           </li>
           <li>
-            <span class="how-num">2</span>
+            <span class="how-num" aria-hidden="true">02</span>
             <h3>Enable it</h3>
             <p>Pin the browser button, or enable the Safari extension once in Settings on your Apple device.</p>
           </li>
           <li>
-            <span class="how-num">3</span>
+            <span class="how-num" aria-hidden="true">03</span>
             <h3>Browse</h3>
             <p>Ads, pop-ups, and video interruptions are gone before the page can render them.</p>
           </li>

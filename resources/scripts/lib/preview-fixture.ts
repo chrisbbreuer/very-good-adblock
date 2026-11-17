@@ -5,6 +5,7 @@
  * (e.g. video time in hours) shows up everywhere at once.
  */
 import type { DashboardState } from '../../../src/shared/types'
+import { hourBucketKey, localDayKey } from '../../../src/shared/metrics'
 
 /**
  * A chrome.runtime mock that answers the popup/options message calls.
@@ -62,11 +63,18 @@ export function dashboardState(): DashboardState {
   // whatever today is. Pinned to 2026-07-02 that counter climbs by one every
   // day, so regenerating the cards produced a new set of bytes each morning and
   // the diff said something had changed when nothing had. Anchoring the offset
-  // instead of the instant keeps the rendered string fixed at "30d ago".
+  // instead of the instant keeps each rendered string fixed. The current site
+  // (theverge.com, with blocks on the open page) reads "4m ago", not days.
   const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString()
-  const bucket = (offsetHours: number, value: number) => ({ key: new Date(now.getTime() - offsetHours * 3600_000).toISOString().slice(0, 13), adsBlocked: value, bytesSaved: value * 240_000, videoSecondsSaved: 0 })
+  const minutesAgo = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString()
+  // Chart buckets are anchored to the real clock for the same reason, and more
+  // strictly: both charts render a dense window ending at the current hour/day
+  // (see hourlySeries/dailySeries), so buckets keyed off a pinned date fall
+  // outside it and every capture shows an empty "quiet 24h" chart.
+  const realNow = new Date()
+  const bucket = (offsetHours: number, value: number) => ({ key: hourBucketKey(new Date(realNow.getTime() - offsetHours * 3600_000)), adsBlocked: value, bytesSaved: value * 240_000, videoSecondsSaved: 0 })
   const hourly = [4, 9, 6, 12, 8, 14, 7, 18, 11, 22, 16, 27, 19, 31, 24, 38, 29, 44, 33, 52, 41, 63, 47, 76].map((v, i) => bucket(23 - i, v))
-  const daily = Array.from({ length: 60 }, (_, i) => ({ key: new Date(now.getTime() - (59 - i) * 86_400_000).toISOString().slice(0, 10), adsBlocked: 300 + Math.round(500 * Math.abs(Math.sin(i * 0.7))) + (i % 7 === 0 ? 260 : 0), bytesSaved: 0, videoSecondsSaved: 0 }))
+  const daily = Array.from({ length: 60 }, (_, i) => ({ key: localDayKey(new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate() - (59 - i))), adsBlocked: 300 + Math.round(500 * Math.abs(Math.sin(i * 0.7))) + (i % 7 === 0 ? 260 : 0), bytesSaved: 0, videoSecondsSaved: 0 }))
 
   return {
     settings: { enabled: true, badgeEnabled: true, cosmeticFiltering: true, aggressiveCosmetic: false, cookieConsentFiltering: true, popupBlocking: true, youtubeEnhancements: true, twitchEnhancements: true, allowedSites: ['stripe.com'], blockedSites: [] },
@@ -82,11 +90,11 @@ export function dashboardState(): DashboardState {
       ],
       sites: {
         'youtube.com': { hostname: 'youtube.com', adsBlocked: 4_812, bytesSaved: 3_400_000_000, videoSecondsSaved: 41_200, lastBlockedAt: daysAgo(2) },
-        'theverge.com': { hostname: 'theverge.com', adsBlocked: 1_944, bytesSaved: 880_000_000, videoSecondsSaved: 0, lastBlockedAt: daysAgo(30) },
+        'theverge.com': { hostname: 'theverge.com', adsBlocked: 1_944, bytesSaved: 880_000_000, videoSecondsSaved: 0, lastBlockedAt: minutesAgo(4) },
         'x.com': { hostname: 'x.com', adsBlocked: 1_207, bytesSaved: 120_000_000, videoSecondsSaved: 0, lastBlockedAt: daysAgo(5) },
       },
     },
-    cloudSync: { available: true, syncedAt: iso, dailyBuckets: 60, siteRollups: 3 },
+    cloudSync: { available: true, syncedAt: iso, dailyBuckets: 30, siteRollups: 3, devices: 2 },
     activeTab: {
       hostname: 'theverge.com',
       url: 'https://www.theverge.com/',

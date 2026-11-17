@@ -1,3 +1,5 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="nav-sentinel" aria-hidden="true"></span>
 <header class="marketing-nav" aria-label="Primary navigation">
   <div class="marketing-nav-inner">
     <a class="brand-lockup" href="/" aria-label="Very Good AdBlock home">
@@ -6,24 +8,47 @@
     </a>
     <nav>
       <div class="nav-item has-menu">
-        <a class="nav-link" href="/features/" aria-haspopup="true" aria-expanded="false">Features</a>
-        <div class="nav-menu" role="menu" aria-label="Features">
-          <a class="nav-menu-item" href="/features/network-blocking/" role="menuitem">
-            <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
-            <span class="nav-menu-text"><strong>Network blocking</strong><small>14,000+ ad and tracker hosts stopped at the request</small></span>
-          </a>
-          <a class="nav-menu-item" href="/features/youtube-twitch/" role="menuitem">
-            <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
-            <span class="nav-menu-text"><strong>YouTube and Twitch</strong><small>Video ads removed at the source, player untouched</small></span>
-          </a>
-          <a class="nav-menu-item" href="/features/popups/" role="menuitem">
-            <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
-            <span class="nav-menu-text"><strong>Pop-ups and pop-unders</strong><small>Click-hijack windows neutralized, real ones allowed</small></span>
-          </a>
-          <a class="nav-menu-item" href="/features/controls/" role="menuitem">
-            <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
-            <span class="nav-menu-text"><strong>Control and privacy</strong><small>Pause per site, allowlists, local-only stats</small></span>
-          </a>
+        <a class="nav-link" href="/features/" aria-haspopup="true" aria-expanded="false">Features<span class="nav-caret" aria-hidden="true"></span></a>
+        <div class="nav-menu nav-mega" role="menu" aria-label="Features">
+          <div class="nav-mega-list">
+            <a class="nav-menu-item" href="/features/network-blocking/" role="menuitem" data-preview="network">
+              <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+              <span class="nav-menu-text"><strong>Network blocking</strong><small>14,000+ ad and tracker hosts stopped at the request</small></span>
+            </a>
+            <a class="nav-menu-item" href="/features/youtube-twitch/" role="menuitem" data-preview="video">
+              <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>
+              <span class="nav-menu-text"><strong>YouTube and Twitch</strong><small>Video ads removed at the source, player untouched</small></span>
+            </a>
+            <a class="nav-menu-item" href="/features/popups/" role="menuitem" data-preview="popups">
+              <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path><path d="m9.5 12.5 5 5M14.5 12.5l-5 5"></path></svg></span>
+              <span class="nav-menu-text"><strong>Pop-ups and pop-unders</strong><small>Click-hijack windows neutralized, real ones allowed</small></span>
+            </a>
+            <a class="nav-menu-item" href="/features/controls/" role="menuitem" data-preview="controls">
+              <span class="nav-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>
+              <span class="nav-menu-text"><strong>Control and privacy</strong><small>Pause per site, allowlists, local-only stats</small></span>
+            </a>
+            <a class="nav-mega-all" href="/features/" role="menuitem">See every feature <span aria-hidden="true">&rarr;</span></a>
+          </div>
+          <!-- Decorative: each link above already names its feature. The shot
+               for the hovered link fades in (CSS :has), the first by default. -->
+          <div class="nav-mega-preview" aria-hidden="true">
+            <figure class="nav-shot" data-shot="network">
+              <img src="/screenshots/nav/network.webp" alt="" width="600" height="520" loading="lazy" decoding="async">
+              <figcaption>The popup: 47 blocked on this page, data saved and the last 24 hours.</figcaption>
+            </figure>
+            <figure class="nav-shot" data-shot="video">
+              <img src="/screenshots/nav/video.webp" alt="" width="600" height="520" loading="lazy" decoding="async">
+              <figcaption>The protection switches, YouTube skip assist and Twitch ad muting among them.</figcaption>
+            </figure>
+            <figure class="nav-shot" data-shot="popups">
+              <img src="/screenshots/nav/popups.webp" alt="" width="600" height="520" loading="lazy" decoding="async">
+              <figcaption>The page counter opened onto the list of what was blocked, pop-ups included.</figcaption>
+            </figure>
+            <figure class="nav-shot" data-shot="controls">
+              <img src="/screenshots/nav/controls.webp" alt="" width="600" height="520" loading="lazy" decoding="async">
+              <figcaption>The dashboard: lifetime totals, 60 days of history and every switch.</figcaption>
+            </figure>
+          </div>
         </div>
       </div>
       <a class="nav-link" href="/#how">How it works</a>

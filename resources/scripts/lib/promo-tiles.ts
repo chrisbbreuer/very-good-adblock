@@ -100,7 +100,7 @@ function drawSmall(canvas: ImageData, parts: SmallParts): void {
     y: 170,
     maxWidth: canvas.width - pad * 2,
     lineHeight: 1.12,
-    color: color(images.color, '#fbf3f3'),
+    color: color(images.color, '#f6f3f2'),
   })
 
   drawText(canvas, {
@@ -150,7 +150,7 @@ function drawMarquee(canvas: ImageData, parts: MarqueeParts): void {
     maxWidth: measure,
     lineHeight: 1.08,
     maxLines: 2,
-    color: color(images.color, '#fbf3f3'),
+    color: color(images.color, '#f6f3f2'),
   })
 
   drawText(canvas, {
@@ -201,7 +201,7 @@ function color(value: string | undefined, fallback: string): RGBA {
 
 /** The site's `--muted`: the text colour at a fraction of its opacity. */
 function muted(alpha: number): RGBA {
-  return { ...color(images.color, '#fbf3f3'), a: Math.round(alpha * 255) }
+  return { ...color(images.color, '#f6f3f2'), a: Math.round(alpha * 255) }
 }
 
 function resolveFont(spec: string | undefined): string {

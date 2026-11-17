@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How Very Good AdBlock blocks ads: Manifest V3 network rules, source-level YouTube and Twitch ad removal, pop-up defusing, and one-click local controls. Chrome and Firefox, no telemetry.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/features/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -38,7 +38,7 @@
   <body class="marketing-shell">
     @include('nav')
 
-    <main id="top">
+    <main id="main">
       <section class="features-hero">
         <p class="eyebrow">Features</p>
         <h1>Four layers, one quiet browser.</h1>

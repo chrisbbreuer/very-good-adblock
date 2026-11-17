@@ -9,9 +9,12 @@
   <body class="dashboard-shell">
     <main class="dashboard-layout">
       <header class="dashboard-header">
-        <div>
-          <p class="eyebrow">Very Good AdBlock</p>
-          <h1>Protection dashboard</h1>
+        <div class="dashboard-title">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">Very Good AdBlock</p>
+            <h1>Protection dashboard</h1>
+          </div>
         </div>
         <div class="header-actions">
           <button id="report-ad" class="soft-button" type="button">Report an ad</button>
@@ -21,23 +24,23 @@
         </div>
       </header>
 
-      <section class="dashboard-metrics">
-        <article class="metric-card primary">
+      <section class="dashboard-metrics" aria-label="Totals">
+        <article class="metric primary">
           <span>Lifetime blocked</span>
           <strong id="dashboard-blocked">0</strong>
           <small>requests and placements</small>
         </article>
-        <article class="metric-card">
+        <article class="metric">
           <span>Data saved</span>
           <strong id="dashboard-data">0 KB</strong>
           <small>estimated</small>
         </article>
-        <article class="metric-card">
+        <article class="metric">
           <span>Video time</span>
           <strong id="dashboard-video">0 min</strong>
           <small>estimated</small>
         </article>
-        <article class="metric-card">
+        <article class="metric">
           <span>Blocked today</span>
           <strong id="dashboard-today">0</strong>
           <small>since midnight</small>
@@ -65,35 +68,35 @@
             <strong id="rules-status">Loading</strong>
           </div>
           <label class="toggle-row">
-            <span>Global protection</span>
+            <span class="toggle-text"><span>Global protection</span><small>Master switch for every layer below.</small></span>
             <input id="setting-enabled" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Hide ad placements</span>
+            <span class="toggle-text"><span>Hide ad placements</span><small>Collapse the empty boxes ads leave behind.</small></span>
             <input id="setting-cosmetic" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Aggressive hiding</span>
+            <span class="toggle-text"><span>Aggressive hiding</span><small>Stricter hiding rules. Can catch real content on some sites.</small></span>
             <input id="setting-aggressive" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Hide cookie banners</span>
+            <span class="toggle-text"><span>Hide cookie banners</span><small>Hide cookie consent pop-ups and bars.</small></span>
             <input id="setting-consent" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Block pop-ups &amp; pop-unders</span>
+            <span class="toggle-text"><span>Block pop-ups &amp; pop-unders</span><small>Stop windows opened by click-hijacking scripts.</small></span>
             <input id="setting-popup" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>YouTube skip assist</span>
+            <span class="toggle-text"><span>YouTube skip assist</span><small>Skip or fast-forward any video ad that slips through.</small></span>
             <input id="setting-youtube" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Twitch ad muting</span>
+            <span class="toggle-text"><span>Twitch ad muting</span><small>Handle the ads Twitch stitches into live streams.</small></span>
             <input id="setting-twitch" type="checkbox">
           </label>
           <label class="toggle-row">
-            <span>Badge count</span>
+            <span class="toggle-text"><span>Badge count</span><small>Show the blocked count on the toolbar icon.</small></span>
             <input id="setting-badge" type="checkbox">
           </label>
         </article>

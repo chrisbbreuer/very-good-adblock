@@ -8,18 +8,15 @@
   </head>
   <body class="popup-shell">
     <main class="popup-frame" data-view="loading">
-      <section class="popup-hero">
-        <div>
-          <p class="eyebrow">Very Good AdBlock</p>
-          <h1 id="site-title">Protection active</h1>
-        </div>
-        <button id="protection-toggle" class="power-button" type="button" aria-label="Toggle protection" aria-pressed="true">
-          <svg class="power-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
-            <line x1="12" y1="3.6" x2="12" y2="11.4"></line>
-            <path d="M6.3 7.2a7.4 7.4 0 1 0 11.4 0"></path>
-          </svg>
+      <header class="popup-top">
+        <span class="popup-brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Very Good AdBlock</span>
+        </span>
+        <button id="protection-toggle" class="power-switch" type="button" aria-label="Toggle protection" aria-pressed="true">
+          <span class="power-switch-track" aria-hidden="true"><span class="power-switch-thumb"></span></span>
         </button>
-      </section>
+      </header>
 
       <section id="safari-notice" class="safari-notice" hidden>
         <p class="safari-notice-text">
@@ -27,6 +24,21 @@
           <span>Safari asks once per site until you allow it everywhere. In the prompt, choose <b>Always Allow&hellip;</b> and then <b>Always Allow on Every Website</b>.</span>
         </p>
         <button id="safari-notice-dismiss" class="safari-notice-dismiss" type="button">Got it</button>
+      </section>
+
+      <section class="popup-hero" aria-label="This page">
+        <div class="status-line">
+          <span class="status-dot" aria-hidden="true"></span>
+          <h1 id="site-title">Protection active</h1>
+        </div>
+        <button class="hero-count page-blocks-toggle" id="page-blocks-toggle" type="button" aria-expanded="false" aria-controls="page-blocks" title="Show what was blocked on this page">
+          <strong id="page-blocked">0</strong>
+          <span class="hero-count-label">
+            <span><b>blocked</b> <span id="page-breakdown">on this page</span></span>
+            <span class="page-blocks-chevron" aria-hidden="true">What was blocked <i>&#9662;</i></span>
+          </span>
+        </button>
+        <div id="page-blocks" class="page-blocks" hidden></div>
       </section>
 
       <div id="pause-row" class="pause-row" hidden>
@@ -39,85 +51,76 @@
         </div>
       </div>
 
-      <section class="stat-grid" aria-label="Very Good AdBlock statistics">
-        <button class="metric-card primary page-blocks-toggle" id="page-blocks-toggle" type="button" aria-expanded="false" aria-controls="page-blocks" title="Show what was blocked on this page">
-          <span>Blocked</span>
-          <strong id="page-blocked">0</strong>
-          <small id="page-breakdown">on this page</small>
-          <span class="page-blocks-chevron" aria-hidden="true">▾</span>
-        </button>
-        <article class="metric-card">
-          <span>Data saved</span>
-          <strong id="data-saved">0 KB</strong>
-          <small>estimated</small>
-        </article>
-        <article class="metric-card">
-          <span>Video time</span>
-          <strong id="video-time">0 min</strong>
-          <small>estimated</small>
-        </article>
-      </section>
-
-      <div id="page-blocks" class="page-blocks" hidden></div>
-
-      <section class="timeline-card">
-        <div class="section-heading">
-          <span>Last 24 hours</span>
-          <strong id="chart-peak">0 peak</strong>
+      <section class="popup-card savings-card" aria-label="Very Good AdBlock statistics">
+        <div class="stat-strip">
+          <div>
+            <span>Data saved</span>
+            <strong id="data-saved">0 KB</strong>
+          </div>
+          <div>
+            <span>Video time</span>
+            <strong id="video-time">0 min</strong>
+          </div>
+          <div>
+            <span>All time</span>
+            <strong id="lifetime-blocked">0</strong>
+          </div>
         </div>
-        <div id="hourly-chart" class="bar-chart" role="list" aria-label="Blocked ads by hour"></div>
-        <div class="timeline-footer">
-          <span>older</span>
-          <strong id="lifetime-blocked">0 lifetime</strong>
-          <span>now</span>
+        <div class="chart-block">
+          <div id="hourly-chart" class="bar-chart" role="list" aria-label="Blocked ads by hour"></div>
+          <div class="timeline-footer">
+            <span>Last 24 hours</span>
+            <strong id="chart-peak">0 peak</strong>
+          </div>
         </div>
       </section>
 
-      <section class="site-card current-site-card">
+      <section class="popup-card site-block" aria-label="Current site">
         <div class="site-card-top">
           <div class="site-id">
             <img id="site-favicon" class="site-favicon" alt="" width="20" height="20" hidden>
             <div class="site-id-text">
-              <span class="muted">Current site</span>
               <strong id="current-site">No active tab</strong>
+              <span id="site-last-activity" class="site-footnote">No current-site events yet.</span>
             </div>
           </div>
-          <button id="site-toggle" class="soft-button" type="button">Allow</button>
+          <button id="site-toggle" class="site-toggle-button" type="button">Allow</button>
         </div>
-        <span class="site-stat-caption">All time on this site</span>
-        <div id="current-site-stats" class="site-stat-grid" aria-label="Current site statistics">
-          <article>
-            <span>Blocked here</span>
+        <div id="current-site-stats" class="site-stat-grid" aria-label="Current site statistics, all time">
+          <div>
             <strong id="site-blocked">0</strong>
-          </article>
-          <article>
-            <span>Data here</span>
+            <span>blocked</span>
+          </div>
+          <div>
             <strong id="site-data">0 KB</strong>
-          </article>
-          <article>
-            <span>Video here</span>
+            <span>saved</span>
+          </div>
+          <div>
             <strong id="site-video">0 min</strong>
-          </article>
+            <span>video</span>
+          </div>
         </div>
-        <p id="site-last-activity" class="site-footnote">No current-site events yet.</p>
       </section>
 
       <section class="category-list" aria-label="Top blocked sources">
         <div class="section-heading">
           <span>Top sources</span>
-          <button id="open-options" class="icon-button" type="button" aria-label="Open dashboard">↗</button>
         </div>
         <div id="top-categories"></div>
       </section>
 
-      <button id="report-ad" class="report-button" type="button">
-        <span class="report-icon" aria-hidden="true">⚠</span>
-        <span class="report-text">
-          <strong>Saw an ad slip through?</strong>
-          <small id="report-hint">Report it, and a pre-filled GitHub issue opens</small>
-        </span>
-        <span class="report-arrow" aria-hidden="true">→</span>
-      </button>
+      <footer class="popup-actions">
+        <button id="report-ad" class="report-button" type="button">
+          <span class="report-text">
+            <strong>Saw an ad slip through?</strong>
+            <small id="report-hint">Report it in a pre-filled GitHub issue</small>
+          </span>
+        </button>
+        <button id="open-options" class="dashboard-button" type="button" aria-label="Open dashboard">
+          <span>Dashboard</span>
+          <span aria-hidden="true">&#8599;</span>
+        </button>
+      </footer>
 
       <p id="status-message" class="status-message" role="status">Loading protection state...</p>
     </main>

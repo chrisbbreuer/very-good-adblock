@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A Manifest V3 declarativeNetRequest ruleset stops 14,387 ad, tracker, and annoyance hosts before the request completes, with zero per-request JavaScript.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/features/network-blocking/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -37,7 +37,7 @@
   </head>
   <body class="marketing-shell">
     @include('nav')
-    <main id="top">
+    <main id="main">
       <section class="feature-page-hero">
         <a class="feature-back" href="/features/">← All features</a>
         <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v5c0 4.4 3.1 8.3 8 9.5 4.9-1.2 8-5.1 8-9.5V6l-8-3Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>

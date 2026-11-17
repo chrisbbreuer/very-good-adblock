@@ -31,26 +31,28 @@ const config: BunPressOptions = {
     },
     syntaxHighlightTheme: 'github-dark',
     css: `
-      /* Light theme (default) — red brand on the vitepress light base. */
+      /* Light theme (default): red brand on the site's off-white neutrals. */
       :root {
+        --bp-c-bg: #fbfaf8;
+        --bp-c-bg-alt: #f4f2ef;
         --bp-c-brand-1: #dc2626;
         --bp-c-brand-2: #ef4444;
         --bp-c-brand-3: #b91c1c;
         --bp-c-brand-soft: rgba(239, 68, 68, 0.14);
       }
 
-      /* Dark theme — warm red-tinted surfaces + a lighter red brand for contrast. */
+      /* Dark theme: the site's warm charcoal + a lighter red brand for contrast. */
       html.dark {
-        --bp-c-bg: #120b0c;
-        --bp-c-bg-alt: #180f11;
-        --bp-c-bg-elv: #201619;
-        --bp-c-bg-soft: #23181a;
-        --bp-c-divider: rgba(255, 236, 236, 0.13);
-        --bp-c-border: rgba(255, 236, 236, 0.2);
-        --bp-c-text-1: #fbf3f3;
-        --bp-c-text-2: rgba(251, 243, 243, 0.78);
-        --bp-c-text-3: rgba(251, 243, 243, 0.58);
-        --bp-c-brand-1: #ff9a9a;
+        --bp-c-bg: #110f0f;
+        --bp-c-bg-alt: #171515;
+        --bp-c-bg-elv: #1f1c1c;
+        --bp-c-bg-soft: #232020;
+        --bp-c-divider: rgba(255, 250, 248, 0.1);
+        --bp-c-border: rgba(255, 250, 248, 0.16);
+        --bp-c-text-1: #f6f3f2;
+        --bp-c-text-2: rgba(246, 243, 242, 0.78);
+        --bp-c-text-3: rgba(246, 243, 242, 0.58);
+        --bp-c-brand-1: #ff8a8a;
         --bp-c-brand-2: #ef4444;
         --bp-c-brand-3: #ff7a6b;
         --bp-c-brand-soft: rgba(239, 68, 68, 0.16);
@@ -67,7 +69,7 @@ const config: BunPressOptions = {
         height: 26px;
         margin-right: 10px;
         border: 1px solid rgba(239, 68, 68, 0.42);
-        border-radius: 8px;
+        border-radius: 7px;
         background: linear-gradient(145deg, rgba(239, 68, 68, 0.96), rgba(255, 122, 77, 0.86));
         box-shadow: inset 0 0 0 7px rgba(120, 20, 24, 0.2);
         content: "";
@@ -77,14 +79,14 @@ const config: BunPressOptions = {
       /* Home hero ambient wash — light and dark variants. */
       .BPHome {
         background:
-          radial-gradient(circle at 78% 16%, rgba(255, 122, 77, 0.12), transparent 26%),
-          linear-gradient(145deg, #fff6f6 0%, #fff0f1 54%, #ffe9ea 100%);
+          radial-gradient(70% 50% at 88% -12%, rgba(239, 68, 68, 0.06), transparent 62%),
+          #fbfaf8;
       }
 
       html.dark .BPHome {
         background:
-          radial-gradient(circle at 78% 16%, rgba(255, 122, 77, 0.16), transparent 26%),
-          linear-gradient(145deg, #140c0d 0%, #1a1113 54%, #221621 100%);
+          radial-gradient(70% 50% at 88% -12%, rgba(239, 68, 68, 0.12), transparent 62%),
+          #110f0f;
       }
 
       .BPHomeHero {
@@ -108,7 +110,7 @@ const config: BunPressOptions = {
 
       .BPFeature {
         border-color: var(--bp-c-border);
-        background: rgba(120, 20, 24, 0.03);
+        background: #ffffff;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.06);
       }
 

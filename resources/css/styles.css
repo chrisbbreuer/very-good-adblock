@@ -22,59 +22,92 @@
   src: url('fonts/inter-latin-variable.woff2') format('woff2');
 }
 
+/* Bricolage Grotesque for display type only — headings and the hero numbers.
+ * Inter set every line on the page, so a headline and a caption differed only
+ * in size and the page read as one long paragraph at different volumes. A
+ * grotesque with an optical-size axis gives the headlines their own voice
+ * while Inter keeps the running text and the UI chrome quiet. The opsz build
+ * (200-800, Latin) is 77 KB and self-hosted for the same reason Inter is.
+ *
+ * Licensed under the SIL Open Font License 1.1 — see public/fonts/.
+ */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('fonts/bricolage-grotesque-latin-variable.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark light;
-  /* ── Dark theme (default) ── */
-  --bg: #100a0b;
-  --panel: rgba(255, 244, 244, 0.08);
-  --panel-strong: rgba(255, 244, 244, 0.14);
-  --panel-deep: rgba(22, 8, 9, 0.52);
-  --hairline: rgba(255, 244, 244, 0.06);
-  --text: #fbf3f3;
-  --muted: rgba(251, 243, 243, 0.68);
-  --line: rgba(255, 236, 236, 0.16);
+  /* ── Dark theme (default) ──
+     Warm charcoal, not red-washed. The page used to be tinted red edge to
+     edge, so the brand colour had nothing to stand out against; now the
+     neutrals carry the layout and the red is spent on what matters (the
+     primary action, the live counts, the switches that are on). */
+  --bg: #110f0f;
+  --panel: rgba(255, 250, 248, 0.045);
+  --panel-strong: rgba(255, 250, 248, 0.085);
+  --panel-deep: rgba(10, 8, 8, 0.5);
+  --hairline: rgba(255, 250, 248, 0.065);
+  --text: #f6f3f2;
+  --muted: rgba(246, 243, 242, 0.66);
+  --line: rgba(255, 250, 248, 0.12);
   /* Locked red accent. --accent-rgb feeds the translucent washes; --accent-soft
-     is a lighter tint for gradients; --wash-rgb is the warm ambient background
-     glow (never UI). */
+     is a lighter tint for gradients; --wash-rgb is the ambient background glow
+     (never UI), now the accent itself rather than a second, orange hue. */
   --accent: #ef4444;
-  --accent-soft: #ff9a9a;
+  --accent-soft: #ff8f8f;
   /* Accent as *text*, which is a different job from accent as a fill. The
      brand red is only ~3:1 against the light theme's pale surfaces, so every
      accent-coloured label ("Learn more", section links, the CTA badge) reads
      this token instead and each theme picks a value that clears WCAG AA. */
-  --accent-ink: #ff9a9a;
+  --accent-ink: #ff8a8a;
   --accent-2: #ff7a4d;
   --accent-rgb: 239, 68, 68;
-  --wash-rgb: 255, 122, 77;
+  --wash-rgb: 239, 68, 68;
   --danger: #ff5c7a;
-  /* Elevation, three steps, tinted to the surface rather than pure black.
-     A black shadow under the light theme's pink page reads as a grey smudge
-     around the card instead of depth, so both themes get their own values and
-     every marketing surface pulls from here. Flat groupings (feature cards,
-     the stat wall, the privacy list) take a hairline and a surface tint and no
-     shadow at all — only things that genuinely float get one. */
+  /* Elevation, three steps. Flat groupings (feature cards, the stat wall, the
+     privacy list) take a hairline and a surface tint and no shadow at all;
+     only things that genuinely float get one. */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 10px 26px -14px rgba(0, 0, 0, 0.68);
-  --shadow-lg: 0 30px 60px -28px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 10px 26px -14px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 30px 60px -28px rgba(0, 0, 0, 0.82);
   --shadow: var(--shadow-md);
-  --nav-bg: rgba(22, 8, 9, 0.86);
-  --text-rgb: 251, 243, 243;
-  /* Themeable surface backgrounds (overridden wholesale in light mode). */
+  --nav-bg: rgba(17, 15, 15, 0.84);
+  /* Flat marketing surfaces (feature cards, stat tiles, store rows). */
+  --card-bg: rgba(255, 250, 248, 0.04);
+  /* Extension surfaces (popup, dashboard): the same neutrals as the site,
+     stepped into solid layers because a toolbar popover has no page behind it
+     to be translucent over. */
+  --ui-bg: #110f0f;
+  --ui-surface: #1a1717;
+  --ui-raised: #232020;
+  --ui-hover: #2b2727;
+  --ui-border: rgba(255, 250, 248, 0.075);
+  --ui-border-strong: rgba(255, 250, 248, 0.14);
+  --ui-muted: rgba(246, 243, 242, 0.62);
+  --ui-faint: rgba(246, 243, 242, 0.42);
+  --ui-track: rgba(255, 250, 248, 0.16);
+  --ui-shadow: 0 16px 36px -26px rgba(0, 0, 0, 0.8);
+  --ok: #34c77b;
+  --ok-rgb: 52, 199, 123;
+  --text-rgb: 246, 243, 242;
+  /* Themeable surface backgrounds (overridden wholesale in light mode). One
+     soft glow in the corner, over a flat charcoal: depth without a tint. */
   --app-bg:
-    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.26), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.24), transparent 24rem),
-    linear-gradient(145deg, #150c0d 0%, #1b1113 58%, #241619 100%);
-  --panel-bg:
-    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.16), transparent 16rem),
-    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.2), transparent 18rem),
-    rgba(22, 8, 9, 0.72);
+    radial-gradient(70% 50% at 88% -12%, rgba(var(--accent-rgb), 0.12), transparent 62%),
+    #110f0f;
+  --panel-bg: var(--ui-surface);
   /* One radius scale: panels > cards > buttons and inputs > inner chips >
-     pills. Every rounded corner on the site resolves to one of these, so a
-     16px card cannot end up next to an 18px one. */
-  --radius-panel: 16px;
-  --radius-card: 14px;
-  --radius-control: 12px;
-  --radius-inner: 10px;
+     pills. Every rounded corner on the site resolves to one of these. A step
+     tighter than it was: at 16px the panels read soft and toy-like next to
+     the sharper display type. */
+  --radius-panel: 12px;
+  --radius-card: 10px;
+  --radius-control: 9px;
+  --radius-inner: 7px;
   --radius-pill: 999px;
   --press: transform 120ms ease;
   /* One vertical rhythm and one gutter for every marketing band, so sections
@@ -82,6 +115,9 @@
      small-viewport block at the end of this file. */
   --section-y: 88px;
   --gutter: 24px;
+  --font-display: "Bricolage Grotesque", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Springy ease-out shared by every hover lift and reveal. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -92,54 +128,71 @@
    intentional mirrors — keep them in sync. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #fbf1f1;
-    --panel: rgba(120, 20, 24, 0.05);
-    --panel-strong: rgba(120, 20, 24, 0.09);
-    --panel-deep: rgba(255, 255, 255, 0.7);
-    --hairline: rgba(80, 12, 16, 0.08);
-    --text: #241012;
-    --muted: rgba(36, 16, 18, 0.66);
-    --line: rgba(120, 20, 24, 0.16);
-    --accent-ink: #a3161a;
-    --shadow-sm: 0 1px 2px rgba(120, 20, 24, 0.08);
-    --shadow-md: 0 10px 26px -14px rgba(120, 20, 24, 0.34);
-    --shadow-lg: 0 30px 60px -28px rgba(120, 20, 24, 0.42);
-    --nav-bg: rgba(255, 255, 255, 0.82);
-    --text-rgb: 36, 16, 18;
+    --bg: #fbfaf8;
+    --panel: rgba(255, 255, 255, 0.74);
+    --panel-strong: rgba(24, 18, 18, 0.06);
+    --panel-deep: rgba(255, 255, 255, 0.8);
+    --hairline: rgba(24, 18, 18, 0.07);
+    --text: #1a1515;
+    --muted: rgba(26, 21, 21, 0.64);
+    --line: rgba(24, 18, 18, 0.12);
+    --accent-ink: #b42318;
+    --shadow-sm: 0 1px 2px rgba(24, 18, 18, 0.06);
+    --shadow-md: 0 10px 26px -16px rgba(24, 18, 18, 0.2);
+    --shadow-lg: 0 30px 60px -30px rgba(24, 18, 18, 0.26);
+    --nav-bg: rgba(251, 250, 248, 0.86);
+  --card-bg: #ffffff;
+    --card-bg: #ffffff;
+    --ui-bg: #fbfaf8;
+    --ui-surface: #ffffff;
+    --ui-raised: #f4f2ef;
+    --ui-hover: #ece9e5;
+    --ui-border: rgba(24, 18, 18, 0.085);
+    --ui-border-strong: rgba(24, 18, 18, 0.15);
+    --ui-muted: rgba(26, 21, 21, 0.62);
+    --ui-faint: rgba(26, 21, 21, 0.46);
+    --ui-track: rgba(24, 18, 18, 0.15);
+    --ui-shadow: 0 1px 2px rgba(24, 18, 18, 0.04), 0 10px 26px -18px rgba(24, 18, 18, 0.18);
+    --ok: #1f9d5c;
+    --ok-rgb: 31, 157, 92;
+    --text-rgb: 26, 21, 21;
     --app-bg:
-      radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
-      radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
-      linear-gradient(145deg, #fff6f6 0%, #ffeff0 58%, #ffe7e9 100%);
-    --panel-bg:
-      radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.1), transparent 16rem),
-      radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.1), transparent 18rem),
-      rgba(255, 255, 255, 0.82);
+      radial-gradient(70% 50% at 88% -12%, rgba(var(--accent-rgb), 0.06), transparent 62%),
+      #fbfaf8;
   }
 }
 
 :root[data-theme="light"] {
-  --bg: #fbf1f1;
-  --panel: rgba(120, 20, 24, 0.05);
-  --panel-strong: rgba(120, 20, 24, 0.09);
-  --panel-deep: rgba(255, 255, 255, 0.7);
-  --hairline: rgba(80, 12, 16, 0.08);
-  --text: #241012;
-  --muted: rgba(36, 16, 18, 0.66);
-  --line: rgba(120, 20, 24, 0.16);
-  --accent-ink: #a3161a;
-  --shadow-sm: 0 1px 2px rgba(120, 20, 24, 0.08);
-  --shadow-md: 0 10px 26px -14px rgba(120, 20, 24, 0.34);
-  --shadow-lg: 0 30px 60px -28px rgba(120, 20, 24, 0.42);
-  --nav-bg: rgba(255, 255, 255, 0.82);
-  --text-rgb: 36, 16, 18;
+  --bg: #fbfaf8;
+  --panel: rgba(255, 255, 255, 0.74);
+  --panel-strong: rgba(24, 18, 18, 0.06);
+  --panel-deep: rgba(255, 255, 255, 0.8);
+  --hairline: rgba(24, 18, 18, 0.07);
+  --text: #1a1515;
+  --muted: rgba(26, 21, 21, 0.64);
+  --line: rgba(24, 18, 18, 0.12);
+  --accent-ink: #b42318;
+  --shadow-sm: 0 1px 2px rgba(24, 18, 18, 0.06);
+  --shadow-md: 0 10px 26px -16px rgba(24, 18, 18, 0.2);
+  --shadow-lg: 0 30px 60px -30px rgba(24, 18, 18, 0.26);
+  --nav-bg: rgba(251, 250, 248, 0.86);
+  --card-bg: #ffffff;
+  --ui-bg: #fbfaf8;
+  --ui-surface: #ffffff;
+  --ui-raised: #f4f2ef;
+  --ui-hover: #ece9e5;
+  --ui-border: rgba(24, 18, 18, 0.085);
+  --ui-border-strong: rgba(24, 18, 18, 0.15);
+  --ui-muted: rgba(26, 21, 21, 0.62);
+  --ui-faint: rgba(26, 21, 21, 0.46);
+  --ui-track: rgba(24, 18, 18, 0.15);
+  --ui-shadow: 0 1px 2px rgba(24, 18, 18, 0.04), 0 10px 26px -18px rgba(24, 18, 18, 0.18);
+  --ok: #1f9d5c;
+  --ok-rgb: 31, 157, 92;
+  --text-rgb: 26, 21, 21;
   --app-bg:
-    radial-gradient(circle at 12% -8%, rgba(var(--wash-rgb), 0.16), transparent 28rem),
-    radial-gradient(circle at 110% 24%, rgba(var(--accent-rgb), 0.14), transparent 24rem),
-    linear-gradient(145deg, #fff6f6 0%, #ffeff0 58%, #ffe7e9 100%);
-  --panel-bg:
-    radial-gradient(circle at 12% 0%, rgba(var(--wash-rgb), 0.1), transparent 16rem),
-    radial-gradient(circle at 100% 8%, rgba(var(--accent-rgb), 0.1), transparent 18rem),
-    rgba(255, 255, 255, 0.82);
+    radial-gradient(70% 50% at 88% -12%, rgba(var(--accent-rgb), 0.06), transparent 62%),
+    #fbfaf8;
 }
 
 * {
@@ -192,6 +245,136 @@ button {
   }
 }
 
+/* ── Extension surfaces: popup, dashboard, blocked page ──────────────
+   One calm system for everything the extension draws. Neutral surfaces (warm
+   charcoal in dark, white in light) carry the content, and the brand red is
+   kept for what should pull the eye: the live count, the charts, the switches
+   that are on. The glass-and-gradient cards this replaces tinted every
+   surface red, so nothing stood out because everything did. */
+
+.popup-shell,
+.dashboard-shell {
+  background: var(--ui-bg);
+}
+
+.eyebrow,
+.muted,
+.status-message {
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.08;
+}
+
+.glass-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-panel);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+/* ── Buttons ── */
+.soft-button,
+.danger-button,
+.ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-inner);
+  padding: 0 13px;
+  color: var(--text);
+  background: var(--ui-raised);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
+}
+
+.soft-button:hover {
+  background: var(--ui-hover);
+}
+
+.ghost-button {
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 12px;
+}
+
+.ghost-button:hover {
+  color: var(--text);
+  background: var(--ui-raised);
+}
+
+.danger-button {
+  border-color: rgba(255, 92, 122, 0.34);
+  color: var(--danger);
+  background: transparent;
+}
+
+.danger-button:hover {
+  background: rgba(255, 92, 122, 0.12);
+}
+
+.soft-button:active,
+.danger-button:active,
+.ghost-button:active,
+.chip-button:active,
+.site-toggle-button:active,
+.report-button:active,
+.dashboard-button:active {
+  transform: translateY(1px);
+}
+
+.soft-button:disabled,
+.ghost-button:disabled,
+.site-toggle-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chip-button {
+  min-height: 26px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0 10px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
+}
+
+.chip-button:hover {
+  color: var(--text);
+  background: var(--ui-raised);
+}
+
+.chip-button.accent {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--accent-ink);
+}
+
+.chip-button.accent:hover {
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+/* ── Popup ── */
 .popup-shell {
   width: 390px;
   max-width: 100%;
@@ -200,9 +383,21 @@ button {
   overflow-y: auto;
 }
 
+/* Gaps, not per-block margins: every block sits exactly one step from the
+   next, and hiding one (the pause row, the Safari notice) closes the space
+   it held instead of leaving its margin behind. */
 .popup-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-height: 100vh;
-  padding: 9px;
+  padding: 12px;
+}
+
+/* Several blocks here set their own display, which beats the UA's [hidden]
+   rule; the script hides them by attribute, so the attribute has to win. */
+.popup-frame [hidden] {
+  display: none !important;
 }
 
 /* The popup on a surface bigger than the popover it was designed for.
@@ -238,205 +433,205 @@ html[data-surface="window"] body.popup-shell > .popup-frame {
   width: 100%;
   max-width: 820px;
   margin-inline: auto;
-  padding: 16px;
+  padding: 18px;
 }
 
-.glass-panel,
-.metric-card,
-.timeline-card,
-.site-card {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(24px) saturate(140%);
-}
-
-.glass-panel {
-  border-radius: var(--radius-panel);
-  background: var(--panel-bg);
-}
-
-.popup-hero,
-.dashboard-header,
-.section-heading,
-.site-card,
-.header-actions {
+.popup-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
+  min-height: 26px;
 }
 
-.eyebrow,
-.muted,
-.metric-card span,
-.metric-card small,
-.status-message {
-  color: var(--muted);
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-h1 {
-  margin: 0;
-  font-size: 21px;
-  line-height: 1.08;
-}
-
-.power-button,
-.icon-button {
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  color: var(--text);
-  background: var(--panel-strong);
-}
-
-.power-button {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-pill);
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.14);
-  border-color: rgba(var(--accent-rgb), 0.34);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
-}
-
-.power-button:hover {
-  background: rgba(var(--accent-rgb), 0.22);
-  transform: translateY(-1px);
-}
-
-.power-button.off {
-  color: var(--danger);
-  background: rgba(255, 92, 122, 0.14);
-  border-color: rgba(255, 92, 122, 0.34);
-}
-
-.power-glyph {
-  width: 19px;
-  height: 19px;
-}
-
-.site-id {
+.popup-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.005em;
 }
 
-.site-favicon {
-  flex-shrink: 0;
+.popup-brand .brand-mark {
   width: 22px;
   height: 22px;
-  padding: 3px;
-  border-radius: 6px;
-  /* Light plate so dark favicons (e.g. GitHub's black mark, drawn for light
-     browser tabs) stay visible on the dark surface; colored/light marks read
-     fine against it too. */
-  background: #fff;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
-  object-fit: contain;
 }
 
-.stat-grid,
-.dashboard-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* The master switch. A switch rather than a power glyph: "on" is the state
+   people check, and a filled red track answers it from across the room. */
+.power-switch {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 7px;
-}
-
-.dashboard-metrics {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.metric-card,
-.timeline-card,
-.site-card,
-.dashboard-panel {
-  border-radius: var(--radius-card);
-  padding: 8px;
-}
-
-.metric-card {
-  min-height: 48px;
-  background: linear-gradient(150deg, rgba(var(--text-rgb), 0.06), rgba(var(--text-rgb), 0.03));
-}
-
-.metric-card.primary {
-  border-color: rgba(var(--accent-rgb), 0.34);
-  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.32), rgba(var(--accent-rgb), 0.08));
-}
-
-.metric-card strong {
-  display: block;
-  margin: 3px 0 1px;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.metric-card span,
-.metric-card small {
-  display: block;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ui-muted);
+  background: none;
   font-size: 12px;
+  font-weight: 650;
 }
 
-.page-blocks-toggle {
+.power-switch::before {
+  content: "On";
+}
+
+.power-switch.off::before {
+  content: "Off";
+}
+
+.power-switch-track {
   position: relative;
-  width: 100%;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-  transition: filter 140ms ease, var(--press);
-}
-
-.page-blocks-toggle:hover {
-  filter: brightness(1.14);
-}
-
-.page-blocks-toggle:active {
-  transform: scale(0.98);
-}
-
-.page-blocks-toggle .page-blocks-chevron {
-  position: absolute;
-  top: 8px;
-  right: 10px;
   display: block;
-  font-size: 12px;
-  line-height: 1;
-  /* Accent, not muted: the chevron is the only hint that the card expands. */
-  color: var(--accent);
-  transition: transform 140ms ease;
+  width: 40px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: background 200ms var(--ease-out);
 }
 
-.page-blocks-toggle[aria-expanded="true"] .page-blocks-chevron {
+.power-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 19px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: left 200ms var(--ease-out);
+}
+
+.power-switch.off .power-switch-track {
+  background: var(--ui-track);
+}
+
+.power-switch.off .power-switch-thumb {
+  left: 3px;
+}
+
+/* The one block allowed a tint: it is the answer to "is this working?". */
+.popup-hero {
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-panel);
+  background:
+    radial-gradient(130% 110% at 100% 0%, rgba(var(--accent-rgb), 0.18), transparent 62%),
+    var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+  transition: background 200ms ease;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(var(--ok-rgb), 0.2);
+}
+
+#site-title {
+  color: var(--ui-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.hero-count {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  text-align: left;
+}
+
+#page-blocked {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-count-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 3px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.hero-count-label b {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.page-blocks-chevron {
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.page-blocks-chevron i {
+  display: inline-block;
+  font-style: normal;
+  transition: transform 160ms var(--ease-out);
+}
+
+.hero-count:hover .page-blocks-chevron {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.page-blocks-toggle[aria-expanded="true"] .page-blocks-chevron i {
   transform: rotate(180deg);
 }
 
+.popup-frame[data-enabled="false"] .popup-hero {
+  background: var(--ui-surface);
+}
+
+.popup-frame[data-enabled="false"] .status-dot {
+  background: var(--ui-faint);
+  box-shadow: 0 0 0 3px rgba(var(--text-rgb), 0.08);
+}
+
+.popup-frame[data-enabled="false"] #page-blocked {
+  color: var(--ui-muted);
+}
+
 .page-blocks {
-  max-height: 180px;
-  margin-top: 8px;
-  padding: 4px 10px;
+  max-height: 168px;
+  margin-top: 12px;
+  padding-top: 4px;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--panel);
+  border-top: 1px solid var(--ui-border);
 }
 
 .page-block-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 26px;
-  border-bottom: 1px solid var(--hairline);
+  min-height: 28px;
+  border-bottom: 1px solid var(--ui-border);
   font-size: 12px;
 }
 
@@ -446,21 +641,17 @@ h1 {
 
 .page-block-kind {
   flex: none;
-  padding: 1px 6px;
-  border-radius: var(--radius-pill);
-  background: rgba(var(--accent-rgb), 0.14);
+  min-width: 58px;
   color: var(--accent-ink);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .page-block-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--ui-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -468,41 +659,407 @@ h1 {
 .page-block-row strong {
   flex: none;
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.timeline-card,
-.site-card,
-.category-list {
-  margin-top: 6px;
+.pause-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 0 4px;
+}
+
+.pause-row .muted {
+  color: var(--ui-muted);
+  font-size: 12.5px;
+}
+
+.pause-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.popup-card {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-card);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.stat-strip > div {
+  min-width: 0;
+  padding: 9px 12px 10px;
+}
+
+.stat-strip > div + div {
+  border-left: 1px solid var(--ui-border);
+}
+
+.stat-strip span {
+  display: block;
+  color: var(--ui-muted);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.stat-strip strong {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-block {
+  padding: 10px 12px 8px;
 }
 
 .section-heading {
-  min-height: 23px;
-  font-size: 13px;
-}
-
-/* The list headings sit directly on the frame rather than inside a card, so
-   their box is the only thing spacing them from the rows below. */
-.category-list .section-heading {
-  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+  font-size: 12.5px;
 }
 
 .section-heading span {
-  color: var(--muted);
+  color: var(--ui-muted);
+  font-weight: 600;
 }
 
+.section-heading strong {
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--ui-muted);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.timeline-footer strong {
+  color: var(--text);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-block {
+  padding: 10px 12px;
+}
+
+.site-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.site-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.site-id-text {
+  min-width: 0;
+}
+
+.site-favicon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border-radius: var(--radius-inner);
+  /* Light plate so dark favicons (e.g. GitHub's black mark, drawn for light
+     browser tabs) stay visible on the dark surface; colored/light marks read
+     fine against it too. */
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  object-fit: contain;
+}
+
+#current-site {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-footnote {
+  display: block;
+  margin-top: 2px;
+  color: var(--ui-faint);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.site-toggle-button {
+  flex: none;
+  min-height: 30px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0 14px;
+  color: var(--text);
+  background: var(--ui-raised);
+  font-size: 12.5px;
+  font-weight: 650;
+  transition: background 140ms ease, border-color 140ms ease, var(--press);
+}
+
+.site-toggle-button:hover {
+  background: var(--ui-hover);
+}
+
+/* All-time numbers for this site, one inline row under a hairline. */
+.site-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.site-stat-grid > div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.site-stat-grid > div + div {
+  padding-left: 12px;
+  border-left: 1px solid var(--ui-border);
+}
+
+.site-stat-grid strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.site-stat-grid span {
+  color: var(--ui-muted);
+  font-size: 11.5px;
+}
+
+/* Top sources: a ranked bar list straight on the frame, no card. */
+.category-list {
+  padding: 0 4px;
+}
+
+.category-list .section-heading {
+  margin-bottom: 3px;
+}
+
+.site-row,
+.diagnostic-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  font-size: 13px;
+}
+
+.site-row strong,
+.diagnostic-row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.category-list .site-row {
+  position: relative;
+  isolation: isolate;
+  min-height: 26px;
+  margin-bottom: 2px;
+  padding-inline: 9px;
+}
+
+.category-list .site-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: calc(var(--share, 0) * 100%);
+  border-radius: var(--radius-inner);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+.category-list .site-row.muted {
+  padding-inline: 0;
+  color: var(--ui-muted);
+}
+
+.popup-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.report-button,
+.dashboard-button {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-card);
+  color: var(--text);
+  background: var(--ui-surface);
+  transition: background 140ms ease, border-color 140ms ease, var(--press);
+}
+
+.report-button:hover,
+.dashboard-button:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-raised);
+}
+
+.report-button {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 12px;
+  text-align: left;
+}
+
+.report-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.report-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.report-text strong {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.report-text small {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.status-message {
+  margin: 0 2px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.popup-frame[data-view="ready"] .status-message {
+  display: none;
+}
+
+/* Safari-only host-access hint. Sits directly under the header because it
+   explains why the counters below it read zero, and takes the accent wash
+   rather than a warning colour — nothing is wrong, there is just one setting
+   left to pick. */
+.safari-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: var(--radius-card);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.safari-notice[hidden] {
+  display: none;
+}
+
+.safari-notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.safari-notice-text strong {
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.safari-notice-text b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.safari-notice-dismiss {
+  flex: none;
+  align-self: center;
+  padding: 5px 10px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  background: var(--ui-raised);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 140ms ease, var(--press);
+}
+
+.safari-notice-dismiss:active {
+  transform: translateY(1px);
+}
+
+/* ── Charts (popup and dashboard) ── */
 .bar-chart {
   position: relative;
   display: grid;
   grid-template-columns: repeat(24, 1fr);
   align-items: end;
-  height: 30px;
-  gap: 4px;
-  padding: 8px 1px 0;
+  height: 34px;
+  gap: 3px;
   overflow: visible;
   /* Baseline the bars sit on: anchors the eye so empty hours (flat dashes)
      read as "nothing blocked" instead of a missing chart. */
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 /* The daily chart is the history panel's content, so it takes whatever height
@@ -513,8 +1070,8 @@ h1 {
   grid-template-columns: repeat(60, 1fr);
   flex: 1 1 auto;
   height: auto;
-  min-height: 190px;
-  gap: 2px;
+  min-height: 200px;
+  gap: 3px;
 }
 
 /* With an all-zero window the chart swaps for .chart-empty-note (options.ts).
@@ -528,10 +1085,10 @@ h1 {
   display: grid;
   place-items: center;
   flex: 1 1 auto;
-  min-height: 190px;
+  min-height: 200px;
   margin: 0;
   padding: 0 24px;
-  color: rgba(var(--text-rgb), 0.5);
+  color: var(--ui-faint);
   font-size: 13px;
   line-height: 1.45;
   text-align: center;
@@ -541,30 +1098,31 @@ h1 {
   display: none;
 }
 
-/* Dense daily bars read as one continuous stream, not a comb. */
-.bar-chart.large span {
-  border-radius: var(--radius-pill);
-}
-
 .bar-chart span {
   position: relative;
   min-height: 2px;
-  border-radius: var(--radius-pill) var(--radius-pill) 3px 3px;
-  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  border-radius: 4px 4px 1px 1px;
+  background: linear-gradient(180deg, var(--accent), rgba(var(--accent-rgb), 0.62));
   outline: none;
   transition: filter 140ms ease, opacity 140ms ease, transform 140ms ease;
+}
+
+/* Sixty tall bars in solid red read as a wall. Fading each one toward the
+   baseline keeps the shape (where the peaks are) and drops the mass. */
+.bar-chart.large span {
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--accent), rgba(var(--accent-rgb), 0.22));
 }
 
 .bar-chart span[data-empty="true"] {
   height: 2px;
   border-radius: var(--radius-pill);
-  background: rgba(var(--text-rgb), 0.14);
+  background: var(--ui-track);
 }
 
 .bar-chart span:hover,
 .bar-chart span:focus-visible {
   filter: brightness(1.18);
-  opacity: 1;
   transform: translateY(-2px);
 }
 
@@ -576,7 +1134,7 @@ h1 {
   max-width: 240px;
   padding: 6px 9px;
   border: 1px solid rgba(255, 236, 236, 0.16);
-  border-radius: 9px;
+  border-radius: 7px;
   /* A contrast chip: always dark with light text, so it stays legible over both
      the light and dark chart surfaces (var(--text) would go dark in light mode). */
   color: #fbf3f3;
@@ -599,406 +1157,118 @@ h1 {
   transform: translateY(0);
 }
 
-.timeline-footer {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
-  color: rgba(var(--text-rgb), 0.5);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.timeline-footer strong {
-  color: rgba(var(--text-rgb), 0.88);
-  font-size: 11px;
-  text-transform: none;
-}
-
-.timeline-footer span:last-child {
-  text-align: right;
-}
-
-.soft-button,
-.danger-button {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-inner);
-  padding: 9px 12px;
-  color: var(--text);
-  background: var(--panel-strong);
-  transition: background 140ms ease, border-color 140ms ease, var(--press);
-}
-
-.soft-button:hover {
-  background: rgba(var(--text-rgb), 0.12);
-}
-
-.danger-button {
-  border-color: rgba(255, 92, 122, 0.42);
-  color: var(--danger);
-}
-
-.danger-button:hover {
-  background: rgba(255, 92, 122, 0.16);
-}
-
-.soft-button:active,
-.danger-button:active,
-.ghost-button:active,
-.chip-button:active,
-.icon-button:active,
-.site-toggle:active {
-  transform: translateY(1px);
-}
-
-.power-button:active {
-  transform: scale(0.95);
-}
-
-.icon-button {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-inner);
-  transition: background 140ms ease, border-color 140ms ease, var(--press);
-}
-
-.icon-button:hover {
-  background: var(--panel-strong);
-}
-
-.panel-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.pause-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 7px;
-  padding: 6px 10px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-inner);
-  background: var(--panel-deep);
-}
-
-.pause-row .muted {
-  font-size: 12px;
-}
-
-.pause-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.chip-button {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  padding: 3px 9px;
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(var(--text-rgb), 0.82);
-  background: transparent;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
-}
-
-.chip-button:hover {
-  color: var(--text);
-  background: var(--panel-strong);
-}
-
-.chip-button.accent {
-  border-color: rgba(var(--accent-rgb), 0.42);
-  color: var(--accent-ink);
-}
-
-.chip-button.accent:hover {
-  background: rgba(var(--accent-rgb), 0.16);
-}
-
-.ghost-button {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-inner);
-  padding: 6px 10px;
-  font-size: 12px;
-  color: rgba(var(--text-rgb), 0.72);
-  background: transparent;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, var(--press);
-}
-
-.ghost-button:hover {
-  color: var(--text);
-  background: var(--panel-strong);
-}
-
-.site-row,
-.diagnostic-row,
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 25px;
-  border-bottom: 1px solid var(--hairline);
-  font-size: 13px;
-}
-
-/* Long hostnames and cosmetic selectors truncate with an ellipsis instead of
-   shoving the value off the row; the full string stays on the title attr. */
-.diagnostic-row span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.diagnostic-row strong {
-  flex: none;
-}
-
-.current-site-card {
-  display: block;
-}
-
-.site-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.site-card-top strong {
-  display: block;
-  max-width: 205px;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.site-stat-caption {
-  display: block;
-  margin-top: 6px;
-  color: rgba(var(--text-rgb), 0.5);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.site-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.site-stat-grid article {
-  min-width: 0;
-  border-radius: var(--radius-inner);
-  padding: 5px 8px;
-  background: rgba(var(--text-rgb), 0.04);
-}
-
-.site-stat-grid span {
-  display: block;
-  overflow: hidden;
-  color: rgba(var(--text-rgb), 0.58);
-  font-size: 10px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.site-stat-grid strong {
-  display: block;
-  margin-top: 5px;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.site-footnote {
-  margin: 5px 1px 0;
-  color: rgba(var(--text-rgb), 0.58);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.site-row:last-child,
-.diagnostic-row:last-child {
-  border-bottom: 0;
-}
-
-/* Safari-only host-access hint. Sits directly under the hero because it explains
-   why the counters below it read zero, and takes the accent wash rather than the
-   warning orange — nothing is wrong, there is just one setting left to pick. */
-.safari-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 10px 11px;
-  border: 1px solid rgba(var(--accent-rgb), 0.34);
-  border-radius: var(--radius-inner);
-  background: rgba(var(--accent-rgb), 0.12);
-}
-
-.safari-notice[hidden] {
-  display: none;
-}
-
-.safari-notice-text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.safari-notice-text strong {
-  font-size: 12.5px;
-  line-height: 1.25;
-  color: var(--text);
-}
-
-.safari-notice-text b {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.safari-notice-dismiss {
-  flex: none;
-  align-self: center;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--panel-strong);
-  transition: background 140ms ease, var(--press);
-}
-
-.safari-notice-dismiss:active {
-  transform: translateY(1px);
-}
-
-.report-button {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  margin-top: 7px;
-  padding: 7px 11px;
-  text-align: left;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-inner);
-  color: var(--text);
-  background: var(--panel-strong);
-  transition: background 140ms ease, border-color 140ms ease, var(--press);
-}
-
-.report-button:hover {
-  background: rgba(255, 176, 92, 0.14);
-  border-color: rgba(255, 176, 92, 0.42);
-}
-
-.report-button:active {
-  transform: translateY(1px);
-}
-
-.report-button:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.report-icon {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 27px;
-  height: 27px;
-  border-radius: var(--radius-inner);
-  font-size: 15px;
-  color: #ffb05c;
-  background: rgba(255, 176, 92, 0.14);
-  border: 1px solid rgba(255, 176, 92, 0.34);
-}
-
-.report-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.report-text strong {
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.report-text small {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.report-arrow {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 15px;
-}
-
-.status-message {
-  margin: 10px 2px 0;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.popup-frame[data-view="ready"] .status-message {
-  display: none;
-}
-
+/* ── Dashboard ── */
 .dashboard-shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 32px 28px 48px;
 }
 
 .dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   max-width: 1180px;
   margin: 0 auto;
 }
 
+.dashboard-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 6px;
+}
+
+.dashboard-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dashboard-title .brand-mark {
+  width: 42px;
+  height: 42px;
+}
+
+.dashboard-title .eyebrow {
+  margin-bottom: 3px;
+  color: var(--ui-muted);
+}
+
 .dashboard-header h1 {
-  font-size: 42px;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 /* Four buttons in one flex row overflow narrow viewports and wrap their text
    mid-label; wrap whole buttons instead and keep each label on one line. */
 .header-actions {
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
-.header-actions .soft-button,
-.header-actions .danger-button {
+/* One strip split four ways rather than four cards: the totals are one fact
+   (what the blocker has done) measured four ways. */
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-panel);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+.metric {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.metric + .metric {
+  border-left: 1px solid var(--ui-border);
+}
+
+.metric span {
+  display: block;
+  color: var(--ui-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.metric.primary strong {
+  color: var(--accent-ink);
+}
+
+.metric small {
+  display: block;
+  margin-top: 6px;
+  color: var(--ui-faint);
+  font-size: 12px;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
   gap: 16px;
-  margin-top: 16px;
   /* Panels size to their content instead of stretching to the row's tallest
      panel — the history chart no longer floats in a half-empty box next to
      the long Protection panel. */
@@ -1008,6 +1278,7 @@ h1 {
 .dashboard-panel {
   display: flex;
   flex-direction: column;
+  padding: 18px 20px;
 }
 
 /* The one panel worth stretching to its row. Its content is a chart, and a
@@ -1018,46 +1289,99 @@ h1 {
   align-self: stretch;
 }
 
+.dashboard-panel .section-heading {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.dashboard-panel .section-heading span {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dashboard-panel .section-heading strong {
+  color: var(--ui-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dashboard-panel .timeline-footer {
+  margin-top: 8px;
+}
+
+.dashboard-panel .timeline-footer strong {
+  color: var(--ui-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .toggle-row {
-  min-height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 54px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ui-border);
+  cursor: pointer;
+}
+
+.toggle-row:last-child {
+  border-bottom: 0;
+}
+
+.toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toggle-text span {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.toggle-text small {
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .toggle-row input {
   appearance: none;
   position: relative;
   flex: none;
-  width: 42px;
+  width: 40px;
   height: 24px;
   margin: 0;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-pill);
-  background: rgba(var(--text-rgb), 0.12);
+  background: var(--ui-track);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 200ms var(--ease-out);
 }
 
 /* Sliding thumb; the 3px inset keeps symmetric margins in both states. */
 .toggle-row input::after {
   content: '';
   position: absolute;
-  top: 50%;
+  top: 3px;
   left: 3px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transform: translateY(-50%);
-  transition: left 160ms ease;
+  transition: left 200ms var(--ease-out);
 }
 
 .toggle-row input:checked {
-  border-color: rgba(var(--accent-rgb), 0.5);
   background: var(--accent);
 }
 
 .toggle-row input:checked::after {
-  left: calc(100% - 21px);
+  left: 19px;
 }
 
 .toggle-row input:focus-visible {
@@ -1070,39 +1394,76 @@ h1 {
   cursor: default;
 }
 
+.diagnostic-row {
+  min-height: 34px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.diagnostic-row:last-child {
+  border-bottom: 0;
+}
+
+/* Long hostnames and cosmetic selectors truncate with an ellipsis instead of
+   shoving the value off the row; the full string stays on the title attr. */
+.diagnostic-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostic-row strong {
+  flex: none;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .site-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  margin: 14px 0;
+  gap: 8px;
+  margin: 8px 0 12px;
 }
 
 .site-form input {
   min-width: 0;
-  border: 1px solid var(--line);
+  min-height: 36px;
+  border: 1px solid var(--ui-border-strong);
   border-radius: var(--radius-inner);
-  padding: 10px 12px;
+  padding: 0 12px;
   color: var(--text);
-  background: var(--panel-strong);
+  background: var(--ui-bg);
   transition: border-color 140ms ease;
 }
 
 .site-form input::placeholder {
-  color: rgba(var(--text-rgb), 0.42);
+  color: var(--ui-faint);
+}
+
+.site-form input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .pill-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pill {
-  border: 1px solid var(--line);
+  min-height: 30px;
+  border: 1px solid var(--ui-border-strong);
   border-radius: var(--radius-pill);
-  padding: 8px 11px;
+  padding: 0 12px;
   color: var(--text);
-  background: var(--panel-strong);
+  background: var(--ui-raised);
+  font-size: 12.5px;
   cursor: default;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
@@ -1115,7 +1476,7 @@ h1 {
 .pill-removable::after {
   content: '×';
   margin-left: 7px;
-  color: rgba(var(--text-rgb), 0.45);
+  color: var(--ui-faint);
 }
 
 .pill-removable:hover {
@@ -1126,6 +1487,12 @@ h1 {
 
 .pill-removable:hover::after {
   color: var(--danger);
+}
+
+#options-status {
+  margin: 4px 2px 0;
+  color: var(--ui-faint);
+  font-size: 12px;
 }
 
 /* ── Blocked-page interstitial ────────────────────────────────────
@@ -1271,8 +1638,7 @@ h1 {
 .marketing-shell {
   min-height: 100vh;
   background:
-    radial-gradient(80% 55% at 88% -4%, rgba(var(--accent-rgb), 0.24), transparent 58%),
-    radial-gradient(60% 45% at 0% 108%, rgba(var(--accent-rgb), 0.1), transparent 55%),
+    radial-gradient(60% 40% at 0% 108%, rgba(var(--accent-rgb), 0.05), transparent 55%),
     var(--app-bg);
 }
 
@@ -1320,6 +1686,27 @@ h1 {
   border-bottom: 1px solid var(--line);
   background: var(--nav-bg);
   backdrop-filter: blur(22px) saturate(145%);
+  transition: background-color 240ms ease, border-color 240ms ease, backdrop-filter 240ms ease;
+}
+
+/* At the very top the bar has nothing to sit on top of, so it sits in the
+   page instead: no fill, no hairline, no blur. marketing.ts sets the
+   attribute while the sentinel above the bar is on screen, which leaves the
+   solid bar as the default wherever the script does not run. An open phone
+   menu keeps the fill so its panel never hangs off a see-through bar. */
+.marketing-nav[data-at-top]:not(:has(.nav-disclosure[open])) {
+  border-bottom-color: transparent;
+  background-color: transparent;
+  backdrop-filter: none;
+}
+
+.nav-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 8px;
+  pointer-events: none;
 }
 
 .marketing-nav-inner {
@@ -1566,16 +1953,19 @@ h1 {
    glow, a drop shadow and a text shadow all at once; a single inset highlight
    plus the smallest elevation step is enough to read as pressable, and the
    ink is a warm near-black off the brand rather than the navy it was. */
+/* Solid, not a gradient: one flat brand red with white type. #dc2626 rather
+   than the #ef4444 accent because white on the lighter red is 3.8:1, under
+   AA for button-sized text; this one is 4.8:1. */
 .marketing-shell .primary-link {
-  border: 1px solid rgba(var(--accent-rgb), 0.55);
-  color: #2a0709;
-  background: linear-gradient(180deg, #ff9d9f 0%, #f0484d 100%);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  transition: filter 140ms ease, var(--press);
+  border: 1px solid #c81e1e;
+  color: #fff;
+  background: #dc2626;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background 140ms ease, var(--press);
 }
 
 .marketing-shell .primary-link:hover {
-  filter: brightness(1.05);
+  background: #c81e1e;
 }
 
 .marketing-shell .primary-link:active {
@@ -1716,7 +2106,7 @@ h1 {
   overflow: hidden;
   /* Follows the page theme — light popup in light mode, dark in dark — by
      inheriting the page tokens and mirroring the popup's own body backdrop. */
-  background: var(--app-bg);
+  background: var(--ui-bg);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-lg);
   /* Fade the cropped bottom edge so it reads as "more below", not a hard cut.
@@ -1746,7 +2136,7 @@ h1 {
 .feature-card,
 .stat-wall article {
   border: 1px solid var(--hairline);
-  background: rgba(var(--text-rgb), 0.04);
+  background: var(--card-bg);
 }
 
 /* Rhythm is bottom-only, so the gap between any two bands is exactly one
@@ -1833,7 +2223,7 @@ h1 {
      theme and read as a foreign slab dropped onto the pink page. */
   background:
     radial-gradient(78% 130% at 50% -14%, rgba(var(--accent-rgb), 0.16), transparent 68%),
-    rgba(var(--text-rgb), 0.04);
+    var(--card-bg);
 }
 
 .cta-badge {
@@ -2164,14 +2554,38 @@ h1 {
   height: 16px;
 }
 
+.nav-caret {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+  transform: rotate(45deg);
+  transition: transform 200ms var(--ease-out), margin 200ms var(--ease-out);
+}
+
+.nav-item.has-menu:hover .nav-caret,
+.nav-item.has-menu:focus-within .nav-caret {
+  margin-top: 3px;
+  transform: rotate(225deg);
+}
+
+/* The Features mega menu: the four feature links on the left, a preview of
+   the hovered feature on the right. The previews are real captures of the
+   shipping UI (resources/scripts/lib/nav-previews.ts), stacked in one cell
+   and cross-faded with :has(), so it works without a line of script. */
 .nav-menu {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 14px);
   left: 50%;
-  width: 340px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 8px;
+  width: 720px;
   padding: 8px;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-panel);
+  border-radius: calc(var(--radius-panel) + 4px);
   /* Opaque: the panel tint composited over the solid page background so the
      hero underneath never bleeds through (a translucent bg read as a z-index
      bug). Layered gradient keeps the subtle elevation without transparency. */
@@ -2180,8 +2594,9 @@ h1 {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateX(-50%) translateY(6px);
-  transition: opacity 160ms ease, transform 160ms ease, visibility 0s linear 160ms;
+  transform: translateX(-34%) translateY(8px) scale(0.985);
+  transform-origin: 34% 0;
+  transition: opacity 180ms ease, transform 220ms var(--ease-out), visibility 0s linear 180ms;
   z-index: 60;
 }
 
@@ -2190,8 +2605,15 @@ h1 {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: translateX(-34%) translateY(0) scale(1);
+  transition: opacity 180ms ease, transform 220ms var(--ease-out);
+}
+
+.nav-mega-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
 }
 
 .nav-menu-item {
@@ -2202,16 +2624,17 @@ h1 {
   transition: background 130ms ease;
 }
 
-.nav-menu-item:hover {
-  background: rgba(var(--accent-rgb), 0.12);
+.nav-menu-item:hover,
+.nav-menu-item:focus-visible {
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .nav-menu-icon {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-inner);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.14);
@@ -2239,6 +2662,76 @@ h1 {
   color: var(--muted);
   font-size: 12.5px;
   line-height: 1.35;
+}
+
+.nav-mega-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 12px 4px;
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.marketing-nav .nav-mega-all:hover {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.nav-mega-preview {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(var(--accent-rgb), 0.22), transparent 60%),
+    var(--ui-bg);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.nav-shot {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms ease, transform 260ms var(--ease-out);
+}
+
+.nav-shot img {
+  display: block;
+  width: calc(100% - 28px);
+  height: auto;
+  margin: 14px 14px 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+}
+
+.nav-shot figcaption {
+  margin: auto 0 0;
+  padding: 12px 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* First shot by default; the hovered or focused link's shot otherwise. */
+.nav-shot[data-shot="network"],
+.nav-mega:has([data-preview="network"]:is(:hover, :focus-visible)) [data-shot="network"],
+.nav-mega:has([data-preview="video"]:is(:hover, :focus-visible)) [data-shot="video"],
+.nav-mega:has([data-preview="popups"]:is(:hover, :focus-visible)) [data-shot="popups"],
+.nav-mega:has([data-preview="controls"]:is(:hover, :focus-visible)) [data-shot="controls"] {
+  opacity: 1;
+  transform: none;
+}
+
+.nav-mega:has(.nav-menu-item:is(:hover, :focus-visible):not([data-preview="network"])) [data-shot="network"] {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 /* ── Feature cards (home grid links) ──────────────────────────── */
@@ -2329,7 +2822,7 @@ h1 {
   padding: 26px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-panel);
-  background: rgba(var(--text-rgb), 0.04);
+  background: var(--card-bg);
   transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
@@ -2467,7 +2960,7 @@ h1 {
   padding: 16px 18px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-panel);
-  background: rgba(var(--text-rgb), 0.04);
+  background: var(--card-bg);
   transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
@@ -2683,7 +3176,7 @@ h1 {
   padding: 22px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-panel);
-  background: rgba(var(--text-rgb), 0.04);
+  background: var(--card-bg);
 }
 
 .feature-point h3 {
@@ -2708,7 +3201,7 @@ h1 {
   padding: 22px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-panel);
-  background: rgba(var(--text-rgb), 0.04);
+  background: var(--card-bg);
 }
 
 .defuse-col h3 {
@@ -2901,9 +3394,7 @@ h1 {
   /* The ambient wash is a single soft corner on a phone: the two-radial
      desktop version banded visibly across a 390px screen. */
   .marketing-shell {
-    background:
-      radial-gradient(circle at 84% 4%, rgba(var(--accent-rgb), 0.14), transparent 44%),
-      var(--app-bg);
+    background: var(--app-bg);
   }
 
   /* The inline links, the GitHub icon and "Read docs" all move into the
@@ -3099,19 +3590,350 @@ h1 {
 /* ── Dashboard (extension options page) ───────────────────────────
    Kept separate from the marketing breakpoints above: the dashboard is a
    fixed-width extension surface and does not share the site's grid. */
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .dashboard-shell {
-    padding: 16px;
+    padding: 18px 16px 32px;
   }
 
-  .dashboard-header,
-  .dashboard-metrics,
   .dashboard-grid {
-    display: grid;
     grid-template-columns: 1fr;
   }
 
+  .dashboard-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .metric:nth-child(3) {
+    border-left: 0;
+  }
+
+  .metric:nth-child(n + 3) {
+    border-top: 1px solid var(--ui-border);
+  }
+
   .dashboard-header h1 {
-    font-size: 32px;
+    font-size: 26px;
   }
 }
+
+/* ── Display type, hierarchy and texture ──────────────────────────
+   Kept together at the end so the overrides read as one pass and each media
+   query below can retune its own base rule without fighting the breakpoints
+   earlier in the file. */
+
+/* Display face on headings across the site and the extension surfaces; Inter
+   stays on running text and controls. */
+.marketing-shell h1,
+.marketing-shell h2,
+.marketing-shell h3,
+.blocked-frame h1 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+.marketing-shell h1 {
+  letter-spacing: -0.038em;
+  line-height: 0.98;
+}
+
+.marketing-shell h2 {
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  text-wrap: balance;
+}
+
+.marketing-shell h3 {
+  font-weight: 650;
+  letter-spacing: -0.012em;
+}
+
+.marketing-shell p {
+  text-wrap: pretty;
+}
+
+/* Skip link: off-screen until focused, then a plain pill under the nav. */
+.skip-link {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 70;
+  padding: 10px 16px;
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 160ms var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Film grain. The page is all soft radial washes, which band on 8-bit panels
+   and read as a flat render; a faint noise layer breaks the gradients up and
+   gives the surfaces some tooth. Fixed and pointer-transparent, so it costs one
+   composited layer and never intercepts a click. */
+.marketing-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* ── Hero: one primary action, stores as a quiet second row ── */
+.hero-copy h1 {
+  font-size: clamp(40px, 5.6vw, 72px);
+}
+
+.hero-stores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+
+.hero-stores-label {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hero-stores .download-pill {
+  min-height: 36px;
+  padding: 0 12px 0 6px;
+  gap: 8px;
+  border-color: var(--hairline);
+  border-radius: var(--radius-pill);
+  background: rgba(var(--text-rgb), 0.035);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.hero-stores .download-logo {
+  width: 16px;
+  height: 16px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+}
+
+.marketing-shell .hero-actions .primary-link {
+  min-height: 50px;
+  padding-inline: 24px;
+  font-size: 16px;
+}
+
+/* ── Features: an asymmetric bento instead of four equal columns ──
+   The lead card (network blocking, the thing everything else rests on) takes
+   the tall slot and carries a figure; control and privacy spans the bottom. */
+.feature-grid {
+  grid-template-columns: 1.15fr 1fr 1fr;
+}
+
+.feature-grid .feature-card:first-child {
+  grid-row: span 2;
+  padding: 28px;
+  background:
+    radial-gradient(120% 70% at 0% 100%, rgba(var(--accent-rgb), 0.16), transparent 60%),
+    var(--card-bg);
+}
+
+.feature-grid .feature-card:nth-child(4) {
+  grid-column: span 2;
+}
+
+.feature-grid .feature-card h3 {
+  min-height: 0;
+  margin-top: 22px;
+  font-size: 22px;
+}
+
+.feature-grid .feature-card:first-child h3 {
+  font-size: 28px;
+}
+
+.feature-grid .feature-card:first-child p {
+  flex: 0 1 auto;
+  max-width: 34ch;
+}
+
+/* A few real request hosts struck through, so the lead card shows the
+   mechanism rather than describing it. Decorative (aria-hidden): the paragraph
+   above already says the same thing in words. */
+.request-log {
+  display: grid;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.request-log span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-inner);
+  background: rgba(var(--text-rgb), 0.035);
+}
+
+.request-log code {
+  overflow: hidden;
+  color: rgba(var(--text-rgb), 0.62);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--accent-rgb), 0.7);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-log b {
+  flex: none;
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.feature-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 32px;
+}
+
+.feature-figure strong {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 5vw, 64px);
+  font-weight: 750;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--accent-ink);
+}
+
+.feature-figure small {
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.feature-card {
+  transition: border-color 220ms var(--ease-out), transform 220ms var(--ease-out), background 220ms var(--ease-out);
+}
+
+.feature-card:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* ── How it works: editorial numerals over the accent rule ── */
+.how-steps li {
+  padding-top: 18px;
+  border-top-width: 1px;
+}
+
+.how-num {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.how-steps h3 {
+  margin-top: 14px;
+  font-size: 20px;
+}
+
+/* ── Stats: display numerals ── */
+.stat-wall strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-size: clamp(34px, 4vw, 52px);
+}
+
+.cta-badge {
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .hero-copy h1 {
+    font-size: clamp(36px, 10vw, 48px);
+  }
+
+  .hero-actions .hero-how {
+    flex: 0 0 auto;
+    margin-inline: auto;
+  }
+
+  .hero-stores .download-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* The bento needs width to read as one; on a phone it is a plain list. */
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-grid .feature-card:first-child,
+  .feature-grid .feature-card:nth-child(4) {
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .feature-grid .feature-card:first-child {
+    padding: 18px;
+  }
+
+  .feature-grid .feature-card h3,
+  .feature-grid .feature-card:first-child h3 {
+    margin: 0;
+    font-size: 19px;
+  }
+
+  .feature-figure {
+    grid-column: 2;
+    padding-top: 16px;
+  }
+
+  .request-log {
+    display: none;
+  }
+
+  .feature-figure strong {
+    font-size: 40px;
+  }
+
+  .how-num {
+    font-size: 36px;
+  }
+}
+

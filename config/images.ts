@@ -7,7 +7,7 @@ import type { ImageBackgroundConfig, ImagesConfig } from '@stacksjs/types'
  * show, and the App Store screenshot set. Built by `buddy generate:images`,
  * which `bun run og` and `bun run screenshots` both go through.
  *
- * The palette is the site's own — `--bg`, `--accent`, `--wash-rgb` from
+ * The palette is the site's own — `--bg`, `--accent` and the ambient glow from
  * `resources/css/styles.css` — expressed as fractions of the canvas so the
  * 1200x630 card and the 2880x1800 Mac screenshot are the same design rather
  * than two that happen to be red.
@@ -19,20 +19,20 @@ import type { ImageBackgroundConfig, ImagesConfig } from '@stacksjs/types'
 // Explicitly typed so the default export is inferrable under
 // `isolatedDeclarations`, matching `config/extension.ts`.
 const surface: ImageBackgroundConfig = {
-  color: '#150c0d',
+  color: '#110f0f',
   gradient: {
     angle: 145,
     stops: [
-      { offset: 0, color: '#150c0d' },
-      { offset: 0.58, color: '#1b1113' },
-      { offset: 1, color: '#241619' },
+      { offset: 0, color: '#110f0f' },
+      { offset: 0.6, color: '#151212' },
+      { offset: 1, color: '#1c1818' },
     ],
   },
   glows: [
-    // The two washes the site's `--app-bg` carries: the warm one bottom left,
-    // the accent one top right.
-    { x: 0.86, y: 0.1, radius: 0.66, color: '#ef44443d' },
-    { x: 0.08, y: 0.94, radius: 0.6, color: '#ff7a4d24' },
+    // The site's one ambient glow, top right, plus a faint answer bottom left
+    // so a 2880px-wide canvas does not read as a flat slab.
+    { x: 0.86, y: 0.1, radius: 0.66, color: '#ef444430' },
+    { x: 0.08, y: 0.94, radius: 0.6, color: '#ef444414' },
   ],
 }
 
@@ -48,10 +48,10 @@ const images: ImagesConfig = {
   brand: 'Very Good AdBlock',
   mark: 'public/icons/icon-128.png',
   background: surface,
-  color: '#fbf3f3',
+  color: '#f6f3f2',
   accent: '#ef4444',
   device: {
-    radius: 0.035,
+    radius: 0.026,
     borderColor: '#ffffff14',
     shadow: { color: '#00000080' },
   },

@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   await Bun.$`mkdir -p ${siteOut}/fonts`
   await Bun.$`cp -R ./dist/fonts/. ${siteOut}/fonts/`
   // Product screenshots used by the marketing + feature pages (also live under /docs).
-  await Bun.$`cp ./docs/public/screenshots/popup.png ./docs/public/screenshots/dashboard.png ${siteOut}/screenshots/`
+  await Bun.$`cp -R ./docs/public/screenshots/. ${siteOut}/screenshots/`
   await Bun.$`cp -R ${docsOut}/. ${siteOut}/docs/`
 
   // Social cards. `site:build` regenerates them just before this — capturing

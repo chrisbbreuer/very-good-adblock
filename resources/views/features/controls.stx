@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Pause protection per site, keep an allowlist and blocklist, hide cookie banners, and read local-first stats from a clean dashboard. Nothing leaves your machine.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/features/controls/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -37,7 +37,7 @@
   </head>
   <body class="marketing-shell">
     @include('nav')
-    <main id="top">
+    <main id="main">
       <section class="feature-page-hero">
         <a class="feature-back" href="/features/">← All features</a>
         <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2.4"></circle><circle cx="8" cy="16" r="2.4"></circle></svg></span>

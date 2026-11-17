@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A MAIN-world script deletes ad instructions from YouTube’s player response before they schedule, skips what slips through, and detects Twitch stream ads.">
-    <meta name="theme-color" content="#100a0b">
+    <meta name="theme-color" content="#110f0f">
     <link rel="canonical" href="https://verygoodadblock.org/features/youtube-twitch/">
     <script>
       // Set the theme before first paint (no flash): saved choice, else system.
@@ -37,7 +37,7 @@
   </head>
   <body class="marketing-shell">
     @include('nav')
-    <main id="top">
+    <main id="main">
       <section class="feature-page-hero">
         <a class="feature-back" href="/features/">← All features</a>
         <span class="feature-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="m10 9 5 3-5 3V9Z"></path></svg></span>

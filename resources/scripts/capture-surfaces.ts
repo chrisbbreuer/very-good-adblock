@@ -17,6 +17,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { crop, decode, encode } from 'ts-images'
+import { openBrowserView } from './lib/browser-view'
 import { startPreviewServer } from './lib/preview-server'
 
 const dist = resolve('dist')
@@ -57,6 +58,15 @@ const surfaces: Surface[] = [
     width: 390,
     crop: '.popup-shell',
     prepare: `document.querySelector('[data-pause="30"], .pause-options button:nth-child(2)')?.click()`,
+  },
+  // The page counter opened onto its list of what was blocked: the nav's
+  // pop-ups preview, where the list (pop-ups included) is the whole point.
+  {
+    name: 'popup-blocks',
+    path: '/popup.html',
+    width: 390,
+    crop: '.popup-hero',
+    prepare: `document.getElementById('page-blocks-toggle')?.click()`,
   },
   // The dashboard is a page, and a page's full height makes a very tall, very
   // thin store slide. A window-shaped viewport is what it looks like in use.
@@ -131,14 +141,14 @@ finally {
 }
 
 async function capture(surface: Surface): Promise<void> {
-  // The window's title bar eats part of the web viewport, so the window is
-  // taller than the region wanted and the shot is taken from the page itself.
-  const chrome = 87
+  // `openBrowserView` sizes the page itself through a device-metrics override,
+  // so no title-bar allowance is added: padding the window for one left an
+  // empty band under every popup capture.
   const height = surface.height ?? await measure(surface)
 
-  const view = new Bun.WebView({
+  const view = await openBrowserView({
     width: surface.width,
-    height: height + chrome,
+    height,
     backend: {
       type: 'chrome',
       url: false,
@@ -222,7 +232,7 @@ async function measure(surface: Surface): Promise<number> {
   // viewport, and the popup's frame stretches to fill its window, so both
   // measures report the window's height in a tall one. In a short window the
   // content is what overflows, and overflow is what we are asking about.
-  const view = new Bun.WebView({
+  const view = await openBrowserView({
     width: surface.width,
     height: 200,
     backend: { type: 'chrome', url: false, argv: chromeArgv() },

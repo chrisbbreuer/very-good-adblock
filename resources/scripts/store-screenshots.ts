@@ -27,6 +27,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { decode, resize } from 'ts-images'
+import { writeNavPreviews } from './lib/nav-previews'
 import { encodeOpaquePng, renderPromoTiles } from './lib/promo-tiles'
 
 const appStoreDir = resolve('resources/app-store/screenshots')
@@ -73,6 +74,11 @@ for (const [name, bytes] of await renderPromoTiles()) {
   await writeFile(outPath, bytes)
   console.log(`Wrote ${outPath}`)
 }
+
+// The site's Features mega menu previews, cut from the same captures and
+// committed beside the other site screenshots.
+for (const outPath of await writeNavPreviews(resolve('dist/captures'), resolve('docs/public/screenshots/nav')))
+  console.log(`Wrote ${outPath}`)
 
 async function run(command: string, args: string[]): Promise<void> {
   const proc = Bun.spawn([command, ...args], { stdout: 'inherit', stderr: 'inherit' })

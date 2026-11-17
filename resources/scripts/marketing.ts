@@ -26,6 +26,17 @@ navDisclosure?.querySelector('.nav-panel')?.addEventListener('click', (event) =>
     navDisclosure.open = false
 })
 
+// The bar blends into the page at the very top and takes its fill once the
+// page scrolls under it. An observer on a sentinel above the bar rather than a
+// scroll listener: it fires twice per crossing instead of every frame.
+const nav = document.querySelector<HTMLElement>('.marketing-nav')
+const navSentinel = document.querySelector('.nav-sentinel')
+if (nav && navSentinel && 'IntersectionObserver' in window) {
+  new IntersectionObserver(([entry]) => {
+    nav.toggleAttribute('data-at-top', entry.isIntersecting)
+  }).observe(navSentinel)
+}
+
 const form = document.getElementById('subscribe-form') as HTMLFormElement | null
 const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null
 const status = document.getElementById('subscribe-status')
@@ -59,7 +70,7 @@ themeToggle?.addEventListener('click', () => {
   catch {
     // Private mode / storage disabled — the toggle still works for this session.
   }
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#fbf1f1' : '#100a0b')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#fbfaf8' : '#110f0f')
 })
 
 function setStatus(message: string, kind: 'ok' | 'error' | 'pending'): void {
