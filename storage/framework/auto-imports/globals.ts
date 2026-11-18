@@ -10,6 +10,9 @@ Object.assign(globalThis, autoImports)
 
 // TypeScript declarations
 declare global {
+  const webkitRuleLists: typeof autoImports.webkitRuleLists
+  const webkitManifest: typeof autoImports.webkitManifest
+  const webkitUserScripts: typeof autoImports.webkitUserScripts
 }
 
 export {}

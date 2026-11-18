@@ -306,6 +306,8 @@ Set `ios.testFlightGroups` to the names of existing internal groups (for example
 `['Internal testers']`) to distribute processed builds to those groups.
 `release:ios --wait` confirms `IN_BETA_TESTING` and the configured memberships
 before retiring older builds; upload or `VALID` processing alone is insufficient.
+Automatic internal groups are left for Apple to assign; delivery waits for their
+observed membership instead of attempting a manual assignment during propagation.
 Without a wait, older builds stay available. Resume a tagged release with
 `buddy release:testflight <tag> --wait [minutes]`, preserving its existing
 localized notes; `--dry-run` validates the
@@ -482,6 +484,24 @@ every call answers `{ available: false }` and `onChange` never fires. Word the
 prompt with `ios.usageDescriptions.NSAppleMusicUsageDescription`. The
 simulator's Music app has nothing to play; launch a simulator build with
 `-CraftFakeMusicPlayer YES` for three made-up songs that play and skip.
+
+## Signed-out launch gate
+
+`nativeGate` in `config/mobile.ts` passes Craft's `nativeGate` (craft-native
+>= 0.0.488) to both shells: before the first frame, a signed-out launch whose
+start path is not public opens on `redirect` instead of drawing the signed-in
+home and its tabs until the app script pushes sign-in on top.
+
+```ts
+nativeGate: { token: 'auth.token', redirect: '/m/login', publicPaths: ['/m/login'] },
+ios: { /* ... */ },      // ios.nativeGate replaces the shared one whole
+android: { /* ... */ },  // so does android.nativeGate
+```
+
+`token` is the secure-storage key holding the sign-in (Craft defaults it to
+`sessionTokenKey`). Each public path admits what sits under it, and `redirect`
+must be one of them. The gate checks the start path from `url`, never a deep
+link. Craft validates every path when it generates the project.
 
 ## Crash reporting (bughq)
 
@@ -771,8 +791,9 @@ missing font files and invalid names. Fonts work without a network request.
 ## Native passkeys
 
 Enable `ios.capabilities.passkeys` and a `webcredentials:<relying-party-host>`
-associated domain. Craft >= 0.0.451 supplies the system AuthenticationServices
-sheet. Import `passkeys` from `@stacksjs/mobile`, check
+associated domain; the build refuses passkeys without one, since iOS fails
+every passkey request from an app its domain does not vouch for. Craft >=
+0.0.451 supplies the system AuthenticationServices sheet. Import `passkeys` from `@stacksjs/mobile`, check
 `await passkeys.isAvailable()`, then pass server-issued JSON WebAuthn options to
 `create(options)` or `get(options)`. Send the JSON credential back to the server
 for verification. The native capability never replaces the server challenge,
